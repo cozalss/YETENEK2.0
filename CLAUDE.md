@@ -2,7 +2,7 @@
 
 ## Proje Özeti
 
-**Yetenek 2.0** — AI tabanlı çocuk spor yetenek keşif platformu. 8-15 yaş arası çocuk telefon kamerası önünde 5 dakikalık 3 fiziksel test yapıyor; AI çocuğa en uygun 5 sporu öneriyor + sakatlanma riski uyarısı veriyor + gamification katmanıyla rozet/leaderboard/streak sunuyor.
+**Yetenek 2.0** — AI tabanlı çocuk spor yetenek keşif platformu. 8-15 yaş arası çocuk telefon kamerası önünde 5 dakikalık 7 fiziksel test yapıyor; AI çocuğa 14 spor profili içinden en uygun 3-5 sporu öneriyor + sakatlanma riski uyarısı veriyor + gamification katmanıyla rozet/leaderboard/streak sunuyor.
 
 ## Bağlam
 
@@ -60,15 +60,17 @@
 
 ## Sport Matching Algoritması
 
-5 spor profili (cosine similarity):
+**14 spor × 7 boyutlu profil** (Euclidean / cosine similarity):
 
-- **Voleybol:** patlayıcı 0.9, denge 0.7, reaksiyon 0.8
-- **Basketbol:** patlayıcı 0.85, denge 0.65, reaksiyon 0.75
-- **Tenis:** patlayıcı 0.6, denge 0.7, reaksiyon 0.9
-- **Yüzme:** patlayıcı 0.7, denge 0.5, reaksiyon 0.5
-- **Futbol:** patlayıcı 0.7, denge 0.7, reaksiyon 0.7
+Voleybol, Basketbol, Tenis, Yüzme, Futbol, Atletizm-Sprint, Atletizm-Mesafe,
+Cimnastik, Judo, Taekwondo, Boks, Masa Tenisi, Badminton, Hentbol.
 
-Çocuk vektörü → cosine similarity → top 3 → confidence %
+Boyutlar: patlayıcı güç, statik denge, reaksiyon süresi, çeviklik, koordinasyon,
+dayanıklılık, antropometrik uygunluk.
+
+Canonical liste: [src/lib/matching/sportProfiles.ts](src/lib/matching/sportProfiles.ts)
+
+Çocuk vektörü → similarity → top 3-5 → confidence %
 
 ## Bilimsel Kaynaklar (Pitch Slaytlarında Cite)
 

@@ -131,10 +131,13 @@ interface FlightDetection {
  * @returns Uçuş tespit edildiyse FlightDetection, edilmediyse null.
  */
 function detectFlightPhase(samples: HipSample[]): FlightDetection | null {
-  const ankleSamples = samples.filter((s) => s.ankleY != null);
+  // Type guard ile filtrele — `as number` yerine TS narrowing'i koru.
+  const ankleSamples = samples.filter(
+    (s): s is HipSample & { ankleY: number } => s.ankleY != null
+  );
   if (ankleSamples.length < 30) return null;
 
-  const ankleYs = ankleSamples.map((s) => s.ankleY as number);
+  const ankleYs = ankleSamples.map((s) => s.ankleY);
   const smoothedAnkles = smoothSeries(ankleYs, 3);
 
   // Baseline: ilk 25 frame'in median'ı (yere basıyor varsayımı).
@@ -259,8 +262,11 @@ export function analyzeJump(samples: HipSample[]): JumpAnalysis {
   const flightTimeMs = flight?.flightTimeMs ?? fallbackFlightMs;
   const jumpHeightCmFlight = flight ? flightTimeToHeightCm(flight.flightTimeMs) : null;
 
-  // Flight-time çok düşük yükseklik veriyorsa noise — reddet.
-  if (jumpHeightCmFlight != null && jumpHeightCmFlight < MIN_FLIGHT_HEIGHT_CM && jumpUnits < MIN_JUMP_UNITS) {
+  // Flight-time çok düşük yükseklik veriyorsa, hip-displacement güçlü olsa
+  // bile noise sayılır — primary metot yanlış-pozitif vermesin. Çocuk hafif
+  // ağırlık aktarımı yaparsa (gerçek sıçrama yok) ankleY threshold'u kısa
+  // sürelik geçebilir; o sahte 2cm flight değeri raporlanmamalı.
+  if (jumpHeightCmFlight != null && jumpHeightCmFlight < MIN_FLIGHT_HEIGHT_CM) {
     return invalid(
       'Sıçrama algılandı ama çok küçük. Daha güçlü patlayıcı bir CMJ dene.',
       { jumpUnits, takeoffY, apexY }
@@ -379,24 +385,10 @@ const CMJ_NORMS: Record<number, { male: CmjNorm; female: CmjNorm }> = {
   15: { male: { mean: 37, sd: 7 }, female: { mean: 30, sd: 5.5 } },
 };
 
-/**
- * Standart normal CDF — Abramowitz & Stegun 26.2.17 yaklaşımı.
- * Z-score → kümülatif olasılık (0..1). Persentile için ×100.
- */
-function normalCdf(z: number): number {
-  const t = 1 / (1 + 0.2316419 * Math.abs(z));
-  const d = 0.3989422804014327 * Math.exp(-(z * z) / 2);
-  const p =
-    d *
-    t *
-    (0.319381530 +
-      t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
-  return z >= 0 ? 1 - p : p;
-}
+import { zScorePercentile } from '@/lib/stats/normalCdf';
 
 /**
  * CMJ değerini yaş+cinsiyet normuna göre persentile çevirir.
- * Z = (value - mean) / SD, persentil = Φ(Z) × 100.
  *
  * Örnek: 12 yaş erkek, 28cm sıçrama → Z=0 → 50. persentil
  *        12 yaş erkek, 33.5cm → Z=+1 → 84. persentil
@@ -411,8 +403,7 @@ export function jumpPercentile(
     Math.abs(b - ageYears) < Math.abs(a - ageYears) ? b : a
   );
   const { mean, sd } = CMJ_NORMS[closestAge][sex];
-  const z = (jumpHeightCm - mean) / sd;
-  return Math.max(1, Math.min(99, normalCdf(z) * 100));
+  return zScorePercentile(jumpHeightCm, mean, sd);
 }
 
 /**

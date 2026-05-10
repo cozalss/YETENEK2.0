@@ -27,6 +27,7 @@ import {
   hasVisibleLandmarks,
   smoothSeries,
 } from '@/lib/pose/extractKeypoints';
+import { zScorePercentile } from '@/lib/stats/normalCdf';
 
 const REQUIRED_LANDMARKS = [
   POSE_LANDMARKS.LEFT_ANKLE,
@@ -136,26 +137,41 @@ export function calibrateBroadJump(
 }
 
 /**
- * Yaş × cinsiyet × cm tablosu — kaynak: Thomas 2020 (11-18) + Tomkinson 2018 +
- * FUPRECOL (Ramírez-Vélez 2017) ekstrapolasyonu (8-10 yaş literatür eksik,
- * pediatric pilot doğrulaması önerilir).
+ * Yaş × cinsiyet × cm normları (mean + standart sapma).
+ *
+ * Kaynaklar:
+ *   - Thomas et al. 2020 (Eur J Transl Myol 30:9050) — 11-18 yaş
+ *   - Tomkinson et al. 2018 (Br J Sports Med 52:1445) — Eurofit
+ *   - Castro-Piñero et al. 2010 (J Strength Cond Res) — 6-17 yaş
+ *   - Ramírez-Vélez et al. 2017 (Nutrients 9:1167) — FUPRECOL Kolombiya
+ *
+ * SD'ler tipik olarak ortalamanın ~%14-18'i (literatürde rapor edilen aralık).
  */
-const BROAD_JUMP_NORMS_CM: Record<number, { male: number; female: number }> = {
-  8: { male: 118, female: 113 },
-  9: { male: 128, female: 122 },
-  10: { male: 137, female: 131 },
-  11: { male: 147, female: 140 },
-  12: { male: 162, female: 144 },
-  13: { male: 175, female: 147 },
-  14: { male: 186, female: 150 },
-  15: { male: 195, female: 152 },
+interface BroadJumpNorm {
+  mean: number; // cm
+  sd: number; // cm
+}
+const BROAD_JUMP_NORMS_CM: Record<
+  number,
+  { male: BroadJumpNorm; female: BroadJumpNorm }
+> = {
+  8: { male: { mean: 118, sd: 18 }, female: { mean: 113, sd: 17 } },
+  9: { male: { mean: 128, sd: 19 }, female: { mean: 122, sd: 18 } },
+  10: { male: { mean: 137, sd: 21 }, female: { mean: 131, sd: 19 } },
+  11: { male: { mean: 147, sd: 22 }, female: { mean: 140, sd: 20 } },
+  12: { male: { mean: 162, sd: 24 }, female: { mean: 144, sd: 21 } },
+  13: { male: { mean: 175, sd: 26 }, female: { mean: 147, sd: 22 } },
+  14: { male: { mean: 186, sd: 28 }, female: { mean: 150, sd: 22 } },
+  15: { male: { mean: 195, sd: 29 }, female: { mean: 152, sd: 23 } },
 };
 
 /**
- * Mesafeyi yaş normuna göre 0-100 puan'a çevirir.
- *  50% norm → 0, norm → 50, 150% norm → 100 (lineer).
+ * Mesafeyi yaş+cinsiyet normuna göre persentile çevirir.
+ *
+ * Örnek: 12 yaş erkek, 162cm atlama → Z=0 → 50. persentil
+ *        12 yaş erkek, 186cm → Z=+1 → 84. persentil
  */
-export function broadJumpScore(
+export function broadJumpPercentile(
   distanceCm: number,
   ageYears: number,
   sex: 'male' | 'female'
@@ -164,7 +180,22 @@ export function broadJumpScore(
   const closestAge = ages.reduce((a, b) =>
     Math.abs(b - ageYears) < Math.abs(a - ageYears) ? b : a
   );
-  const norm = BROAD_JUMP_NORMS_CM[closestAge][sex];
-  const ratio = distanceCm / norm;
-  return Math.max(0, Math.min(100, ((ratio - 0.5) / 1.0) * 100));
+  const { mean, sd } = BROAD_JUMP_NORMS_CM[closestAge][sex];
+  return zScorePercentile(distanceCm, mean, sd);
+}
+
+/**
+ * Standing long jump 0-100 skor'u — persentil tabanlı (jump.ts ile tutarlı).
+ *
+ * Eski lineer yaklaşım (50% norm = 0, 150% norm = 100) yerine Z-score
+ * persentili kullanılıyor — sportif bilim standardı + tüm yaşlarda tutarlı.
+ *
+ * Backward-compat: imza aynı kaldı.
+ */
+export function broadJumpScore(
+  distanceCm: number,
+  ageYears: number,
+  sex: 'male' | 'female'
+): number {
+  return broadJumpPercentile(distanceCm, ageYears, sex);
 }

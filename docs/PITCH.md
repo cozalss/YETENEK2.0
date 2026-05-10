@@ -186,7 +186,7 @@ Aynı akış, edit'lenmiş 60sn'lik MP4. Eğer:
 1. **"Bu sıçrama doğru ölçülüyor mu?"** → Bosco 1983 protokol + Tomkinson 2018 Eurofit. ±%5 doğruluk laboratuvar testlerinde.
 2. **"Çocuk yorulursa veya yanlış yaparsa?"** → 3 deneme, en iyi skor + framing badge ile pozisyon kontrolü; yanlış pozisyonda test başlamıyor.
 3. **"Veri güvenliği nasıl?"** → On-device, KVKK uyumlu, video sunucuya gitmiyor, sadece özet metrikler anonim.
-4. **"Spor eşleştirme algoritması neye dayanıyor?"** → 24 hakemli makale, 8 sport profili, cosine similarity. Her spor için 4 boyut: patlayıcı güç, denge, reaksiyon, dayanıklılık.
+4. **"Spor eşleştirme algoritması neye dayanıyor?"** → 26 hakemli makale, 14 sport profili, similarity. Her spor için 7 boyut: patlayıcı güç, statik denge, reaksiyon, çeviklik, koordinasyon, dayanıklılık, antropometrik uygunluk.
 5. **"Rakipleriniz kim?"** → Sports Profile (anket bazlı, $9.99), Athleat (US, sadece 16+ yaş). Türkiye'de doğrudan rakip yok.
 6. **"Patent / fikri mülkiyet?"** → Algoritmaya patent başvurumuz hazır, marka tescil sürecimiz başladı.
 7. **"Hackathon sonrası 6 aylık plan?"** → Pilot → 50K kullanıcı → seed yatırım (8-12M₺) → mobil native uygulama.

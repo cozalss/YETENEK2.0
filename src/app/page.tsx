@@ -502,7 +502,7 @@ function FeaturesGrid() {
     {
       icon: Target,
       title: 'Spor Eşleştirme',
-      desc: 'Euclidean similarity ile 5 spor profili. Voleybol, basketbol, tenis, yüzme, futbol.',
+      desc: 'Euclidean similarity ile 14 spor profili: voleybol, basketbol, futbol, tenis, yüzme, atletizm, cimnastik, judo, taekwondo, boks, masa tenisi, badminton, hentbol.',
       span: 'md:col-span-3',
     },
   ];

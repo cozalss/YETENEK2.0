@@ -41,6 +41,10 @@ const BioMotorRadar = dynamic(
   }
 );
 import { InjuryWarning } from './InjuryWarning';
+import {
+  filterReferences,
+  type ScienceReference,
+} from '@/lib/content/bibliography';
 import { ShareButton } from './ShareButton';
 import { CoachChat } from './CoachChat';
 
@@ -283,7 +287,15 @@ function ProfileTab({
                 ? `${session.jump.jumpHeightCm.toFixed(1)} cm`
                 : `${session.jump.score.toFixed(0)}/100`
             }
-            sub={`${session.jump.score.toFixed(0)} skor`}
+            sub={
+              session.jump.method
+                ? `${session.jump.score.toFixed(0)} skor · ${methodLabel(session.jump.method)}`
+                : `${session.jump.score.toFixed(0)} skor`
+            }
+            citationTag="jump"
+            confidence={
+              session.jump.consistent === false ? 'low' : 'high'
+            }
           />
         )}
         {session.broadJump && (
@@ -295,6 +307,7 @@ function ProfileTab({
                 : `${session.broadJump.score.toFixed(0)}/100`
             }
             sub={`${session.broadJump.score.toFixed(0)} skor`}
+            citationTag="broadJump"
           />
         )}
         {session.balance && (
@@ -303,11 +316,13 @@ function ProfileTab({
               label="Sağ Denge"
               value={`${session.balance.rightScore.toFixed(0)}`}
               sub="0-100"
+              citationTag="balance"
             />
             <Metric
               label="Sol Denge"
               value={`${session.balance.leftScore.toFixed(0)}`}
               sub="0-100"
+              citationTag="balance"
             />
           </>
         )}
@@ -316,6 +331,7 @@ function ProfileTab({
             label="Reaksiyon"
             value={`${session.reaction.averageMs.toFixed(0)} ms`}
             sub={`En iyi ${session.reaction.bestMs.toFixed(0)}ms`}
+            citationTag="reaction"
           />
         )}
         {session.lateralHops && (
@@ -323,6 +339,7 @@ function ProfileTab({
             label="Çeviklik"
             value={`${session.lateralHops.hopCount}`}
             sub={`${session.lateralHops.score.toFixed(0)} skor · 15sn`}
+            citationTag="agility"
           />
         )}
         {session.coordination && (
@@ -330,6 +347,7 @@ function ProfileTab({
             label="Koordinasyon"
             value={`${session.coordination.score.toFixed(0)}`}
             sub={`${session.coordination.trackingEvents} dokunma`}
+            citationTag="coordination"
           />
         )}
         {session.endurance && (
@@ -337,6 +355,7 @@ function ProfileTab({
             label="Dayanıklılık"
             value={`${session.endurance.totalReps}`}
             sub={`30sn · %${session.endurance.decayPercent} yorgunluk`}
+            citationTag="endurance"
           />
         )}
       </section>
@@ -355,22 +374,76 @@ function PdfExportSkeleton() {
   );
 }
 
+/**
+ * Jump test method'unu kullanıcı dostu Türkçe label'a çevirir.
+ * Pitch sırasında jüri görse de teknik kelimelere takılmaz.
+ */
+function methodLabel(
+  method: 'flight-time' | 'hip-displacement' | 'consensus'
+): string {
+  switch (method) {
+    case 'flight-time':
+      return 'uçuş süresi';
+    case 'hip-displacement':
+      return 'kalça yer değişimi';
+    case 'consensus':
+      return 'çift doğrulama';
+  }
+}
+
+/**
+ * Metrik kartı + bilimsel kaynak rozeti + güven indikatörü.
+ *
+ * - `citationTag` verilirse ilgili tag'tedki ilk kaynak küçük rozet olarak
+ *   gösterilir. Hover'da tam atıf native `title` ile çıkar.
+ * - `confidence === 'low'` ise "düşük güven" rozeti görünür → kullanıcıya
+ *   ölçümün doğruluğu hakkında dürüst sinyal.
+ *
+ * KISS: Popover/Modal yerine native title — dokunmatik, ekran okuyucu
+ * uyumlu ve sıfır JS bağımlılığı.
+ */
 function Metric({
   label,
   value,
   sub,
+  citationTag,
+  confidence,
 }: {
   label: string;
   value: string;
   sub?: string;
+  citationTag?: ScienceReference['tags'][number];
+  confidence?: 'high' | 'low';
 }) {
+  const citation = citationTag ? filterReferences(citationTag)[0] : null;
   return (
     <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-4">
-      <div className="text-xs uppercase tracking-wider text-neutral-400">
-        {label}
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs uppercase tracking-wider text-neutral-400">
+          {label}
+        </div>
+        {citation && (
+          <span
+            className="rounded-full border border-amber-300/30 bg-amber-300/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-200/90"
+            title={`${citation.authors} (${citation.year}). ${citation.title}. ${citation.journal}`}
+            aria-label={`Bilimsel kaynak: ${citation.authors} ${citation.year}`}
+          >
+            {citation.authors.split(/[,&]/)[0].split(/\s+/).slice(-1)[0]}{' '}
+            {citation.year}
+          </span>
+        )}
       </div>
       <div className="mt-1 text-2xl font-bold text-white">{value}</div>
       {sub && <div className="mt-0.5 text-xs text-neutral-400">{sub}</div>}
+      {confidence === 'low' && (
+        <div
+          className="mt-2 inline-flex items-center gap-1 rounded-full border border-orange-400/30 bg-orange-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-orange-300"
+          title="Flight-time ve hip-displacement yöntemleri arasında %30'dan fazla fark var. Sahne ışığı veya pozisyon ölçümü etkilemiş olabilir."
+          aria-label="Düşük güven uyarısı"
+        >
+          ⚠ düşük güven
+        </div>
+      )}
     </div>
   );
 }

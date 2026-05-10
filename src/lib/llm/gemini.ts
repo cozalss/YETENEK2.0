@@ -227,50 +227,70 @@ export async function* streamText(opts: {
   // tekrar denemek duplicate token üretir. Sadece timeout signal'i.
   const ac = new AbortController();
   const timeoutId = setTimeout(() => ac.abort(), REQUEST_TIMEOUT_MS);
-  opts.signal?.addEventListener('abort', () => ac.abort());
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: ac.signal,
-  }).finally(() => clearTimeout(timeoutId));
+  // Named handler — anonymous arrow ile addEventListener edersek
+  // removeEventListener'da bulunamaz ve listener leak olur (her demo
+  // session bir tane bırakır → MaxListenersExceededWarning).
+  const onExternalAbort = () => ac.abort();
+  opts.signal?.addEventListener('abort', onExternalAbort);
 
-  if (!res.ok || !res.body) {
-    const text = await res.text().catch(() => '');
-    throw new GeminiError(res.status, `Gemini stream hata ${res.status}: ${text.slice(0, 200)}`);
-  }
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: ac.signal,
+    });
 
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buf = '';
+    if (!res.ok || !res.body) {
+      const text = await res.text().catch(() => '');
+      throw new GeminiError(
+        res.status,
+        `Gemini stream hata ${res.status}: ${text.slice(0, 200)}`
+      );
+    }
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buf += decoder.decode(value, { stream: true });
-    // SSE format: "data: {...json...}\n\n" satırları
-    let nl;
-    while ((nl = buf.indexOf('\n')) !== -1) {
-      const line = buf.slice(0, nl).trim();
-      buf = buf.slice(nl + 1);
-      if (!line.startsWith('data:')) continue;
-      const payload = line.slice(5).trim();
-      if (!payload) continue;
-      try {
-        const data = JSON.parse(payload) as GeminiResponse;
-        if (data.promptFeedback?.blockReason) {
-          throw new GeminiError(
-            400,
-            `Prompt güvenlik filtresine takıldı: ${data.promptFeedback.blockReason}`
-          );
+    reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      // SSE format: "data: {...json...}\n\n" satırları
+      let nl;
+      while ((nl = buf.indexOf('\n')) !== -1) {
+        const line = buf.slice(0, nl).trim();
+        buf = buf.slice(nl + 1);
+        if (!line.startsWith('data:')) continue;
+        const payload = line.slice(5).trim();
+        if (!payload) continue;
+        try {
+          const data = JSON.parse(payload) as GeminiResponse;
+          if (data.promptFeedback?.blockReason) {
+            throw new GeminiError(
+              400,
+              `Prompt güvenlik filtresine takıldı: ${data.promptFeedback.blockReason}`
+            );
+          }
+          const chunkText =
+            data.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') ?? '';
+          if (chunkText) yield chunkText;
+        } catch (err) {
+          if (err instanceof GeminiError) throw err;
+          // Parse hatasını yut, sonraki chunk'ı dene.
         }
-        const chunkText =
-          data.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') ?? '';
-        if (chunkText) yield chunkText;
-      } catch (err) {
-        if (err instanceof GeminiError) throw err;
-        // Parse hatasını yut, sonraki chunk'ı dene.
       }
+    }
+  } finally {
+    clearTimeout(timeoutId);
+    opts.signal?.removeEventListener('abort', onExternalAbort);
+    // Reader varsa kapat — generator caller iptal ettiyse upstream HTTP'yi bırak.
+    try {
+      reader?.releaseLock();
+    } catch {
+      // already released
     }
   }
 }

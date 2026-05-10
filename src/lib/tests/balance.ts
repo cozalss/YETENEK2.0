@@ -137,14 +137,31 @@ export function analyzeLeg(samples: PostureSample[]): LegBalanceResult {
   };
 }
 
-const ASYMMETRY_WARNING_THRESHOLD = 0.15;
+/**
+ * Yaşa göre asimetri uyarı eşiği — Hewett et al. 2005 (Am J Sports Med
+ * 33:492) pediatric ACL biomechanik gözlemleri.
+ *
+ * 8-10 yaş çocuklarda nöromuskuler kontrol gelişmekte → daha yüksek
+ * tolerans (%12). 11-15 yaş için kontrol oturmuş, hedef sıkı (%10).
+ *
+ * Yaş verilmediyse defansif default %13 (middle ground).
+ */
+function asymmetryThresholdForAge(ageYears: number | undefined): number {
+  if (ageYears == null || !Number.isFinite(ageYears)) return 0.13;
+  if (ageYears <= 10) return 0.12;
+  return 0.10;
+}
 
 /**
  * Sağ ve sol bacak sonuçlarını birleştirip asimetri analizi yapar.
+ *
+ * @param ageYears Opsiyonel — verilirse uyarı eşiği yaşa göre uyarlanır
+ *                 (Hewett 2005). Verilmezse %13 default kullanılır.
  */
 export function analyzeBalance(
   right: PostureSample[],
-  left: PostureSample[]
+  left: PostureSample[],
+  ageYears?: number
 ): BalanceAnalysis {
   const rightResult = analyzeLeg(right);
   const leftResult = analyzeLeg(left);
@@ -153,7 +170,8 @@ export function analyzeBalance(
   const l = leftResult.score;
   const maxScore = Math.max(r, l);
   const asymmetryRatio = maxScore === 0 ? 0 : Math.abs(r - l) / maxScore;
-  const asymmetryWarning = asymmetryRatio > ASYMMETRY_WARNING_THRESHOLD;
+  const threshold = asymmetryThresholdForAge(ageYears);
+  const asymmetryWarning = asymmetryRatio > threshold;
 
   let weakerSide: Leg | null = null;
   if (asymmetryWarning) {
@@ -166,7 +184,7 @@ export function analyzeBalance(
       'Yeterli veri toplanamadı. Vücudun kameraya tam görünmüyor olabilir.';
   } else if (asymmetryWarning) {
     const weakerLabel = weakerSide === 'right' ? 'sağ' : 'sol';
-    summary = `${weakerLabel} bacak dengesinde belirgin asimetri var (%${(asymmetryRatio * 100).toFixed(0)}). Uzun vadede sakatlanma riskini artırabilir; tek bacak güçlendirme egzersizleri önerilir.`;
+    summary = `${weakerLabel} bacak dengesinde belirgin asimetri var (%${(asymmetryRatio * 100).toFixed(0)}, eşik %${(threshold * 100).toFixed(0)}). Uzun vadede sakatlanma riskini artırabilir; tek bacak güçlendirme egzersizleri önerilir.`;
   } else {
     summary = `Denge simetrik ve dengeli. Sağ: ${r.toFixed(0)}/100, sol: ${l.toFixed(0)}/100.`;
   }

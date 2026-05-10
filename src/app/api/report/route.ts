@@ -39,6 +39,10 @@ const jumpSchema = z
     jumpUnits: z.number(),
     flightTimeMs: z.number(),
     score: z.number(),
+    method: z
+      .enum(['flight-time', 'hip-displacement', 'consensus'])
+      .optional(),
+    consistent: z.boolean().optional(),
   })
   .optional();
 

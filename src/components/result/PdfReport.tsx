@@ -16,6 +16,41 @@ import {
 } from '@react-pdf/renderer';
 import type { SessionSummary } from '@/lib/session/store';
 import type { Badge } from '@/lib/gamification/badges';
+import {
+  REFERENCES,
+  type ScienceReference,
+} from '@/lib/content/bibliography';
+
+/**
+ * Veliye gösterilecek bilim referansları — pdf raporunda 1..N numaralı
+ * dipnot. Sport recommendation footnote vermez (PDF zaten yer kıt);
+ * sadece test methodolojisi için olanlar.
+ */
+const PDF_CITATION_TAGS: ScienceReference['tags'][number][] = [
+  'jump',
+  'broadJump',
+  'balance',
+  'reaction',
+  'agility',
+  'coordination',
+  'endurance',
+];
+
+function getPdfCitations(): ScienceReference[] {
+  // Ölçüm boyutu başına ilk kaynak — duplicate yok, max ~7 referans.
+  const seen = new Set<string>();
+  const out: ScienceReference[] = [];
+  for (const tag of PDF_CITATION_TAGS) {
+    const ref = REFERENCES.find(
+      (r) => r.tags.includes(tag) && !seen.has(r.id)
+    );
+    if (ref) {
+      seen.add(ref.id);
+      out.push(ref);
+    }
+  }
+  return out;
+}
 
 // System font fallback — Helvetica/Helvetica-Bold her OS'te mevcut
 const styles = StyleSheet.create({
@@ -135,6 +170,21 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: '#888',
     fontStyle: 'italic',
+  },
+  citationsTitle: {
+    fontSize: 10,
+    fontFamily: 'Helvetica-Bold',
+    color: '#444',
+    marginTop: 16,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  citationItem: {
+    fontSize: 8,
+    color: '#666',
+    marginBottom: 2,
+    lineHeight: 1.3,
   },
 });
 
@@ -291,6 +341,14 @@ export function PdfReportDocument({ session, badges, aiReport }: Props) {
             </View>
           </>
         )}
+
+        {/* Bilimsel Kaynaklar */}
+        <Text style={styles.citationsTitle}>Bilimsel Kaynaklar</Text>
+        {getPdfCitations().map((ref, i) => (
+          <Text key={ref.id} style={styles.citationItem}>
+            [{i + 1}] {ref.authors} ({ref.year}). {ref.title}. {ref.journal}.
+          </Text>
+        ))}
 
         {/* Disclaimer */}
         <Text style={styles.disclaimer}>

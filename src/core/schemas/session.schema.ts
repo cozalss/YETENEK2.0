@@ -36,6 +36,13 @@ export const jumpSummarySchema = z.object({
   jumpUnits: finiteNumber,
   flightTimeMs: finiteNumber,
   score: scoreSchema,
+  /** Hangi metot ile hesaplandı (raporlamada gösteriliyor). Geriye uyum için optional. */
+  method: z.enum(['flight-time', 'hip-displacement', 'consensus']).optional(),
+  /**
+   * Flight-time ve hip-displacement yöntemleri ±%30 içinde tutarlı mı?
+   * `false` ise UI "düşük güven" rozeti gösterir.
+   */
+  consistent: z.boolean().optional(),
 });
 
 export const balanceSummarySchema = z.object({

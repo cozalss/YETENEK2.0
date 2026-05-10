@@ -245,6 +245,7 @@ function FullFlowInner() {
             onSkip={skipCurrent}
           >
             <BalanceTest
+              childAgeYears={child.ageYears}
               onComplete={(analysis) => {
                 sessionStore.recordBalance(analysis as BalanceAnalysis);
                 if (

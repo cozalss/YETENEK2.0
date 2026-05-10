@@ -29,6 +29,11 @@ interface HealthPayload {
   };
 }
 
+function narrowEnv(raw: string | undefined): HealthPayload['env'] {
+  if (raw === 'production' || raw === 'test') return raw;
+  return 'development';
+}
+
 export function GET(): NextResponse<HealthPayload> {
   const payload: HealthPayload = {
     status: 'ok',
@@ -36,8 +41,7 @@ export function GET(): NextResponse<HealthPayload> {
     timestamp: new Date().toISOString(),
     uptimeSec: Math.floor((Date.now() - startedAt) / 1000),
     version: process.env.NEXT_PUBLIC_APP_VERSION ?? '2.0.0',
-    env:
-      (process.env.NODE_ENV as HealthPayload['env']) ?? 'development',
+    env: narrowEnv(process.env.NODE_ENV),
     features: {
       geminiConfigured: isGeminiConfigured(),
       fallbackReportAvailable: true,

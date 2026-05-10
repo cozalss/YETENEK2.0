@@ -34,6 +34,8 @@ export function recordJump(
       jumpUnits: analysis.jumpUnits,
       flightTimeMs: analysis.flightTimeMs,
       score: analysis.score ?? Math.min(100, analysis.jumpUnits * 1000),
+      method: analysis.method,
+      consistent: analysis.consistent,
     },
   };
   return withCompletedTest(next, 'jump');

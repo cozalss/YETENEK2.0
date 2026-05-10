@@ -20,6 +20,7 @@
 import type { PoseFrame } from '@/types';
 import { POSE_LANDMARKS } from '@/types';
 import { hasVisibleLandmarks, smoothSeries } from '@/lib/pose/extractKeypoints';
+import { zScorePercentile } from '@/lib/stats/normalCdf';
 
 const REQUIRED_LANDMARKS = [
   POSE_LANDMARKS.LEFT_ANKLE,
@@ -133,22 +134,37 @@ export function analyzeLateralHops(
 }
 
 /**
- * Yaş × cinsiyet × hop sayısı tablosu — 15 saniye için.
- * Kaynak: Larsen 2022 pediatric side-hop trajectory + Munro 2011 yetişkin
- * anchor (~20 hop/15s). 8-10 yaş literatür eksik → pilot doğrulama önerilir.
+ * Yaş × cinsiyet × hop sayısı normları (mean + SD), 15 saniye için.
+ *
+ * Kaynaklar:
+ *   - Larsen et al. 2022 (Translational Sports Medicine PMC8453553) — pediatric
+ *   - Munro & Herrington 2011 (J Strength Cond Res 25:1470) — yetişkin anchor
+ *
+ * SD'ler tipik ~%18-22 (pediatric COD task literature ortalaması).
+ * 8-10 yaş için pilot doğrulama önerilir; norm aralığı geniş tutuldu.
  */
-const LATERAL_HOP_NORMS: Record<number, { male: number; female: number }> = {
-  8: { male: 13, female: 12 },
-  9: { male: 14, female: 13 },
-  10: { male: 15, female: 14 },
-  11: { male: 17, female: 15 },
-  12: { male: 18, female: 16 },
-  13: { male: 20, female: 17 },
-  14: { male: 21, female: 18 },
-  15: { male: 22, female: 19 },
+interface HopsNorm {
+  mean: number;
+  sd: number;
+}
+const LATERAL_HOP_NORMS: Record<number, { male: HopsNorm; female: HopsNorm }> = {
+  8: { male: { mean: 13, sd: 3 }, female: { mean: 12, sd: 2.5 } },
+  9: { male: { mean: 14, sd: 3 }, female: { mean: 13, sd: 2.7 } },
+  10: { male: { mean: 15, sd: 3.2 }, female: { mean: 14, sd: 2.8 } },
+  11: { male: { mean: 17, sd: 3.5 }, female: { mean: 15, sd: 3 } },
+  12: { male: { mean: 18, sd: 3.8 }, female: { mean: 16, sd: 3.2 } },
+  13: { male: { mean: 20, sd: 4 }, female: { mean: 17, sd: 3.3 } },
+  14: { male: { mean: 21, sd: 4.2 }, female: { mean: 18, sd: 3.5 } },
+  15: { male: { mean: 22, sd: 4.5 }, female: { mean: 19, sd: 3.7 } },
 };
 
-export function lateralHopsScore(
+/**
+ * Hop sayısını yaş+cinsiyet normuna göre persentile çevirir.
+ *
+ * Örnek: 12 yaş erkek, 18 hop/15s → Z=0 → 50. persentil
+ *        12 yaş erkek, 22 hop → Z=+1.05 → ~85. persentil
+ */
+export function lateralHopsPercentile(
   hopCount: number,
   ageYears: number,
   sex: 'male' | 'female'
@@ -157,7 +173,18 @@ export function lateralHopsScore(
   const closestAge = ages.reduce((a, b) =>
     Math.abs(b - ageYears) < Math.abs(a - ageYears) ? b : a
   );
-  const norm = LATERAL_HOP_NORMS[closestAge][sex];
-  const ratio = hopCount / norm;
-  return Math.max(0, Math.min(100, ((ratio - 0.5) / 1.0) * 100));
+  const { mean, sd } = LATERAL_HOP_NORMS[closestAge][sex];
+  return zScorePercentile(hopCount, mean, sd);
+}
+
+/**
+ * 0-100 skor — persentil tabanlı (jump/broadJump ile tutarlı).
+ * Backward-compat: imza aynı.
+ */
+export function lateralHopsScore(
+  hopCount: number,
+  ageYears: number,
+  sex: 'male' | 'female'
+): number {
+  return lateralHopsPercentile(hopCount, ageYears, sex);
 }

@@ -37,13 +37,15 @@ type Phase =
 
 interface Props {
   onComplete?: (analysis: BalanceAnalysis) => void;
+  /** Asimetri uyarı eşiği yaşa göre uyarlanır (Hewett 2005). */
+  childAgeYears?: number;
 }
 
 const COUNTDOWN_SECONDS = 3;
 const CAPTURE_SECONDS = 15;
 const SWITCH_SECONDS = 3;
 
-export function BalanceTest({ onComplete }: Props) {
+export function BalanceTest({ onComplete, childAgeYears }: Props) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
   const [captureRemaining, setCaptureRemaining] = useState(CAPTURE_SECONDS);
@@ -157,7 +159,8 @@ export function BalanceTest({ onComplete }: Props) {
     try {
       const analysis = analyzeBalance(
         rightSamplesRef.current,
-        leftSamplesRef.current
+        leftSamplesRef.current,
+        childAgeYears
       );
       setResult(analysis);
       setPhase('result');
