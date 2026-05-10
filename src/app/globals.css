@@ -1,0 +1,248 @@
+@import 'tailwindcss';
+
+/* ==============================================================
+   Yetenek 2.0 — Design Tokens
+   Editorial luxury × dark cinema. Typography hierarchy with strong
+   contrast, sophisticated palette, intentional rhythm.
+   ============================================================== */
+
+:root {
+  /* Palette — deep blacks, refined neutrals, warm signature amber */
+  --color-canvas: #08080a;
+  --color-surface: #0f0f12;
+  --color-surface-elevated: #16161b;
+  --color-line: #26262d;
+  --color-line-strong: #3a3a44;
+
+  --color-ink-1: #f8f8f6;
+  --color-ink-2: #c5c5c1;
+  --color-ink-3: #8e8e92;
+
+  /* Signature warm amber — used for accent only, never bulk */
+  --color-signal: #f6c453;
+  --color-signal-glow: oklch(85% 0.16 80 / 0.4);
+
+  /* Semantic colors */
+  --color-positive: #4ade80;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+
+  /* Display gradients */
+  --gradient-warm: linear-gradient(135deg, #f6c453 0%, #ffe2a0 50%, #f6c453 100%);
+  --gradient-deep: linear-gradient(180deg, #08080a 0%, #0f0f12 100%);
+  --gradient-spotlight: radial-gradient(
+    ellipse at top,
+    oklch(85% 0.16 80 / 0.08) 0%,
+    transparent 60%
+  );
+
+  /* Typography */
+  --font-display: var(--font-geist-sans);
+  --font-body: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Type scale — editorial, dramatic */
+  --text-xs: 0.6875rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+  --text-4xl: 3rem;
+  --text-5xl: 4rem;
+  --text-display: clamp(3rem, 6vw + 1rem, 7.5rem);
+  --text-hero: clamp(4rem, 9vw + 0.5rem, 11rem);
+
+  /* Rhythm — section padding scale */
+  --space-section: clamp(4rem, 6rem + 4vw, 9rem);
+
+  /* Motion */
+  --duration-fast: 200ms;
+  --duration-normal: 400ms;
+  --duration-slow: 800ms;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-soft: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Tailwind v4 mapping */
+  --color-background: var(--color-canvas);
+  --color-foreground: var(--color-ink-1);
+}
+
+@theme inline {
+  --color-background: var(--color-canvas);
+  --color-foreground: var(--color-ink-1);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+
+html,
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink-1);
+  font-family: var(--font-body), Arial, Helvetica, sans-serif;
+  font-feature-settings:
+    'ss01' on,
+    'ss02' on;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--color-signal);
+  color: var(--color-canvas);
+}
+
+/* ============================================================
+   TEXTURE — subtle film grain overlay (only on signature surfaces)
+   ============================================================ */
+.grain {
+  position: relative;
+  isolation: isolate;
+}
+.grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.08;
+  z-index: 1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ============================================================
+   AURORA — soft glowing background blobs
+   ============================================================ */
+.aurora-bg {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.aurora-bg::before {
+  content: '';
+  position: absolute;
+  inset: -10%;
+  z-index: -1;
+  background:
+    radial-gradient(
+      ellipse 60% 40% at 30% 0%,
+      oklch(60% 0.18 65 / 0.15),
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse 50% 30% at 80% 30%,
+      oklch(60% 0.15 280 / 0.1),
+      transparent 60%
+    );
+  filter: blur(40px);
+}
+
+/* ============================================================
+   SPOTLIGHT — for hero areas
+   ============================================================ */
+.spotlight {
+  background: var(--gradient-spotlight), var(--color-canvas);
+}
+
+/* ============================================================
+   HEADLINE — display typography utility
+   ============================================================ */
+.headline-display {
+  font-size: var(--text-display);
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  font-weight: 700;
+}
+
+.headline-hero {
+  font-size: var(--text-hero);
+  line-height: 0.85;
+  letter-spacing: -0.05em;
+  font-weight: 700;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--color-signal);
+}
+
+/* ============================================================
+   ACCESSIBILITY — reduce motion
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================
+   SCROLLBAR — subtle, themed
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-canvas);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border-radius: 12px;
+  border: 3px solid var(--color-canvas);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-line-strong);
+}
+
+/* ============================================================
+   FOCUS RING — consistent across the app
+   ============================================================ */
+:focus-visible {
+  outline: 2px solid var(--color-signal);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ============================================================
+   UTILITY: marquee/scrolling text (used for science strip)
+   ============================================================ */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+/* ============================================================
+   UTILITY: subtle float for decorative elements
+   ============================================================ */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
