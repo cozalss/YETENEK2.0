@@ -1,8 +1,8 @@
 /**
  * Structured logger — server + client tek API.
  *
- * Hackathon scope: console üzerinden JSON-friendly satır basar (Vercel logs
- * otomatik parse eder). Production'da pino/Sentry adapter'a geçilir.
+ * Console üzerinden JSON-friendly satır basar (Vercel logs otomatik parse
+ * eder). Production'da pino/Sentry adapter'a geçilir.
  *
  * Felsefe:
  *   - Mesaj sade, context structured.

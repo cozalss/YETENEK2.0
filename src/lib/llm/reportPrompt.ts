@@ -1,8 +1,7 @@
 /**
  * Gemini AI rapor üretimi için Türkçe sistem prompt'u + kullanıcı mesajı.
  *
- * Pitch açısından kritik: rapor jüri önünde okunduğunda samimi, doğal,
- * "AI yazdığı belli olmayan" bir Türkçe metin üretmeli.
+ * Rapor, veli okuduğunda samimi, doğal ve anlaşılır bir Türkçe metin üretmeli.
  *
  * Prompt yapısı:
  *   - System prompt: "Sen bir spor pedagoğu/koçusun" rol tanımı + 7 boyutlu

@@ -359,7 +359,7 @@ export function PdfReportDocument({ session, badges, aiReport }: Props) {
         </Text>
 
         <Text style={styles.footer}>
-          Yetenek 2.0 · yetenek.app · METU Sports Tech Hackathon 2026
+          Yetenek 2.0 · yetenek.app · Çocuk spor yetenek keşfi
         </Text>
       </Page>
     </Document>

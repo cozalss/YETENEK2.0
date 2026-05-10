@@ -23,7 +23,6 @@ function jackSeries(opts: {
   const decay = opts.decay ?? 1;
   const out: JackSample[] = [];
   let cycleStart = 0;
-  let cycleIdx = 0;
   while (cycleStart < durationMs) {
     // Yorgunlukla cycle uzar
     const ratio = cycleStart / durationMs;
@@ -47,7 +46,6 @@ function jackSeries(opts: {
     });
 
     cycleStart += adjustedCycle;
-    cycleIdx++;
   }
   return out;
 }

@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     'MediaPipe',
     'Yetenek 2.0',
   ],
-  authors: [{ name: 'Yetenek 2.0 Hackathon Team' }],
+  authors: [{ name: 'Yetenek 2.0 Team' }],
   creator: 'Yetenek 2.0',
   publisher: 'Yetenek 2.0',
   applicationName: 'Yetenek',

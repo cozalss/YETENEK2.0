@@ -1,7 +1,7 @@
 /**
- * Demo Mode persona seçici — kamera olmadan, stage-safe test akışı.
+ * Örnek profil seçici — kamera kullanmadan sonuç ekranını inceleme akışı.
  *
- * Persona seç → ResultScreen pre-filled session ile direkt açılır.
+ * Persona seç → ResultScreen hazır session ile direkt açılır.
  */
 
 'use client';
@@ -34,7 +34,7 @@ export default function DemoPage() {
             </button>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-signal)]/10 px-3 py-1 text-xs font-semibold text-[var(--color-signal)]">
               <Sparkles className="h-3 w-3" />
-              Demo Mode · {session.child.name}
+              Örnek Profil · {session.child.name}
             </span>
           </div>
         </div>
@@ -60,18 +60,17 @@ export default function DemoPage() {
 
         <header className="mt-10 max-w-3xl space-y-5">
           <p className="text-xs font-semibold tracking-[0.25em] text-[var(--color-signal)] uppercase">
-            Demo Mode
+            Örnek Profiller
           </p>
           <h1 className="text-5xl leading-[0.95] font-bold tracking-tight md:text-7xl">
-            Sahne için
+            Test yapmadan
             <br />
-            <span className="text-[var(--color-signal)]">kameralı</span> hazır.
+            <span className="text-[var(--color-signal)]">sonucu</span> incele.
           </h1>
           <p className="max-w-2xl text-lg leading-relaxed text-[var(--color-ink-2)] md:text-xl">
-            Pitch sırasında kamera, ışık veya internet sorunu yaşarsan: 3
-            farklı persona ile pre-cooked session'ı direkt sonuç ekranında
-            görebilirsin. Aynı matching engine, aynı AI rapor pipeline'ı —
-            sadece test fazları atlanır.
+            Kamera izni vermeden veya testleri tamamlamadan önce sonuç ekranının
+            nasıl göründüğünü incele. Üç farklı çocuk profili aynı spor
+            eşleştirme mantığıyla hazırlanmış örnek sonuçları gösterir.
           </p>
         </header>
 
@@ -99,13 +98,13 @@ export default function DemoPage() {
 
         <section className="mt-12 rounded-3xl border border-amber-500/30 bg-amber-500/5 p-6">
           <p className="text-xs font-semibold tracking-[0.25em] text-amber-300 uppercase">
-            Pitch ipucu
+            Nasıl çalışır?
           </p>
           <p className="mt-3 text-sm leading-relaxed text-amber-100/90">
-            Demo Mode aynı matching engine'i çalıştırır — sadece test fazları
-            yerine pre-cooked skorlar kullanır. Jüri "demo data" ile gerçek
-            pipeline'ın aynı olduğunu görür. Her persona farklı sporlara
-            yönelir; bu sayede 14 spor farklı dağılımı tek bakışta gösterilir.
+            Örnek profiller, gerçek test akışında üretilen skor yapısını
+            kullanır. Her profil farklı güçlü yönleri öne çıkarır; böylece
+            sonuç ekranındaki spor önerisi, risk uyarısı ve AI rapor bölümlerini
+            tek bakışta karşılaştırabilirsin.
           </p>
         </section>
       </div>

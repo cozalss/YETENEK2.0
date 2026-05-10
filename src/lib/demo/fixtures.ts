@@ -1,10 +1,10 @@
 /**
- * Demo Mode persona fixture'ları — kamera olmadan stage-safe demo için
- * pre-cooked SessionSummary'ler.
+ * Örnek profil fixture'ları — kamera olmadan sonuç ekranını incelemek için
+ * hazır SessionSummary'ler.
  *
  * 3 persona: birbirinden ayrışan profiller (volleyball-leaning,
  * football-leaning, gymnastics-leaning) → matching engine'in farklı
- * sporlara nasıl yöneldiğini jüriye göstermek için.
+ * sporlara nasıl yöneldiğini karşılaştırmak için.
  */
 
 import {

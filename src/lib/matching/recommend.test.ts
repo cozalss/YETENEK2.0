@@ -1,8 +1,8 @@
 /**
  * Sport recommendation + anthropometric percentile testleri.
  *
- * Pitch'te "14 spor profili arasında matching" diyeceksin — bu mantık
- * kırılırsa demo'da yanlış spor önerilir. Test koruyucu güvenlik.
+ * "14 spor profili arasında matching" mantığı kırılırsa yanlış spor önerilir.
+ * Test koruyucu güvenlik.
  */
 
 import { describe, expect, it } from 'vitest';

@@ -5,10 +5,10 @@
  * hataları yakalar. KVKK kapsamında kullanıcıya generic mesaj gösteriyoruz;
  * stack trace'i sadece dev'de console'a yazıyoruz.
  *
- * Demo sırasında kritik fallback noktası: hackathon Wi-Fi blip veya
- * MediaPipe yükleme hatası burada graceful kapanır.
+ * Kamera veya model yükleme hatası burada kullanıcı dostu kapanır.
  */
 
+import Link from 'next/link';
 import { useEffect } from 'react';
 
 interface Props {
@@ -50,12 +50,12 @@ export default function GlobalError({ error, reset }: Props) {
         >
           Tekrar Dene
         </button>
-        <a
+        <Link
           href="/"
           className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
         >
           Ana Sayfa
-        </a>
+        </Link>
       </div>
     </main>
   );

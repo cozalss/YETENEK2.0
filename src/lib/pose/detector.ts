@@ -76,7 +76,7 @@ let consecutiveErrors = 0;
  *   - hardwareConcurrency düşükse Lite (mobil tipik)
  *   - User-Agent mobile detection
  *
- * Hackathon için varsayılan: Full (en iyi accuracy/perf dengesi).
+ * Varsayılan: Full (en iyi accuracy/perf dengesi).
  */
 export function autoSelectModelTier(): ModelTier {
   if (typeof navigator === 'undefined') return 'lite';

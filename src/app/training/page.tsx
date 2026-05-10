@@ -10,7 +10,7 @@ import { SiteFooter } from '@/components/layout/SiteFooter';
 import { PROGRAM_LIST } from '@/lib/training/programs';
 
 export const metadata: Metadata = {
-  title: 'Antrenman Programları · Yetenek',
+  title: 'Antrenman Programları',
   description:
     '7 bio-motor boyut için bilim destekli pediatrik antrenman programları. Bompa, ACSM Youth, GSB referansları.',
 };

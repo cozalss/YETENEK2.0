@@ -10,7 +10,7 @@ import { SiteFooter } from '@/components/layout/SiteFooter';
 import { SPORTS } from '@/lib/content/sports';
 
 export const metadata: Metadata = {
-  title: 'Spor Rehberi · Yetenek',
+  title: 'Spor Rehberi',
   description:
     '14 spor branşı için başlama yaşı, donanım, federasyon, Türkiye altyapısı ve ortalama ücret bilgisi.',
 };

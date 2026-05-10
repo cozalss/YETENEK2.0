@@ -53,7 +53,7 @@ export default function ProfilePage() {
               <Stat
                 label="Tamamlanmışlık"
                 value={`%${completionPercent}`}
-                sub="Cüzdan dolulu"
+                sub="Cüzdan doluluğu"
               />
               <Stat
                 label="Son 14 gün"

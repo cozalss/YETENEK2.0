@@ -18,8 +18,8 @@ import type { SessionSummary } from '@/lib/session/store';
 interface Props {
   session: SessionSummary;
   /**
-   * Demo amaçlı: önceden hazırlanmış rapor metni varsa API çağrısı yapma,
-   * direkt göster. Pitch'te sahnede backup için kullanılır.
+   * Önceden hazırlanmış rapor metni varsa API çağrısı yapma, direkt göster.
+   * Örnek sonuçlarda ve yedek rapor senaryolarında kullanılır.
    */
   initialReport?: string;
   initialSource?: 'gemini' | 'fallback';

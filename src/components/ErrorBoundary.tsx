@@ -1,8 +1,8 @@
 /**
- * Hackathon-grade React Error Boundary.
+ * React Error Boundary.
  *
- * Test akışı sırasında beklenmedik bir component crash olursa demo
- * tamamen biter — bunu önlemek için layout seviyesinde hata yakalama.
+ * Test akışı sırasında beklenmedik bir component crash olursa
+ * bunu layout seviyesinde yakalar.
  * Mesaj kullanıcı dostu Türkçe, "Tekrar Dene" butonu ile reset.
  */
 

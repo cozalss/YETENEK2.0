@@ -7,8 +7,7 @@
  * - Rate limit'e takılırsa
  *
  * Şablon Türkçe ve veliye samimi tonda; AI tarafından üretilen kadar
- * doğal değil ama demo'yu kurtarır. Pitch'te "AI çalışmazsa fallback'imiz var"
- * cümlesi ürün olgunluğu sinyali.
+ * doğal değil ama kullanıcıya boş ekran göstermekten iyidir.
  */
 
 import type { SessionSummary } from '@/lib/session/store';

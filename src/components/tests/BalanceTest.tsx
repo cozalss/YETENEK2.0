@@ -189,7 +189,7 @@ export function BalanceTest({ onComplete, childAgeYears }: Props) {
       });
       setPhase('result');
     }
-  }, [phase, onComplete]);
+  }, [childAgeYears, phase, onComplete]);
 
   return (
     <div className="space-y-6">

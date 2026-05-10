@@ -376,7 +376,6 @@ function PdfExportSkeleton() {
 
 /**
  * Jump test method'unu kullanıcı dostu Türkçe label'a çevirir.
- * Pitch sırasında jüri görse de teknik kelimelere takılmaz.
  */
 function methodLabel(
   method: 'flight-time' | 'hip-displacement' | 'consensus'

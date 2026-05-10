@@ -4,7 +4,6 @@ import {
   Activity,
   Scale,
   Zap,
-  Camera,
 } from 'lucide-react';
 import { Reveal } from '@/components/motion/Reveal';
 
@@ -18,13 +17,13 @@ export default function TestIndex() {
         </Reveal>
         <Reveal delay={0.1}>
           <h1 className="headline-display mt-4 max-w-3xl text-balance">
-            Üç hareket. Bir profil.
+            Yedi test. Bir profil.
           </h1>
         </Reveal>
         <Reveal delay={0.2}>
           <p className="mt-6 max-w-2xl text-lg text-[var(--color-ink-2)] leading-relaxed">
-            Tam akış 3 testi sırayla yapar ve AI raporunu üretir. Tek tek
-            denemek için aşağıdaki kartlardan başla.
+            Tam akış 7 boyutlu taramayı sırayla yapar ve AI raporunu üretir.
+            Daha kısa başlamak istersen hızlı akışta 3 çekirdek test var.
           </p>
         </Reveal>
 
@@ -34,7 +33,7 @@ export default function TestIndex() {
 
         <section className="mt-12">
           <Reveal>
-            <p className="eyebrow">Tek Tek Test</p>
+            <p className="eyebrow">Çekirdek Testler</p>
           </Reveal>
           <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-6">
             <TestCard
@@ -42,7 +41,7 @@ export default function TestIndex() {
               num="01"
               title="Sıçrama"
               desc="Counter-movement jump · patlayıcı güç. Kalçanın dikey ivmesinden sıçrama yüksekliği."
-              span="md:col-span-3"
+              span="md:col-span-2"
               icon={Activity}
               accent="amber"
             />
@@ -51,7 +50,7 @@ export default function TestIndex() {
               num="02"
               title="Denge"
               desc="Tek bacak postür · sol-sağ asimetri. Sakatlanma riskini erken yakalar."
-              span="md:col-span-3"
+              span="md:col-span-2"
               icon={Scale}
               accent="emerald"
             />
@@ -60,19 +59,9 @@ export default function TestIndex() {
               num="03"
               title="Refleks"
               desc="Reaksiyon süresi · bilişsel hız. 5 deneme + tutarlılık skoru. Sesli yönlendirme."
-              span="md:col-span-4"
+              span="md:col-span-2"
               icon={Zap}
               accent="sky"
-            />
-            <TestCard
-              href="/test/hello"
-              num="00"
-              title="Smoke Test"
-              desc="MediaPipe kontrol."
-              span="md:col-span-2"
-              icon={Camera}
-              accent="neutral"
-              compact
             />
           </div>
         </section>
@@ -115,8 +104,9 @@ function FullFlowCallout() {
           <p className="eyebrow">Önerilen</p>
           <h2 className="headline-display mt-4 text-balance">Tam Akış</h2>
           <p className="mt-4 max-w-2xl text-base text-[var(--color-ink-2)] md:text-lg">
-            Profilini gir, üç testi ardışık yap, AI raporun ve spor önerin
-            sonunda otomatik gelsin.{' '}
+            Profilini gir, 7 testi ardışık yap, AI raporun ve spor önerin
+            sonunda otomatik gelsin. Hızlı modda 3 çekirdek testle
+            başlayabilirsin.{' '}
             <span className="font-mono text-[var(--color-signal)]">
               ~5 dk
             </span>

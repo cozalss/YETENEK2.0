@@ -1,8 +1,8 @@
 /**
  * GET /api/health — uptime + bağımlılık durumu kontrol endpoint'i.
  *
- * Hackathon demo backup'ı: pitch öncesi 1 ping atıp tüm bağlantıların hazır
- * olduğunu görmek + Vercel/Uptime Robot izleme için public endpoint.
+ * Yayın öncesi 1 ping atıp tüm bağlantıların hazır olduğunu görmek +
+ * Vercel/Uptime Robot izleme için public endpoint.
  *
  * Hassas bilgi YOK — sadece flag + version bilgisi döner.
  */

@@ -1,7 +1,5 @@
 /**
  * Hakkında sayfası — misyon, metodoloji, ekip, bilim referansları.
- *
- * Editorial uzun-form. Pitch'te jüriye gösterilebilir.
  */
 
 import type { Metadata } from 'next';
@@ -20,7 +18,7 @@ import { SiteFooter } from '@/components/layout/SiteFooter';
 import { REFERENCES } from '@/lib/content/bibliography';
 
 export const metadata: Metadata = {
-  title: 'Hakkında · Yetenek',
+  title: 'Hakkında',
   description:
     'Yetenek 2.0 metodolojisi, ekibi ve bilim arkasında 24+ peer-reviewed kaynağın özeti.',
 };
@@ -224,11 +222,11 @@ export default function AboutPage() {
           <p className="text-xs font-semibold tracking-[0.25em] text-[var(--color-signal)] uppercase">
             Ekip
           </p>
-          <h2 className="mt-3 text-3xl font-bold md:text-4xl">Hackathon ekibi</h2>
+          <h2 className="mt-3 text-3xl font-bold md:text-4xl">Ekip ve ürün</h2>
           <p className="mt-5 max-w-3xl text-base leading-relaxed text-[var(--color-ink-2)]">
-            Yetenek 2.0, METU Sports Tech Hackathon (16-17 Mayıs 2026, ODTÜ
-            Teknopark CoZone) için geliştiriliyor. Açık kaynak, ücretsiz,
-            donanım bağımsız.
+            Yetenek 2.0 açık kaynak, ücretsiz ve donanım bağımsız bir pilot
+            ürün olarak geliştiriliyor. Hedefimiz, bilimsel testleri herkesin
+            erişebileceği sade bir web deneyimine taşımak.
           </p>
           <div className="mt-6 flex flex-wrap gap-2">
             <Tag>AI / ML</Tag>

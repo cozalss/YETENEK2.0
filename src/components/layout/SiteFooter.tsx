@@ -25,7 +25,7 @@ export function SiteFooter() {
               taramayla 7 boyutlu bio-motor profil + spor önerisi.
             </p>
             <p className="mt-4 text-[11px] tracking-wider text-[var(--color-ink-3)] uppercase">
-              METU Sports Tech Hackathon 2026
+              Çocuk spor yetenek keşfi
             </p>
           </div>
 
@@ -34,7 +34,7 @@ export function SiteFooter() {
             <FooterLink href="/test">Test Bataryası</FooterLink>
             <FooterLink href="/test/full">Tam Akış</FooterLink>
             <FooterLink href="/test/full?mode=quick">Hızlı Akış</FooterLink>
-            <FooterLink href="/result/demo">Demo Sonuç</FooterLink>
+            <FooterLink href="/result/demo">Örnek Sonuç</FooterLink>
             <FooterLink href="/profile">Cüzdanım</FooterLink>
           </FooterCol>
 

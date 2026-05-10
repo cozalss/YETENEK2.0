@@ -37,7 +37,7 @@ function Hero() {
 
       <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col justify-center px-6 pb-24 pt-16 md:px-12">
         <Reveal>
-          <p className="eyebrow">METU Sports Tech Hackathon · Mayıs 2026</p>
+          <p className="eyebrow">Çocuk spor yetenek taraması</p>
         </Reveal>
 
         <Reveal delay={0.1}>
@@ -52,9 +52,9 @@ function Hero() {
 
         <Reveal delay={0.25}>
           <p className="mt-10 max-w-2xl text-lg text-[var(--color-ink-2)] md:text-xl">
-            Yetenek 2.0 — telefon kamerasından 5 dakikalık üç fiziksel test.
-            AI çocuğa en uygun sporu öneriyor, sakatlanma riskini erken
-            yakalıyor, gelişimi rozetlerle takip ediyor.
+            Yetenek 2.0 — telefon kamerasıyla 5 dakikada 7 boyutlu bio-motor
+            tarama. AI çocuğa en uygun sporu öneriyor, sakatlanma riskini
+            erken yakalıyor, gelişimi rozetlerle takip ediyor.
           </p>
         </Reveal>
 
@@ -68,11 +68,11 @@ function Hero() {
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Link>
             <Link
-              href="/demo"
+              href="/result/demo"
               className="inline-flex h-14 items-center gap-2 rounded-full border border-[var(--color-line-strong)] px-7 text-sm font-semibold text-[var(--color-ink-2)] transition-colors hover:border-[var(--color-signal)] hover:text-[var(--color-ink-1)]"
             >
               <Sparkles className="h-4 w-4" />
-              Demo&apos;yu aç
+              Örnek sonucu gör
             </Link>
           </div>
         </Reveal>
@@ -100,8 +100,8 @@ function Header() {
         <Link href="/test" className="transition-colors hover:text-[var(--color-ink-1)]">
           Testler
         </Link>
-        <Link href="/demo" className="transition-colors hover:text-[var(--color-ink-1)]">
-          Demo
+        <Link href="/result/demo" className="transition-colors hover:text-[var(--color-ink-1)]">
+          Örnek Sonuç
         </Link>
         <Link href="/training" className="transition-colors hover:text-[var(--color-ink-1)]">
           Antrenman
@@ -128,7 +128,7 @@ function Header() {
 
 function HeroStrip() {
   const stats = [
-    { value: '5', label: 'Dakikalık test', sub: 'Kameraya geç, hareket et' },
+    { value: '5', label: 'Dakikalık tarama', sub: '7 boyut, tek akış' },
     { value: '12', label: 'Milyon çocuk', sub: 'Türkiye 8-15 yaş' },
     { value: '%85+', label: 'Doğruluk', sub: 'AI sport matching' },
     { value: '0₺', label: 'Donanım maliyeti', sub: 'Sadece telefon' },
@@ -175,19 +175,20 @@ function ProblemSection() {
         </Reveal>
         <Reveal delay={0.1}>
           <h2 className="headline-display mt-4 max-w-5xl text-balance">
-            1985'te Karaman'da{' '}
+            Çocuk yaşta fark edilen{' '}
             <em className="not-italic text-[var(--color-signal)]">
-              tesadüfen
+              bir yetenek
             </em>{' '}
-            keşfedilen bir çocuk vardı.
+            spor tarihini değiştirebilir.
           </h2>
         </Reveal>
         <Reveal delay={0.2}>
           <p className="mt-8 max-w-3xl text-lg text-[var(--color-ink-2)] leading-relaxed md:text-xl">
-            Adı Naim Süleymanoğlu. 3 olimpiyat altın madalyası kazandı. Şu an
-            Türkiye'nin köylerinde, mahallelerinde, okullarında onun gibi yüz
-            binlerce çocuk var. Hiçbir antrenörün dikkatini çekmiyorlar.
-            Aileleri sezgileriyle, akrabalarına bakarak, bütçelerine göre spor
+            Naim Süleymanoğlu halterle çocuk yaşta tanıştı, 15 yaşında ilk
+            dünya rekorunu kırdı ve kariyerinde 3 olimpiyat altın madalyası
+            kazandı. Bugün Türkiye'nin köylerinde, mahallelerinde,
+            okullarında onun gibi potansiyel taşıyan çocuklar var. Çoğu zaman
+            aileler sezgileriyle, akrabalarına bakarak, bütçelerine göre spor
             seçiyor.
           </p>
         </Reveal>
@@ -202,19 +203,19 @@ function ProblemSection() {
         <Reveal delay={0.4}>
           <div className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-3">
             <FactCard
-              big="60%"
-              label="Spor bırakma oranı"
-              detail="Yanlış spor seçimi nedeniyle 15 yaşa kadar"
+              big="7"
+              label="Bio-motor boyut"
+              detail="Güç, denge, çeviklik, refleks, koordinasyon ve dayanıklılık"
             />
             <FactCard
-              big="800M ₺"
-              label="GSB yıllık bütçesi"
-              detail="Yetenek tarama programı için ayrılmış"
+              big="14"
+              label="Spor profili"
+              detail="Çocuğun ölçüm vektörü branş profilleriyle eşleşir"
             />
             <FactCard
               big="0"
-              label="Türkiye lokal çözüm"
-              detail="Bu segmentte çalışan tek ürün biziz"
+              label="Video yükleme"
+              detail="Kamera görüntüsü cihazda işlenir, sunucuya gitmez"
             />
           </div>
         </Reveal>
@@ -259,8 +260,8 @@ function HowItWorksSection() {
     },
     {
       num: '02',
-      title: '3 Fiziksel Test',
-      desc: 'Sıçrama, denge ve refleks. AI MediaPipe ile vücut hareketini analiz eder.',
+      title: '7 Boyutlu Test',
+      desc: 'Sıçrama, yatay güç, denge, çeviklik, refleks, koordinasyon ve dayanıklılık ölçülür.',
       icon: Activity,
     },
     {
@@ -496,7 +497,7 @@ function FeaturesGrid() {
     {
       icon: Sparkles,
       title: 'AI Yazdığı Rapor',
-      desc: 'Google Gemini ile veliye samimi Türkçe rapor. Anahtar yoksa otomatik fallback.',
+      desc: 'Veliye samimi Türkçe rapor. Bağlantı sorunu olursa güvenli yedek rapor devreye girer.',
       span: 'md:col-span-2',
     },
     {
@@ -598,7 +599,7 @@ function SiteFooter() {
             Yetenek<span className="text-[var(--color-signal)]">.</span>
           </span>
           <span className="text-sm text-[var(--color-ink-3)]">
-            METU Sports Tech Hackathon 2026
+            Çocuk spor yetenek keşfi
           </span>
         </div>
         <div className="flex flex-wrap gap-6 text-sm text-[var(--color-ink-3)]">

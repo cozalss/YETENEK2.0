@@ -1,9 +1,7 @@
 /**
  * Geçmiş test sessionları sayfası.
  *
- * localStorage'dan history listesi okunur. Her giriş özet kart;
- * tıklayınca o session'ı sessionStore'a hidrate edip /test/full?replay=id'e gönderir.
- * (Hackathon sürümünde basit silme + listeleme yeter.)
+ * localStorage'dan history listesi okunur. Her giriş özet kart olarak gösterilir.
  */
 
 'use client';
@@ -57,7 +55,7 @@ export default function HistoryPage() {
           </h1>
           <p className="max-w-2xl text-lg leading-relaxed text-[var(--color-ink-2)]">
             Tamamladığın test session'ları cihazında saklanır — sunucuya
-            gitmez. İstediğinde sil, istediğinde tekrar bak.
+            gitmez. İstediğinde sil, özetini burada gör.
           </p>
         </header>
 

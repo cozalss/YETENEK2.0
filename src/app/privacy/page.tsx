@@ -12,7 +12,7 @@ import { SiteHeader } from '@/components/layout/SiteHeader';
 import { SiteFooter } from '@/components/layout/SiteFooter';
 
 export const metadata: Metadata = {
-  title: 'Gizlilik ve KVKK Aydınlatması · Yetenek',
+  title: 'Gizlilik ve KVKK Aydınlatması',
   description:
     'Yetenek 2.0 nasıl veri toplar, hangi verileri saklar ve hangi verileri saklamaz. KVKK Madde 10 aydınlatma yükümlülüğü kapsamında hazırlanmıştır.',
 };
@@ -62,8 +62,8 @@ export default function PrivacyPage() {
           />
           <Pledge
             icon={Lock}
-            title="Yerel saklama 4 saat"
-            body="localStorage'daki test session'ı 4 saat sonra otomatik silinir. Paylaşılan cihazlarda risk yok."
+            title="Aktif oturum 4 saat"
+            body="Aktif test session'ı 4 saat sonra otomatik silinir. Tamamlanan geçmiş ve rozetler cihazında kalır, istediğinde silebilirsin."
           />
           <Pledge
             icon={Server}
@@ -111,10 +111,11 @@ export default function PrivacyPage() {
             </p>
             <h3>Cihazınızın tarayıcısı (localStorage)</h3>
             <p>
-              Test session'ı, profil ve rozet cüzdanı tarayıcınızda
+              Aktif test session'ı, profil ve rozet cüzdanı tarayıcınızda
               localStorage'da saklanır. Bu veri başka bir sunucuya gönderilmez.
-              4 saat sonra otomatik olarak temizlenir; manuel olarak
-              "tarayıcı verilerini temizle" ile de silinebilir.
+              Aktif session 4 saat sonra otomatik olarak temizlenir. Tamamlanmış
+              geçmiş kayıtları ve rozetler siz silene kadar cihazda kalabilir;
+              geçmiş listesi en fazla 50 kayıtla sınırlıdır.
             </p>
 
             <h3>MediaPipe BlazePose (cihazda)</h3>
@@ -181,7 +182,7 @@ export default function PrivacyPage() {
             </ul>
             <p>
               Talepler için <code>cannozall@gmail.com</code> adresine
-              yazabilirsiniz. Hackathon sürümünde merkezi bir veri tabanı
+              yazabilirsiniz. Pilot sürümde merkezi bir veri tabanı
               olmadığı için "silinmesini isteme" pratikte tarayıcı
               localStorage'ınızı temizlemekle aynı şey — o da kullanıcının
               kontrolündedir.
@@ -198,20 +199,19 @@ export default function PrivacyPage() {
             </p>
           </Section>
 
-          <Section number="06" title="Çocuğunuzun raporu kalıcı değil">
+          <Section number="06" title="Veri cihazlar arasında taşınmaz">
             <p>
-              Şu anda hackathon sürümünde test sonuçlarınız sadece
-              tarayıcınızda kalıyor — sunucuda saklanmıyor. Yani başka bir
-              cihaza geçtiğinizde geçmişe bakma şansınız olmuyor. Bunu
-              gelecekte (kullanıcı hesapları + Supabase) ekleyeceğiz; o
-              zaman bu metni de güncelleyeceğiz ve ayrıca açık rıza
-              isteyeceğiz.
+              Şu anda pilot sürümde test sonuçlarınız sadece kullandığınız
+              tarayıcıda kalıyor — sunucuda saklanmıyor. Aynı tarayıcıda
+              geçmişi görebilir ve silebilirsiniz; başka bir cihaza geçtiğinizde
+              geçmişe erişemezsiniz. Hesaplı bir sürüm eklenirse bu metin
+              güncellenecek ve ayrıca açık rıza istenecektir.
             </p>
           </Section>
         </article>
 
         <p className="mt-16 text-xs text-[var(--color-ink-3)]">
-          Son güncelleme: 2026-05-09. Yetenek 2.0 hackathon proof-of-concept.
+          Son güncelleme: 2026-05-09. Yetenek 2.0 pilot sürüm.
         </p>
       </div>
 

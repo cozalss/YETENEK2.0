@@ -1,5 +1,5 @@
 /**
- * Sonuç ekranı demo sayfası — editorial hero + mock 7-test verisi + canlı AI rapor.
+ * Sonuç ekranı örnek sayfası — hazır 7-test verisi + AI rapor paneli.
  */
 
 import Link from 'next/link';
@@ -142,7 +142,7 @@ function DemoHeader() {
         </Link>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-signal)]/10 px-3 py-1 text-xs font-semibold text-[var(--color-signal)]">
           <Sparkles className="h-3 w-3" />
-          Demo · 7 test + canlı AI pipeline
+          Örnek sonuç · 7 testlik profil
         </span>
       </div>
     </header>
