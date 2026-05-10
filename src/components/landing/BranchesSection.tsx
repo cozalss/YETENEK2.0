@@ -15,40 +15,28 @@
 
 import { Reveal } from '@/components/motion/Reveal';
 import { LazyVideo } from './LazyVideo';
-import { Hand, type LucideIcon } from 'lucide-react';
 
-type BranchCard =
-  | {
-      kind: 'video';
-      name: string;
-      en: string;
-      src: string;
-      poster: string;
-      color: string;
-    }
-  | {
-      kind: 'icon';
-      name: string;
-      en: string;
-      icon: LucideIcon;
-      color: string;
-    };
+interface BranchCard {
+  name: string;
+  en: string;
+  src: string;
+  poster: string;
+  color: string;
+}
 
 const BRANCHES: BranchCard[] = [
-  { kind: 'video', name: 'VOLEYBOL', en: 'Volleyball', src: '/videos/sport-volleyball.mp4', poster: '/images/sport-volleyball-poster.jpg', color: '#F2C94C' },
-  { kind: 'video', name: 'BASKETBOL', en: 'Basketball', src: '/videos/sport-basketball.mp4', poster: '/images/sport-basketball-poster.jpg', color: '#8BB8E8' },
-  { kind: 'video', name: 'FUTBOL', en: 'Football', src: '/videos/sport-football.mp4', poster: '/images/sport-football-poster.jpg', color: '#A8D5BA' },
-  { kind: 'video', name: 'TENİS', en: 'Tennis', src: '/videos/sport-tennis.mp4', poster: '/images/sport-tennis-poster.jpg', color: '#C4E0D0' },
-  { kind: 'video', name: 'MASA TENİSİ', en: 'Table Tennis', src: '/videos/sport-tabletennis.mp4', poster: '/images/sport-tabletennis-poster.jpg', color: '#F4B6C2' },
-  { kind: 'video', name: 'YÜZME', en: 'Swimming', src: '/videos/sport-swimmer.mp4', poster: '/images/sport-swimmer-poster.jpg', color: '#A8D5BA' },
-  { kind: 'video', name: 'ATLETİZM', en: 'Athletics', src: '/videos/sport-athletics.mp4', poster: '/images/sport-athletics-poster.jpg', color: '#F2C94C' },
-  { kind: 'video', name: 'JİMNASTİK', en: 'Gymnastics', src: '/videos/sport-gymnastics.mp4', poster: '/images/sport-gymnastics-poster.jpg', color: '#F4B6C2' },
-  { kind: 'video', name: 'TEKVANDO', en: 'Taekwondo', src: '/videos/sport-taekwondo.mp4', poster: '/images/sport-taekwondo-poster.jpg', color: '#E8A0B0' },
-  { kind: 'video', name: 'JUDO', en: 'Judo', src: '/videos/sport-judo.mp4', poster: '/images/sport-judo-poster.jpg', color: '#A8D5BA' },
-  { kind: 'video', name: 'BADMİNTON', en: 'Badminton', src: '/videos/sport-badminton.mp4', poster: '/images/sport-badminton-poster.jpg', color: '#F4B6C2' },
-  // Boks videosu henüz üretilmedi — ikon placeholder, kart rengi Veo
-  // prompt'undaki mustard arka plana eşit (ileride tek hamle değişir).
-  { kind: 'icon', name: 'BOKS', en: 'Boxing', icon: Hand, color: '#F2C94C' },
+  { name: 'VOLEYBOL', en: 'Volleyball', src: '/videos/sport-volleyball.mp4', poster: '/images/sport-volleyball-poster.jpg', color: '#F2C94C' },
+  { name: 'BASKETBOL', en: 'Basketball', src: '/videos/sport-basketball.mp4', poster: '/images/sport-basketball-poster.jpg', color: '#8BB8E8' },
+  { name: 'FUTBOL', en: 'Football', src: '/videos/sport-football.mp4', poster: '/images/sport-football-poster.jpg', color: '#A8D5BA' },
+  { name: 'TENİS', en: 'Tennis', src: '/videos/sport-tennis.mp4', poster: '/images/sport-tennis-poster.jpg', color: '#C4E0D0' },
+  { name: 'MASA TENİSİ', en: 'Table Tennis', src: '/videos/sport-tabletennis.mp4', poster: '/images/sport-tabletennis-poster.jpg', color: '#F4B6C2' },
+  { name: 'YÜZME', en: 'Swimming', src: '/videos/sport-swimmer.mp4', poster: '/images/sport-swimmer-poster.jpg', color: '#A8D5BA' },
+  { name: 'ATLETİZM', en: 'Athletics', src: '/videos/sport-athletics.mp4', poster: '/images/sport-athletics-poster.jpg', color: '#F2C94C' },
+  { name: 'JİMNASTİK', en: 'Gymnastics', src: '/videos/sport-gymnastics.mp4', poster: '/images/sport-gymnastics-poster.jpg', color: '#F4B6C2' },
+  { name: 'TEKVANDO', en: 'Taekwondo', src: '/videos/sport-taekwondo.mp4', poster: '/images/sport-taekwondo-poster.jpg', color: '#E8A0B0' },
+  { name: 'JUDO', en: 'Judo', src: '/videos/sport-judo.mp4', poster: '/images/sport-judo-poster.jpg', color: '#A8D5BA' },
+  { name: 'BADMİNTON', en: 'Badminton', src: '/videos/sport-badminton.mp4', poster: '/images/sport-badminton-poster.jpg', color: '#F4B6C2' },
+  { name: 'BOKS', en: 'Boxing', src: '/videos/sport-boks.mp4', poster: '/images/sport-boks-poster.jpg', color: '#F2C94C' },
 ];
 
 export function BranchesSection() {
@@ -112,21 +100,11 @@ export function BranchesSection() {
                 style={{ background: branch.color }}
               >
                 <div className="relative aspect-square overflow-hidden">
-                  {branch.kind === 'video' ? (
-                    <LazyVideo
-                      src={branch.src}
-                      poster={branch.poster}
-                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center transition-transform duration-700 group-hover:scale-110">
-                      <branch.icon
-                        size={72}
-                        strokeWidth={1.5}
-                        style={{ color: 'rgba(44, 62, 107, 0.75)' }}
-                      />
-                    </div>
-                  )}
+                  <LazyVideo
+                    src={branch.src}
+                    poster={branch.poster}
+                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
 
                   <div
                     className="absolute inset-0 flex flex-col items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100"
