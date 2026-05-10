@@ -22,6 +22,9 @@ import { GeminiError, isGeminiConfigured, streamText } from '@/lib/llm/gemini';
 import type { SessionSummary } from '@/lib/session/store';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const maxDuration = 60; // streaming — uzun sürebilir
 
 const MAX_HISTORY = 10;
 

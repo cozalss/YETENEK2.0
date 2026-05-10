@@ -76,6 +76,53 @@ export class GeminiError extends Error {
   }
 }
 
+// Retry / timeout politikası — hackathon Wi-Fi koşullarında demo dayanıklılığı.
+const REQUEST_TIMEOUT_MS = 25_000; // Vercel Edge default 30s; biraz altında kal
+const MAX_RETRIES = 2; // toplam 3 deneme
+const RETRY_BACKOFF_MS = [400, 1200]; // expo-ish
+
+function shouldRetry(status: number): boolean {
+  // Geçici problemler: 429 (rate), 500-504 (sunucu)
+  return status === 429 || (status >= 500 && status <= 504);
+}
+
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  externalSignal?: AbortSignal
+): Promise<Response> {
+  let lastErr: unknown = null;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const ac = new AbortController();
+    const timeoutId = setTimeout(() => ac.abort(), REQUEST_TIMEOUT_MS);
+    const onExternalAbort = () => ac.abort();
+    externalSignal?.addEventListener('abort', onExternalAbort);
+
+    try {
+      const res = await fetch(url, { ...init, signal: ac.signal });
+      if (res.ok) return res;
+      if (!shouldRetry(res.status) || attempt === MAX_RETRIES) return res;
+    } catch (err) {
+      lastErr = err;
+      // AbortError — sadece dış sinyal ise propagate et, timeout ise retry
+      if (err instanceof Error && err.name === 'AbortError') {
+        if (externalSignal?.aborted) throw err;
+        if (attempt === MAX_RETRIES) throw err;
+      } else if (attempt === MAX_RETRIES) {
+        throw err;
+      }
+    } finally {
+      clearTimeout(timeoutId);
+      externalSignal?.removeEventListener('abort', onExternalAbort);
+    }
+
+    // Backoff
+    await new Promise((r) => setTimeout(r, RETRY_BACKOFF_MS[attempt] ?? 2000));
+  }
+  // Tek satır guard — TS narrowing için (yukarıdaki throw'lar ulaşımı keser).
+  throw lastErr instanceof Error ? lastErr : new Error('Gemini fetch failed');
+}
+
 function getKey(): string | null {
   const key = process.env.GEMINI_API_KEY;
   if (!key || key.trim().length === 0) return null;
@@ -118,12 +165,15 @@ export async function generateText(opts: {
   }
 
   const url = `${API_BASE}/${getModel()}:generateContent?key=${encodeURIComponent(key)}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: opts.signal,
-  });
+  const res = await fetchWithRetry(
+    url,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+    opts.signal
+  );
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -173,12 +223,17 @@ export async function* streamText(opts: {
   }
 
   const url = `${API_BASE}/${getModel()}:streamGenerateContent?alt=sse&key=${encodeURIComponent(key)}`;
+  // Stream için retry kullanma — bağlantı kurulduğunda partial chunk geri gelmiş olabilir,
+  // tekrar denemek duplicate token üretir. Sadece timeout signal'i.
+  const ac = new AbortController();
+  const timeoutId = setTimeout(() => ac.abort(), REQUEST_TIMEOUT_MS);
+  opts.signal?.addEventListener('abort', () => ac.abort());
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-    signal: opts.signal,
-  });
+    signal: ac.signal,
+  }).finally(() => clearTimeout(timeoutId));
 
   if (!res.ok || !res.body) {
     const text = await res.text().catch(() => '');

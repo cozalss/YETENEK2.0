@@ -12,6 +12,8 @@
  */
 
 export const runtime = 'nodejs';
+// OG SVG render hızlı — query bazlı statik output, 1 saatte revalidate
+export const revalidate = 3600;
 
 const xmlEscape = (s: string) =>
   s

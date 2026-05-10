@@ -57,6 +57,26 @@ export const REFERENCES: ScienceReference[] = [
     url: 'https://pubmed.ncbi.nlm.nih.gov/24050469/',
   },
   {
+    id: 'bosco-1983',
+    authors: 'Bosco C, Luhtanen P, Komi PV',
+    year: 1983,
+    title:
+      'A simple method for measurement of mechanical power in jumping',
+    journal: 'Eur J Appl Physiol Occup Physiol 50(2):273–282',
+    tags: ['jump'],
+    url: 'https://pubmed.ncbi.nlm.nih.gov/6681758/',
+  },
+  {
+    id: 'castro-pinero-2010',
+    authors: 'Castro-Piñero J, Ortega FB, Artero EG, et al.',
+    year: 2010,
+    title:
+      'Assessing muscular strength in youth: usefulness of standing long jump as a general index of muscular fitness',
+    journal: 'J Strength Cond Res 24(7):1810–1817',
+    tags: ['jump', 'broadJump'],
+    url: 'https://pubmed.ncbi.nlm.nih.gov/19996785/',
+  },
+  {
     id: 'croisier-2008',
     authors: 'Croisier JL, Ganteaume S, Binet J, et al.',
     year: 2008,

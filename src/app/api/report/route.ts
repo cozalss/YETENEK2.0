@@ -15,7 +15,14 @@ import { z } from 'zod';
 import { generateReport } from '@/lib/llm/claudeReport';
 import type { SessionSummary } from '@/lib/session/store';
 
+// Route segment config — Next.js 16
+// dynamic: 'force-dynamic' → her istek server'da çalışsın (cache yok, KVKK gereği)
+// revalidate: 0 → kesin cache yok
+// maxDuration: Vercel için Gemini cevabı için yeterli pencere
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const maxDuration = 30;
 
 // Session payload'ını runtime'da doğrula (client kötü niyetli veri gönderebilir).
 const childSchema = z.object({

@@ -164,6 +164,10 @@ export function JumpTest({
       setResult({
         jumpUnits: 0,
         jumpHeightCm: null,
+        jumpHeightCmHip: null,
+        jumpHeightCmFlight: null,
+        method: 'consensus',
+        consistent: true,
         takeoffY: 0,
         apexY: 0,
         flightTimeMs: 0,

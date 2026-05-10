@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Yetenek 2.0">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a1a1a"/>
+      <stop offset="100%" stop-color="#0a0a0a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <g transform="translate(256 256)" stroke="url(#accent)" stroke-width="24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="0" cy="-92" r="36"/>
+    <path d="M0 -56 L0 32"/>
+    <path d="M-72 -16 L0 16 L72 -16"/>
+    <path d="M0 32 L-52 112"/>
+    <path d="M0 32 L52 112"/>
+  </g>
+  <text x="256" y="464" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="800" text-anchor="middle" fill="url(#accent)" letter-spacing="3">YETENEK</text>
+</svg>
