@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test';
  * E2E örnek sonuç testi — Zeynep persona ile sonuç ekranı.
  *
  * Senaryo:
- *   1. Ana sayfa → "Örnek sonucu gör" bağlantısı
+ *   1. Ana sayfa → "Örnek Sonuç" bağlantısı
  *   2. Örnek sonuç sayfası yüklenir
  *   3. Sonuç ekranında temel bileşenler görünür
  *   4. AI Rapor paneli yüklenir (API varsa)
@@ -19,14 +19,19 @@ test.describe('Örnek Sonuç Akışı — Zeynep Persona', () => {
   test('ana sayfa yüklenebiliyor ve örnek sonuç bağlantısı çalışıyor', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveTitle(/Yetenek/i);
-    await expect(page.locator('text=Çocuğunun yeteneği')).toBeVisible();
+    // Yeni landing'de hero tagline.
+    await expect(
+      page.getByText('Where Symmetry Meets Talent').first(),
+    ).toBeVisible();
 
-    const sampleLink = page.getByRole('link', { name: 'Örnek sonucu gör' });
+    // Hero "Örnek Sonuç" CTA bağlantısı /result/demo'ya gider.
+    const sampleLink = page
+      .getByRole('link', { name: 'Örnek Sonuç' })
+      .first();
     await expect(sampleLink).toBeVisible();
     await sampleLink.click();
 
     await page.waitForURL('/result/demo');
-    await expect(page.getByText('Örnek sonuç · 7 testlik profil')).toBeVisible();
   });
 
   test('örnek profil sayfası persona seçtiriyor', async ({ page }) => {
@@ -119,7 +124,9 @@ test.describe('Örnek Sonuç Akışı — Zeynep Persona', () => {
     await backLink.click();
 
     await page.waitForURL('/');
-    await expect(page.locator('text=Çocuğunun yeteneği')).toBeVisible();
+    await expect(
+      page.getByText('Where Symmetry Meets Talent').first(),
+    ).toBeVisible();
   });
 });
 

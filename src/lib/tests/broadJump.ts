@@ -1,7 +1,7 @@
 /**
  * Standing Long Jump (Broad Jump) — yatay patlayıcı güç testi.
  *
- * CMJ dikey patlayıcı gücü ölçer; sprint, futbol, judo, hentbol gibi sporlar
+ * CMJ dikey patlayıcı gücü ölçer; sprint, futbol, judo gibi sporlar
  * için yatay patlayıcı güç çok daha belirleyicidir. CMJ↔broad-jump korelasyonu
  * literatürde ~0.6 — ayrı boyut olarak ölçmek anlamlı.
  *

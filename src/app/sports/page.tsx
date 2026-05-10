@@ -1,5 +1,5 @@
 /**
- * Spor rehberi index — 14 spor branşı kart grid.
+ * Spor rehberi index — 12 spor branşı kart grid.
  */
 
 import type { Metadata } from 'next';
@@ -12,7 +12,7 @@ import { SPORTS } from '@/lib/content/sports';
 export const metadata: Metadata = {
   title: 'Spor Rehberi',
   description:
-    '14 spor branşı için başlama yaşı, donanım, federasyon, Türkiye altyapısı ve ortalama ücret bilgisi.',
+    '12 spor branşı için başlama yaşı, donanım, federasyon, Türkiye altyapısı ve ortalama ücret bilgisi.',
 };
 
 export default function SportsIndexPage() {

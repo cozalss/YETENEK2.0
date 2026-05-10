@@ -1,7 +1,7 @@
 /**
  * Sport recommendation + anthropometric percentile testleri.
  *
- * "14 spor profili arasında matching" mantığı kırılırsa yanlış spor önerilir.
+ * "12 spor profili arasında matching" mantığı kırılırsa yanlış spor önerilir.
  * Test koruyucu güvenlik.
  */
 
@@ -15,8 +15,8 @@ import {
 import { SPORT_PROFILES } from './sportProfiles';
 
 describe('SPORT_PROFILES — canonical liste', () => {
-  it('14 spor profili (CLAUDE.md ve UI ile tutarlı)', () => {
-    expect(SPORT_PROFILES).toHaveLength(14);
+  it('12 spor profili (CLAUDE.md ve UI ile tutarlı)', () => {
+    expect(SPORT_PROFILES).toHaveLength(12);
   });
 
   it('her sporun gereken alanları var', () => {
@@ -85,6 +85,8 @@ describe('recommendSports', () => {
     const child = testScoresToVector({ jumpScore: 80 });
     expect(recommendSports(child, null, 3)).toHaveLength(3);
     expect(recommendSports(child, null, 10)).toHaveLength(10);
+    // 12 spor olduğu için 12 üst sınır
+    expect(recommendSports(child, null, 12)).toHaveLength(12);
   });
 
   it('confidencePercent 0-100 aralığında ve finalScore × 100 = confidencePercent', () => {
@@ -129,7 +131,7 @@ describe('recommendSports', () => {
       'tenis',
       'taekwondo',
       'boks',
-      'atletizm — sprint',
+      'atletizm',
     ];
     const hasExplosive = top5Sports.some((s) =>
       explosiveSports.some((e) => s.includes(e.split(' ')[0]))

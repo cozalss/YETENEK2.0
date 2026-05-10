@@ -121,11 +121,11 @@ export const SPORTS: SportInfo[] = [
     monthlyCost: '300-1500 TL',
   },
   {
-    slug: 'atletizm-sprint',
-    name: 'Atletizm — Sprint',
+    slug: 'atletizm',
+    name: 'Atletizm',
     emoji: '🏃',
     description:
-      'Bireysel, yatay patlayıcı güç + reaksiyon + ivmelenme. 100m, 200m, 4×100 bayrak.',
+      'Bireysel sprint odaklı: yatay patlayıcı güç + reaksiyon + ivmelenme. 60m/100m/200m, atlama branşları.',
     startAge: '8-10 yaş',
     equipment: 'Çiviler (ileri seviyede), normal koşu ayakkabısı yeter',
     federation: { name: 'TAF', url: 'https://www.taf.org.tr' },
@@ -138,25 +138,6 @@ export const SPORTS: SportInfo[] = [
       'Ramil Guliyev (Avrupa şampiyonu sprinter), Dilan Akar gibi sporcular. Atletizm Federasyonu lokal yarışlar düzenliyor.',
     season: 'Mayıs-Eylül outdoor + kapalı kış',
     monthlyCost: '300-800 TL',
-  },
-  {
-    slug: 'atletizm-mesafe',
-    name: 'Atletizm — Mesafe',
-    emoji: '🏅',
-    description:
-      'Bireysel, aerobik dayanıklılık + lean profil. 1500m, 5000m, kross.',
-    startAge: '10-12 yaş',
-    equipment: 'Hafif yastıklı koşu ayakkabısı',
-    federation: { name: 'TAF', url: 'https://www.taf.org.tr' },
-    highlights: [
-      'Yaşam boyu sürdürülebilir',
-      'Düşük donanım ücreti',
-      'Mental dayanıklılık geliştirir',
-    ],
-    turkeyContext:
-      'Yasemin Can, Süreyya Ayhan gibi Avrupa sıralamasında sporcular. Anadolu/Doğu Anadolu yüksek-irtifa kampları (Erzurum) var.',
-    season: 'Yıl boyunca',
-    monthlyCost: '200-700 TL',
   },
   {
     slug: 'cimnastik',
@@ -271,25 +252,6 @@ export const SPORTS: SportInfo[] = [
       'Türkiye Olimpik takım yapılandırması yeni. Avrupa Şampiyonalarında genç sporcular gelişiyor.',
     season: 'Yıl boyunca',
     monthlyCost: '500-1300 TL',
-  },
-  {
-    slug: 'hentbol',
-    name: 'Hentbol',
-    emoji: '🤾',
-    description:
-      'Takım sporu, patlayıcı atış + dayanıklılık + çeviklik.',
-    startAge: '8-10 yaş',
-    equipment: 'Spor ayakkabı, top — kulüpte file',
-    federation: { name: 'THF', url: 'https://www.thf.com.tr' },
-    highlights: [
-      'Takım dinamiği + bireysel patlayıcılık',
-      'Boy avantajı kale önünde',
-      'Avrupa ligleri güçlü',
-    ],
-    turkeyContext:
-      'Kastamonu Belediyespor (kadın) Avrupa\'da güçlü. Süper Lig\'de Beşiktaş, Antalyaspor altyapısı geniş.',
-    season: 'Eylül-Mayıs',
-    monthlyCost: '400-1100 TL',
   },
 ];
 

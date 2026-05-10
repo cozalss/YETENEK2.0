@@ -1,6 +1,16 @@
 /**
- * Spor profilleri v2 — 14 spor × 7 boyutlu bio-motor vektör + ağırlık matrisi
+ * Spor profilleri v3 — 12 spor × 7 boyutlu bio-motor vektör + ağırlık matrisi
  * + antropometrik avantaj göstergeleri.
+ *
+ * v3 değişiklikleri:
+ *  - Binicilik/Kayak/Buz Pateni/Okçuluk/Eskrim hiç eklenmedi: telefon kamerasıyla
+ *    yapılan motion battery (CMJ + balance + reaction + broad jump + lateral
+ *    hops + endurance) bu sporların seçim kriterlerini dürüstçe ölçemiyor.
+ *  - Hentbol kaldırıldı: Türkiye'de gençlik düzeyinde yaygınlığı düşük,
+ *    profili Basketbol ile çok yakın (ayrıştırma değeri sınırlı).
+ *  - "Atletizm — Mesafe" kaldırıldı, "Atletizm — Sprint" → "Atletizm" olarak
+ *    sadeleştirildi (gençlik düzeyinde sprint odaklı testler daha bilgilendirici;
+ *    Mesafe profili sadece endurance ile ayrışıyordu, kaba ayrıştırma).
  *
  * Boyutlar (0-1 normalize):
  *   explosivePower   → CMJ (dikey patlayıcı güç)
@@ -32,7 +42,6 @@
  *  - Kovacs 2007 Sports Med 37:189 (tenis)
  *  - Phomsoupha & Laffaye 2015 Sports Med 45:473 (badminton)
  *  - Kondrič 2013 J Sports Sci Med 12:362 (masa tenisi)
- *  - Lidor 2005 Eur J Sport Sci (hentbol)
  *  - Price 2024 PMC10797935 (yüzme)
  *  - Norton & Olds 2001 Anthropometrica (antropometrik avantajlar)
  *  - Carter & Heath 1990 Somatotyping
@@ -214,8 +223,8 @@ export const SPORT_PROFILES: SportProfile[] = [
       'Çevikliğin ve dayanıklılığın futbolun değişken yön becerileri ve süreklilik gereksinimi için ideal.',
   },
   {
-    sport: 'Atletizm — Sprint',
-    description: 'Patlayıcı sürat, ivme, reaksiyon',
+    sport: 'Atletizm',
+    description: 'Sprint odaklı: patlayıcı sürat, ivme, reaksiyon',
     vector: {
       explosivePower: 0.85,
       horizontalPower: 0.95,
@@ -223,7 +232,7 @@ export const SPORT_PROFILES: SportProfile[] = [
       reaction: 0.85,
       agility: 0.55,
       coordination: 0.55,
-      endurance: 0.4,
+      endurance: 0.5,
     },
     weights: {
       explosivePower: 0.8,
@@ -232,36 +241,11 @@ export const SPORT_PROFILES: SportProfile[] = [
       reaction: 0.85,
       agility: 0.55,
       coordination: 0.5,
-      endurance: 0.35,
+      endurance: 0.45,
     },
     anthroFavor: { heightAdvantage: 0.3, leanAdvantage: 0.7 },
     reasonTemplate:
-      'Yatay patlayıcı gücün ve reaksiyonun 100m/200m sprint için kritik düzeyde güçlü.',
-  },
-  {
-    sport: 'Atletizm — Mesafe',
-    description: 'Aerobik dayanıklılık, ekonomi, lean profil',
-    vector: {
-      explosivePower: 0.45,
-      horizontalPower: 0.55,
-      balance: 0.4,
-      reaction: 0.35,
-      agility: 0.3,
-      coordination: 0.45,
-      endurance: 1.0,
-    },
-    weights: {
-      explosivePower: 0.4,
-      horizontalPower: 0.5,
-      balance: 0.35,
-      reaction: 0.3,
-      agility: 0.3,
-      coordination: 0.4,
-      endurance: 1.0,
-    },
-    anthroFavor: { heightAdvantage: 0.2, leanAdvantage: 0.8 },
-    reasonTemplate:
-      'Dayanıklılık kapasiten orta-uzun mesafe koşu için ideal; lean yapı uzun vadede avantaj.',
+      'Yatay patlayıcı gücün ve reaksiyonun sprint ve atlama branşları için kritik düzeyde güçlü.',
   },
   {
     sport: 'Cimnastik',
@@ -412,30 +396,5 @@ export const SPORT_PROFILES: SportProfile[] = [
     anthroFavor: { heightAdvantage: 0.2, leanAdvantage: 0.5 },
     reasonTemplate:
       'Reaksiyonun, çevikliğin ve koordinasyonun birleşimi badmintonun smaç-defans rotasyonu için ideal.',
-  },
-  {
-    sport: 'Hentbol',
-    description: 'Patlayıcı atış + dayanıklılık + çeviklik',
-    vector: {
-      explosivePower: 0.8,
-      horizontalPower: 0.75,
-      balance: 0.55,
-      reaction: 0.7,
-      agility: 0.8,
-      coordination: 0.7,
-      endurance: 0.75,
-    },
-    weights: {
-      explosivePower: 0.75,
-      horizontalPower: 0.7,
-      balance: 0.55,
-      reaction: 0.65,
-      agility: 0.75,
-      coordination: 0.65,
-      endurance: 0.7,
-    },
-    anthroFavor: { heightAdvantage: 0.6, leanAdvantage: 0.2 },
-    reasonTemplate:
-      'Patlayıcı atışın, çevikliğin ve dayanıklılığın hentbolun fiziksel mücadele oyunu için ideal.',
   },
 ];

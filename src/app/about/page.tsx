@@ -81,13 +81,13 @@ export default function AboutPage() {
             Metodoloji
           </p>
           <h2 className="mt-3 max-w-3xl text-4xl leading-tight font-bold text-balance md:text-5xl">
-            7 boyut. 14 spor. Bir profil.
+            7 boyut. 12 spor. Bir profil.
           </h2>
           <p className="mt-5 max-w-3xl text-lg leading-relaxed text-[var(--color-ink-2)]">
             Talent identification literatüründe (Bompa, Régnier, Vaeyens) her
             spor için tipik 5-7 bio-motor yetinin önemli olduğu söylenir.
             Yetenek 2.0 bu 7 yetiyi kameralı testlerle ölçüyor — ardından
-            14 sporun ideal profili ile karşılaştırarak kişiselleştirilmiş
+            12 sporun ideal profili ile karşılaştırarak kişiselleştirilmiş
             öneri çıkarıyor.
           </p>
 

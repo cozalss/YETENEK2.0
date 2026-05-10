@@ -1,17 +1,21 @@
 import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Montserrat, Courier_Prime } from 'next/font/google';
 import './globals.css';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { ServiceWorkerRegistration } from '@/components/pwa/ServiceWorkerRegistration';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
+const montserrat = Montserrat({
+  variable: '--font-montserrat',
+  subsets: ['latin', 'latin-ext'],
+  weight: ['400', '500', '600', '700', '800', '900'],
+  display: 'swap',
 });
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const courierPrime = Courier_Prime({
+  variable: '--font-courier',
   subsets: ['latin'],
+  weight: ['400', '700'],
+  display: 'swap',
 });
 
 const SITE_URL =
@@ -24,7 +28,7 @@ export const metadata: Metadata = {
     default: 'Yetenek 2.0 — Çocuğunun Spor Yeteneğini Keşfet',
   },
   description:
-    '5 dakikada AI tabanlı çocuk spor yeteneği keşfi. 7 boyutlu bio-motor profil, 14 spor önerisi, sakatlanma uyarısı, kişiselleştirilmiş Türkçe rapor — telefonun kamerasıyla.',
+    '5 dakikada AI tabanlı çocuk spor yeteneği keşfi. 7 boyutlu bio-motor profil, 12 spor önerisi, sakatlanma uyarısı, kişiselleştirilmiş Türkçe rapor — telefonun kamerasıyla.',
   keywords: [
     'çocuk spor yeteneği',
     'spor önerisi',
@@ -91,7 +95,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#0a0a0a',
+  themeColor: '#fff5e1',
 };
 
 export default function RootLayout({
@@ -102,9 +106,10 @@ export default function RootLayout({
   return (
     <html
       lang="tr"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${montserrat.variable} ${courierPrime.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
+        <div className="paper-texture" aria-hidden="true" />
         <ServiceWorkerRegistration />
         <QueryProvider>{children}</QueryProvider>
         <script

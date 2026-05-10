@@ -94,10 +94,10 @@ export const TRAINING_PROGRAMS: Record<DimensionKey, TrainingProgram> = {
     title: 'Yatay Patlayıcı Güç',
     tagline: 'Sprint · Broad jump',
     description:
-      'Yere yatay kuvvet uygulayarak hızlı ileri-itme kapasitesini geliştirir. Sprint, futbol, hentbol, judo için kritik.',
+      'Yere yatay kuvvet uygulayarak hızlı ileri-itme kapasitesini geliştirir. Sprint, futbol, judo için kritik.',
     frequency: 'Haftada 2-3 gün',
     duration: '4-6 hafta',
-    benefitsFor: ['Atletizm-Sprint', 'Futbol', 'Hentbol', 'Judo'],
+    benefitsFor: ['Atletizm', 'Futbol', 'Judo'],
     exercises: [
       {
         emoji: '🏃‍♂️',
@@ -339,10 +339,10 @@ export const TRAINING_PROGRAMS: Record<DimensionKey, TrainingProgram> = {
     title: 'Aerobik & Anaerobik Dayanıklılık',
     tagline: 'Kardiyo kapasitesi',
     description:
-      'Uzun süre yüksek tempo sürdürme + tekrarlı sprint kapasitesi. Yüzme, mesafe koşusu, futbol, basketbol için kritik.',
+      'Uzun süre yüksek tempo sürdürme + tekrarlı sprint kapasitesi. Yüzme, futbol, basketbol için kritik.',
     frequency: 'Haftada 3-4 gün',
     duration: '6-8 hafta',
-    benefitsFor: ['Yüzme', 'Atletizm-Mesafe', 'Futbol', 'Basketbol', 'Hentbol'],
+    benefitsFor: ['Yüzme', 'Futbol', 'Basketbol'],
     exercises: [
       {
         emoji: '🤸',

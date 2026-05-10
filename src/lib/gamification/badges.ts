@@ -134,17 +134,9 @@ export const BADGES: Record<string, Badge> = {
     id: 'sprinter',
     category: 'profile',
     emoji: '🏃',
-    name: 'Sprinter',
-    description: 'Yatay patlayıcılığın atletizm-sprint için ideal.',
-    earnedFor: 'Atletizm-Sprint önerisi 80%+ eşleşme',
-  },
-  longRunner: {
-    id: 'longRunner',
-    category: 'profile',
-    emoji: '🏅',
-    name: 'Mesafe Atleti',
-    description: 'Dayanıklılığın orta-uzun mesafe için ideal.',
-    earnedFor: 'Atletizm-Mesafe önerisi 80%+ eşleşme',
+    name: 'Atletizm Yeteneği',
+    description: 'Yatay patlayıcı gücün ve reaksiyonun atletizm sprint için ideal.',
+    earnedFor: 'Atletizm önerisi 80%+ eşleşme',
   },
   gymnast: {
     id: 'gymnast',
@@ -193,14 +185,6 @@ export const BADGES: Record<string, Badge> = {
     name: 'Badmintoncu',
     description: 'Reaksiyon, çeviklik, koordinasyon — badminton için ideal.',
     earnedFor: 'Badminton önerisi 80%+ eşleşme',
-  },
-  handballer: {
-    id: 'handballer',
-    category: 'profile',
-    emoji: '🤾',
-    name: 'Hentbol Yeteneği',
-    description: 'Patlayıcı atış ve çevikliğin hentbol için uygun.',
-    earnedFor: 'Hentbol önerisi 80%+ eşleşme',
   },
 
   // Genel rozetleri
@@ -361,15 +345,13 @@ export function computeBadgesForSession(
     Futbol: 'footballPotential',
     Basketbol: 'basketballPotential',
     Yüzme: 'swimmer',
-    'Atletizm — Sprint': 'sprinter',
-    'Atletizm — Mesafe': 'longRunner',
+    Atletizm: 'sprinter',
     Cimnastik: 'gymnast',
     Judo: 'judoka',
     Taekwondo: 'taekwon',
     Boks: 'boxer',
     'Masa Tenisi': 'paddler',
     Badminton: 'shuttler',
-    Hentbol: 'handballer',
   };
 
   for (const rec of session.recommendations ?? []) {
