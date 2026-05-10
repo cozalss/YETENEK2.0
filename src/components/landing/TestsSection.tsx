@@ -11,6 +11,7 @@ const TESTS = [
     description:
       'Patlayıcı bacak gücünü ve dikey sıçrama yüksekliğini ters hareket dinamiğiyle ölçer.',
     video: '/videos/test-cmj.mp4',
+    poster: '/images/test-cmj-poster.jpg',
     color: '#F4B6C2',
     metric: '24.3 cm',
     metricLabel: 'Ortalama sıçrama',
@@ -22,6 +23,7 @@ const TESTS = [
     description:
       'Tek bacak duruşuyla propriosepsiyon, çekirdek kararlılık ve sol-sağ asimetri.',
     video: '/videos/test-balance.mp4',
+    poster: '/images/test-balance-poster.jpg',
     color: '#A8D5BA',
     metric: '32.8 sn',
     metricLabel: 'Ortalama denge',
@@ -33,6 +35,7 @@ const TESTS = [
     description:
       'Görsel-motor tepki hızını rastgele uyaranlarla ölçer. Beyin–kas hattı.',
     video: '/videos/test-reaction.mp4',
+    poster: '/images/test-reaction-poster.jpg',
     color: '#F2C94C',
     metric: '0.24 sn',
     metricLabel: 'Ortalama tepki',
@@ -101,6 +104,7 @@ export function TestsSection() {
                 <div className="relative aspect-square overflow-hidden">
                   <LazyVideo
                     src={test.video}
+                    poster={test.poster}
                     className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
                   <div

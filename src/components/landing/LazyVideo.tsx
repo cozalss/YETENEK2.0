@@ -36,7 +36,7 @@ interface LazyVideoProps
 export function LazyVideo({
   src,
   eager = false,
-  rootMargin = '200px 0px',
+  rootMargin = '500px 0px',
   className,
   style,
   poster,

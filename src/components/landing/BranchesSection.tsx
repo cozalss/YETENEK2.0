@@ -23,6 +23,7 @@ type BranchCard =
       name: string;
       en: string;
       src: string;
+      poster: string;
       color: string;
     }
   | {
@@ -34,18 +35,17 @@ type BranchCard =
     };
 
 const BRANCHES: BranchCard[] = [
-  { kind: 'video', name: 'VOLEYBOL', en: 'Volleyball', src: '/videos/sport-volleyball.mp4', color: '#F2C94C' },
-  { kind: 'video', name: 'BASKETBOL', en: 'Basketball', src: '/videos/sport-basketball.mp4', color: '#8BB8E8' },
-  { kind: 'video', name: 'FUTBOL', en: 'Football', src: '/videos/sport-football.mp4', color: '#A8D5BA' },
-  { kind: 'video', name: 'TENİS', en: 'Tennis', src: '/videos/sport-tennis.mp4', color: '#C4E0D0' },
-  { kind: 'video', name: 'MASA TENİSİ', en: 'Table Tennis', src: '/videos/sport-tabletennis.mp4', color: '#F4B6C2' },
-  { kind: 'video', name: 'YÜZME', en: 'Swimming', src: '/videos/sport-swimmer.mp4', color: '#A8D5BA' },
-  { kind: 'video', name: 'ATLETİZM', en: 'Athletics', src: '/videos/sport-athletics.mp4', color: '#F2C94C' },
-  { kind: 'video', name: 'JİMNASTİK', en: 'Gymnastics', src: '/videos/sport-gymnastics.mp4', color: '#F4B6C2' },
-  { kind: 'video', name: 'TEKVANDO', en: 'Taekwondo', src: '/videos/sport-taekwondo.mp4', color: '#E8A0B0' },
-  // Veo ile üretildi (8 sn, 1280×720, faststart, audio-stripped).
-  { kind: 'video', name: 'JUDO', en: 'Judo', src: '/videos/sport-judo.mp4', color: '#A8D5BA' },
-  { kind: 'video', name: 'BADMİNTON', en: 'Badminton', src: '/videos/sport-badminton.mp4', color: '#F4B6C2' },
+  { kind: 'video', name: 'VOLEYBOL', en: 'Volleyball', src: '/videos/sport-volleyball.mp4', poster: '/images/sport-volleyball-poster.jpg', color: '#F2C94C' },
+  { kind: 'video', name: 'BASKETBOL', en: 'Basketball', src: '/videos/sport-basketball.mp4', poster: '/images/sport-basketball-poster.jpg', color: '#8BB8E8' },
+  { kind: 'video', name: 'FUTBOL', en: 'Football', src: '/videos/sport-football.mp4', poster: '/images/sport-football-poster.jpg', color: '#A8D5BA' },
+  { kind: 'video', name: 'TENİS', en: 'Tennis', src: '/videos/sport-tennis.mp4', poster: '/images/sport-tennis-poster.jpg', color: '#C4E0D0' },
+  { kind: 'video', name: 'MASA TENİSİ', en: 'Table Tennis', src: '/videos/sport-tabletennis.mp4', poster: '/images/sport-tabletennis-poster.jpg', color: '#F4B6C2' },
+  { kind: 'video', name: 'YÜZME', en: 'Swimming', src: '/videos/sport-swimmer.mp4', poster: '/images/sport-swimmer-poster.jpg', color: '#A8D5BA' },
+  { kind: 'video', name: 'ATLETİZM', en: 'Athletics', src: '/videos/sport-athletics.mp4', poster: '/images/sport-athletics-poster.jpg', color: '#F2C94C' },
+  { kind: 'video', name: 'JİMNASTİK', en: 'Gymnastics', src: '/videos/sport-gymnastics.mp4', poster: '/images/sport-gymnastics-poster.jpg', color: '#F4B6C2' },
+  { kind: 'video', name: 'TEKVANDO', en: 'Taekwondo', src: '/videos/sport-taekwondo.mp4', poster: '/images/sport-taekwondo-poster.jpg', color: '#E8A0B0' },
+  { kind: 'video', name: 'JUDO', en: 'Judo', src: '/videos/sport-judo.mp4', poster: '/images/sport-judo-poster.jpg', color: '#A8D5BA' },
+  { kind: 'video', name: 'BADMİNTON', en: 'Badminton', src: '/videos/sport-badminton.mp4', poster: '/images/sport-badminton-poster.jpg', color: '#F4B6C2' },
   // Boks videosu henüz üretilmedi — ikon placeholder, kart rengi Veo
   // prompt'undaki mustard arka plana eşit (ileride tek hamle değişir).
   { kind: 'icon', name: 'BOKS', en: 'Boxing', icon: Hand, color: '#F2C94C' },
@@ -115,6 +115,7 @@ export function BranchesSection() {
                   {branch.kind === 'video' ? (
                     <LazyVideo
                       src={branch.src}
+                      poster={branch.poster}
                       className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
                   ) : (

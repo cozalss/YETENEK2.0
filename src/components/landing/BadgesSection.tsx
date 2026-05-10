@@ -81,6 +81,7 @@ export function BadgesSection() {
             <div className="relative aspect-video">
               <LazyVideo
                 src="/videos/badges-board.mp4"
+                poster="/images/badges-board-poster.jpg"
                 className="h-full w-full object-cover"
                 style={{ opacity: 0.85 }}
               />

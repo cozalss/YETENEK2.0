@@ -14,6 +14,7 @@ export function CTASection() {
     >
       <LazyVideo
         src="/videos/form-floor.mp4"
+        poster="/images/form-floor-poster.jpg"
         className="absolute inset-0 h-full w-full object-cover"
       />
       <div

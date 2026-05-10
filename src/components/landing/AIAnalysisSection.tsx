@@ -242,6 +242,7 @@ export function AIAnalysisSection() {
               <div className="aspect-square">
                 <LazyVideo
                   src="/videos/ai-skeleton.mp4"
+                  poster="/images/ai-skeleton-poster.jpg"
                   className="h-full w-full object-cover"
                 />
               </div>
