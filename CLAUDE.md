@@ -2,7 +2,9 @@
 
 ## Proje Özeti
 
-**Yetenek 2.0** — AI tabanlı çocuk spor yetenek keşif platformu. 8-15 yaş arası çocuk telefon kamerası önünde 5 dakikalık 7 fiziksel test yapıyor; AI çocuğa 12 spor profili içinden en uygun 3-5 sporu öneriyor + sakatlanma riski uyarısı veriyor + gamification katmanıyla rozet/leaderboard/streak sunuyor.
+**Yetenek 2.0** — AI tabanlı çocuk spor yetenek keşif platformu. 8-15 yaş arası çocuk telefon kamerası önünde 5 dakikalık 7 testlik bataryayı yapıyor; AI çocuğa 12 spor profili içinden en uygun 3-5 sporu öneriyor + sakatlanma riski uyarısı veriyor + gamification katmanıyla rozet/leaderboard/streak sunuyor.
+
+> Yeni başlayan bir geliştirici için hızlı yön: kurulum + ortam değişkenleri → [`README.md`](./README.md). Mimari + bağımlılık kuralları → [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md). Deploy + APK → [`docs/DEPLOY.md`](./docs/DEPLOY.md). Pitch akışı → [`docs/PITCH.md`](./docs/PITCH.md).
 
 ## Bağlam
 
@@ -19,15 +21,18 @@
 
 ## Tech Stack
 
-- **Framework:** Next.js 16 (App Router, Turbopack)
-- **Language:** TypeScript
+- **Framework:** Next.js 16 (App Router, Turbopack, `proxy.ts` convention)
+- **Language:** TypeScript (strict)
 - **Styling:** Tailwind CSS v4
 - **Pose Estimation:** `@mediapipe/tasks-vision` (browser, on-device, 33 keypoint)
-- **Database:** Supabase (auth + postgres + storage)
-- **LLM:** Claude API (Anthropic SDK, prompt caching aktif)
-- **Charts:** Recharts (radar grafik)
-- **PDF:** react-pdf (rapor üretimi)
+- **Database / Auth:** Supabase (postgres + cookie-based SSR auth) — env eksikse demo modu otomatik
+- **LLM:** Google Gemini (`gemini-2.5-flash`, `@google/generative-ai`) — env eksikse rule-based fallback rapor
+- **State (server):** TanStack Query (`useReportQuery`)
+- **Charts:** Recharts (radar grafik, ResizeObserver ile sabit-boyut render)
+- **PDF:** `@react-pdf/renderer` (rapor üretimi)
 - **TTS:** Web Speech API (browser native)
+- **PWA:** `public/sw.js` (offline shell + MediaPipe model cache)
+- **Test:** Vitest (unit) + Playwright (E2E, Chromium + Mobile Chrome)
 - **Deployment:** Vercel
 - **Package Manager:** pnpm
 
@@ -39,24 +44,21 @@
 - **Component composition:** shadcn/ui pattern (kütüphaneye bağımlı değil)
 - **Type-safe:** Strict TypeScript, no `any`
 
-## Test Bataryası (3 Test)
+## Test Bataryası (7 Test)
 
-### 1. CMJ Sıçrama
+`src/lib/tests/*` altında her test pure bir analiz fonksiyonu — pose frame stream'i girer, skor çıkar.
 
-- Çocuk çömelir, patlayıcı zıplar
-- AI: kalça keypoint Y-delta'sı → sıçrama yüksekliği (cm)
-- Persentil hesabı yaş/cinsiyet bazlı
+| # | Test | Modül | Ölçüm |
+|---|------|-------|-------|
+| 1 | CMJ Sıçrama (dikey güç) | `jump.ts` | Kalça Y-delta'sı → cm |
+| 2 | Broad Jump (yatay güç) | `broadJump.ts` | Ayak başlangıç-iniş mesafesi → cm |
+| 3 | Tek Bacak Denge (15sn × 2) | `balance.ts` | Keypoint varyansı + sol-sağ asimetri |
+| 4 | Reaksiyon Süresi | `reaction.ts` | JS event timestamp → ms |
+| 5 | Lateral Hops (çeviklik) | `lateralHops.ts` | Yana zıplama frekansı |
+| 6 | Coordination (görsel takip) | `coordination.ts` | El-göz eşgüdüm doğruluğu |
+| 7 | Endurance Jacks (dayanıklılık) | `enduranceJacks.ts` | Sabit ritm sürdürme |
 
-### 2. Tek Bacak Denge (15sn × 2)
-
-- Sağ ve sol bacakta ayrı ayrı
-- AI: keypoint varyansı → denge skoru
-- **Asimetri tespiti:** sol-sağ farkı >15% → sakatlanma uyarısı
-
-### 3. Reaksiyon Süresi
-
-- Ekran rastgele renk değiştirir, çocuk dokunur
-- JS event timestamp → ms
+**Asimetri uyarısı:** Tek bacak denge sol-sağ farkı >15% → sakatlanma riski rozeti (`InjuryWarning`).
 
 ## Sport Matching Algoritması
 
@@ -123,24 +125,29 @@ src/
 │   └── useReport.ts         # (legacy, kademeli kaldırılır)
 │
 ├── app/                     # Next.js routes — composition only
-│   ├── api/{report,chat,og}/route.ts
-│   ├── test/full/page.tsx
+│   ├── api/{chat,health,og,report,children/[id]}/route.ts
+│   ├── auth/{sign-in,sign-up,callback}/page.tsx
+│   ├── test/{full,jump,balance,reaction}/page.tsx
 │   ├── result/demo/page.tsx
-│   ├── demo/page.tsx
+│   ├── demo/page.tsx                  # Kamera olmadan persona demo
 │   ├── training/[dimension]/page.tsx
 │   ├── sports/[slug]/page.tsx
-│   ├── about, privacy, history, profile/page.tsx
-│   └── sitemap.ts, robots.ts, manifest.webmanifest
+│   ├── children/[id]/page.tsx
+│   ├── {about,privacy,terms,history,profile}/page.tsx
+│   └── sitemap.ts, robots.ts
 │
 ├── components/              # UI primitives + composite
-│   ├── camera/CameraStream.tsx + PoseOverlay.tsx
-│   ├── tests/{Jump,Broad,Lateral,Endurance,Coordination,...}.tsx
+│   ├── camera/CameraStream.tsx + PoseOverlay.tsx   # Kamera + MediaPipe loop; izin reddi → /demo fallback
+│   ├── tests/{Jump,Broad,Lateral,Endurance,Coordination,Balance,Reaction}.tsx
 │   ├── tests/shared/{TestStage,FramingBadge,InstructionsPanel,StartCTA}.tsx
-│   ├── result/{ResultScreen,BioMotorRadar,ShareButton,CoachChat,...}.tsx
+│   ├── result/{ResultScreen,BioMotorRadar,ShareButton,CoachChat,PdfExportButton,...}.tsx
 │   ├── gamification/{BadgeReveal,BadgeWallet,StreakIndicator}.tsx
 │   ├── flow/{ProfileForm,PhaseHeader}.tsx
 │   ├── layout/{SiteHeader,SiteFooter}.tsx
+│   ├── pwa/ServiceWorkerRegistration.tsx
 │   └── motion/Reveal.tsx
+│
+├── proxy.ts                 # Next 16 proxy (eski middleware.ts) — Supabase session refresh + auth guard
 │
 └── lib/                     # Eski — kademeli core/infrastructure'a taşınır
     ├── pose/{detector,extractKeypoints,framing,oneEuroFilter,quality}.ts
@@ -221,13 +228,19 @@ src/
 
 ## Mevcut Faz
 
-**Gün 0 — 9 Mayıs Cuma (Setup)**
+**Hazırlık dönemi — hackathon (16-17 Mayıs) öncesi son hafta.**
 
-- [x] Next.js scaffold
-- [x] MediaPipe paket eklendi
-- [ ] CLAUDE.md (bu dosya)
-- [ ] Base directory yapısı
-- [ ] MediaPipe hello-world test
+Production polish tamam (2026-05-12 commit `1186833`):
+
+- [x] 7 testlik batarya + sport matching + AI rapor (Gemini) + rule-based fallback
+- [x] Supabase auth + çocuk profilleri + sessions tablosu (dual-write: localStorage + DB)
+- [x] Kamera akışı: izin reddi → /demo fallback link + ARIA alert
+- [x] PWA shell + Service Worker (offline + MediaPipe model cache)
+- [x] Next 16 migration (middleware → proxy)
+- [x] 0 lint / 0 build warning / 67 unit test / 18 E2E test
+- [ ] Lighthouse mobile performance + accessibility ölçümü (manuel)
+- [ ] 14 Mayıs gerçek çocukla backup video kaydı
+- [ ] Pitch prova + demo koreografi
 
 ## Ekip Rolleri
 

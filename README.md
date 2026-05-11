@@ -115,12 +115,19 @@ Detay: [`yetenek/CLAUDE.md`](./CLAUDE.md) + [`docs/ARCHITECTURE.md`](./docs/ARCH
 ## Komutlar
 
 ```bash
-pnpm dev          # Geliştirme sunucusu
-pnpm build        # Production build
-pnpm lint         # ESLint
-pnpm test         # Vitest (unit testler)
-pnpm test:watch   # Vitest izleme modu
+pnpm dev                    # Geliştirme sunucusu (Turbopack)
+pnpm build                  # Production build
+pnpm lint                   # ESLint
+pnpm test                   # Vitest (unit testler)
+pnpm test:watch             # Vitest izleme modu
+pnpm test:coverage          # Coverage raporu
+pnpm exec playwright test   # E2E (Chromium + Mobile Chrome)
 ```
+
+### Kamera Olmadan Hızlı İnceleme
+
+`/demo` rotası kamera izni vermeden 3 farklı persona ile sonuç ekranını
+gösterir — jüri/yatırımcı demosu veya kamera reddedildiğinde fallback.
 
 ---
 
