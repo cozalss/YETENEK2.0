@@ -16,6 +16,9 @@ import {
 } from 'react';
 import { Send, Sparkles } from 'lucide-react';
 import type { SessionSummary } from '@/lib/session/store';
+import { logger } from '@/shared/logger/logger';
+
+const log = logger.child('coach-chat');
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -53,12 +56,20 @@ export function CoachChat({ session }: Props) {
       const trimmed = text.trim();
       if (!trimmed || loading) return;
       setError(null);
-      const next: ChatMessage[] = [
-        ...messages,
-        { role: 'user', content: trimmed },
-        { role: 'assistant', content: '' },
-      ];
-      setMessages(next);
+      // Functional setter ile son state'i alıp history snapshot'ını
+      // closure dışında tut. `messages` dep'i kaldırıldı — aksi halde
+      // streaming chunks her tick'te send'i yeniden create eder, input
+      // yazarken lag yaratırdı.
+      let historySnapshot: ChatMessage[] = [];
+      setMessages((prev) => {
+        const next: ChatMessage[] = [
+          ...prev,
+          { role: 'user', content: trimmed },
+          { role: 'assistant', content: '' },
+        ];
+        historySnapshot = next.slice(0, -1).slice(-9);
+        return next;
+      });
       setInput('');
       setLoading(true);
 
@@ -68,7 +79,7 @@ export function CoachChat({ session }: Props) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             session,
-            history: next.slice(0, -1).slice(-9), // last 9 önce, asistan boş yedek hariç
+            history: historySnapshot,
             message: trimmed,
           }),
         });
@@ -104,14 +115,28 @@ export function CoachChat({ session }: Props) {
             return copy;
           });
         }
-      } catch {
-        setError('Bağlantı hatası, tekrar dene.');
+      } catch (err) {
+        // AbortError — kullanıcı sayfayı bıraktı / yeni istek gönderdi.
+        // Hata değil; UI sessizce kapanır, placeholder temizlenir.
+        const isAbort =
+          err instanceof Error &&
+          (err.name === 'AbortError' || err.name === 'CanceledError');
+        if (!isAbort) {
+          log.warn('chat stream error', {
+            cause: err instanceof Error ? err.message : String(err),
+            name: err instanceof Error ? err.name : 'unknown',
+          });
+          setError('Bağlantı hatası, tekrar dene.');
+        }
         setMessages((prev) => prev.slice(0, -1));
       } finally {
         setLoading(false);
       }
     },
-    [messages, loading, session]
+    // messages dep kasten dışarıda — streaming chunks send fonksiyonunu
+    // yeniden create etmesin, kullanıcı input yazarken lag olmasın.
+    // setMessages functional updater ile her zaman güncel state'i alır.
+    [loading, session]
   );
 
   const onSubmit = (e: FormEvent) => {

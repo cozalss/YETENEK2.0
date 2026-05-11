@@ -1,14 +1,15 @@
-'use client';
-
+// Server Component — radar SVG statik, Reveal/LazyVideo client leaf.
 import { Reveal } from '@/components/motion/Reveal';
 import { LazyVideo } from './LazyVideo';
 
 const RADAR_AXES = [
-  { label: 'GÜÇ', value: 86, code: 'PWR' },
-  { label: 'HIZ', value: 74, code: 'SPD' },
+  { label: 'DİKEY', value: 86, code: 'CMJ' },
+  { label: 'YATAY', value: 74, code: 'BRD' },
   { label: 'DENGE', value: 91, code: 'BAL' },
-  { label: 'ESNEKLİK', value: 68, code: 'MOB' },
   { label: 'REAKSİYON', value: 82, code: 'RXN' },
+  { label: 'ÇEVİKLİK', value: 76, code: 'AGL' },
+  { label: 'KOORD.', value: 79, code: 'CRD' },
+  { label: 'DAYAN.', value: 80, code: 'END' },
 ];
 
 const MATCH_SCORES = [
@@ -22,7 +23,7 @@ const RADAR_RADIUS = 66;
 const RADAR_RINGS = [0.25, 0.5, 0.75, 1];
 
 function radarPoint(index: number, scale: number) {
-  const angle = (index * 72 - 90) * (Math.PI / 180);
+  const angle = (index * (360 / RADAR_AXES.length) - 90) * (Math.PI / 180);
   return {
     x: RADAR_CENTER + RADAR_RADIUS * scale * Math.cos(angle),
     y: RADAR_CENTER + RADAR_RADIUS * scale * Math.sin(angle),
@@ -43,10 +44,13 @@ const radarShape = RADAR_AXES.map((axis, index) => {
 
 function TalentRadar() {
   return (
-    <div className="algorithm-radar-panel" aria-label="Beş boyutlu yetenek radarı">
+    <div
+      className="algorithm-radar-panel"
+      aria-label="Yedi boyutlu yetenek radarı"
+    >
       <div className="algorithm-radar-header">
         <span>Canlı Profil</span>
-        <strong>5B</strong>
+        <strong>7B</strong>
       </div>
       <svg
         className="algorithm-radar-svg"
@@ -54,7 +58,9 @@ function TalentRadar() {
         role="img"
         aria-labelledby="talent-radar-title"
       >
-        <title id="talent-radar-title">Güç, hız, denge, esneklik ve reaksiyon değerleri</title>
+        <title id="talent-radar-title">
+          Yedi bio-motor test boyutundan oluşan yetenek radarı
+        </title>
         <defs>
           <radialGradient id="radarGlow" cx="50%" cy="42%" r="58%">
             <stop offset="0%" stopColor="#fff0a6" stopOpacity="0.56" />
@@ -65,7 +71,13 @@ function TalentRadar() {
             <stop offset="0%" stopColor="#fff0a6" stopOpacity="0.9" />
             <stop offset="100%" stopColor="#f2c94c" stopOpacity="0.54" />
           </linearGradient>
-          <filter id="radarSoftGlow" x="-30%" y="-30%" width="160%" height="160%">
+          <filter
+            id="radarSoftGlow"
+            x="-30%"
+            y="-30%"
+            width="160%"
+            height="160%"
+          >
             <feGaussianBlur stdDeviation="3" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
@@ -73,10 +85,24 @@ function TalentRadar() {
             </feMerge>
           </filter>
         </defs>
-        <circle cx={RADAR_CENTER} cy={RADAR_CENTER} r="76" className="algorithm-radar-orbit" />
-        <circle cx={RADAR_CENTER} cy={RADAR_CENTER} r="58" className="algorithm-radar-halo" />
+        <circle
+          cx={RADAR_CENTER}
+          cy={RADAR_CENTER}
+          r="76"
+          className="algorithm-radar-orbit"
+        />
+        <circle
+          cx={RADAR_CENTER}
+          cy={RADAR_CENTER}
+          r="58"
+          className="algorithm-radar-halo"
+        />
         {RADAR_RINGS.map((ring) => (
-          <polygon key={ring} points={radarPolygon(ring)} className="algorithm-radar-ring" />
+          <polygon
+            key={ring}
+            points={radarPolygon(ring)}
+            className="algorithm-radar-ring"
+          />
         ))}
         {RADAR_AXES.map((axis, index) => {
           const edge = radarPoint(index, 1);
@@ -133,9 +159,24 @@ function TalentRadar() {
             y2={RADAR_CENTER - RADAR_RADIUS}
           />
         </g>
-        <circle cx={RADAR_CENTER} cy={RADAR_CENTER} r="12" className="algorithm-radar-core-ring" />
-        <circle cx={RADAR_CENTER} cy={RADAR_CENTER} r="5" className="algorithm-radar-center" />
-        <text x={RADAR_CENTER} y={RADAR_CENTER + 24} textAnchor="middle" className="algorithm-radar-center-label">
+        <circle
+          cx={RADAR_CENTER}
+          cy={RADAR_CENTER}
+          r="12"
+          className="algorithm-radar-core-ring"
+        />
+        <circle
+          cx={RADAR_CENTER}
+          cy={RADAR_CENTER}
+          r="5"
+          className="algorithm-radar-center"
+        />
+        <text
+          x={RADAR_CENTER}
+          y={RADAR_CENTER + 24}
+          textAnchor="middle"
+          className="algorithm-radar-center-label"
+        >
           AI MATCH
         </text>
       </svg>
@@ -188,7 +229,7 @@ export function AIAnalysisSection() {
       style={{ background: 'var(--deep-navy)' }}
     >
       <div
-        className="absolute left-0 top-0 h-[2px] w-full"
+        className="absolute top-0 left-0 h-[2px] w-full"
         style={{ background: 'var(--track-mustard)' }}
       />
 
@@ -196,7 +237,7 @@ export function AIAnalysisSection() {
         <Reveal>
           <div className="mb-16 text-center">
             <p
-              className="mb-4 text-xs uppercase tracking-[0.4em]"
+              className="mb-4 text-xs tracking-[0.4em] uppercase"
               style={{
                 color: 'var(--whistle-cream)',
                 opacity: 0.5,
@@ -227,8 +268,7 @@ export function AIAnalysisSection() {
               }}
             >
               AI motorumuz hareket örüntülerini bilgisayarla görüyle çözümler;
-              biyomekanik veriyi optimum spor eşleşmesine klinik hassasiyetle
-              haritalar.
+              biyomekanik özetleri 12 sporun ihtiyaç profiliyle karşılaştırır.
             </p>
           </div>
         </Reveal>
@@ -247,14 +287,14 @@ export function AIAnalysisSection() {
                 />
               </div>
               <div
-                className="absolute bottom-0 left-0 right-0 p-6"
+                className="absolute right-0 bottom-0 left-0 p-6"
                 style={{
                   background:
                     'linear-gradient(to top, rgba(26,37,64,0.95) 0%, transparent 100%)',
                 }}
               >
                 <p
-                  className="mb-1 text-[10px] uppercase tracking-[0.3em]"
+                  className="mb-1 text-[10px] tracking-[0.3em] uppercase"
                   style={{
                     color: 'var(--track-mustard)',
                     fontFamily: 'var(--font-body)',
@@ -279,8 +319,8 @@ export function AIAnalysisSection() {
                     fontFamily: 'var(--font-body)',
                   }}
                 >
-                  33 keypoint, 60 fps, cihazda işlenir. Sol-sağ asimetri ve
-                  sakatlanma riskini erken yakalar.
+                  33 keypoint cihazda işlenir. FPS cihaza göre değişir; video
+                  sunucuya gitmeden sol-sağ asimetri sinyali çıkarılır.
                 </p>
               </div>
             </div>
@@ -292,7 +332,7 @@ export function AIAnalysisSection() {
               <MatchScorePanel />
               <div className="mt-6 text-center">
                 <p
-                  className="mb-1 text-[10px] uppercase tracking-[0.3em]"
+                  className="mb-1 text-[10px] tracking-[0.3em] uppercase"
                   style={{
                     color: 'var(--track-mustard)',
                     fontFamily: 'var(--font-body)',
@@ -317,8 +357,8 @@ export function AIAnalysisSection() {
                     fontFamily: 'var(--font-body)',
                   }}
                 >
-                  Beş boyutlu yetenek profili, çocuğun fiziksel imzasını optimum
-                  spor branşıyla buluşturur.
+                  Yedi boyutlu yetenek profili, çocuğun fiziksel imzasını uygun
+                  spor branşlarıyla buluşturur.
                 </p>
               </div>
             </div>

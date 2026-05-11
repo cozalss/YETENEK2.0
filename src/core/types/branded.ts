@@ -17,6 +17,10 @@ export type SessionId = Brand<string, 'SessionId'>;
 export type HistoryEntryId = Brand<string, 'HistoryEntryId'>;
 export type BadgeId = Brand<string, 'BadgeId'>;
 export type SportSlug = Brand<string, 'SportSlug'>;
+/** Supabase auth user id (Supabase UUID). */
+export type UserId = Brand<string, 'UserId'>;
+/** Veli'nin eklediği çocuk profili id'si. */
+export type ChildId = Brand<string, 'ChildId'>;
 
 /* ───────── Numeric value objects ───────── */
 
@@ -50,6 +54,18 @@ export function makeBadgeId(raw: string): BadgeId {
 
 export function makeSportSlug(raw: string): SportSlug {
   return raw.toLocaleLowerCase('tr-TR') as SportSlug;
+}
+
+export function makeUserId(raw: string): UserId {
+  return raw as UserId;
+}
+
+export function makeChildId(raw: string): ChildId {
+  return raw as ChildId;
+}
+
+export function generateChildId(): ChildId {
+  return `c_${Date.now()}_${randomSuffix()}` as ChildId;
 }
 
 export function makeScore(raw: number): Score {

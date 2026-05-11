@@ -17,6 +17,9 @@ import { CameraStream } from '@/components/camera/CameraStream';
 import { checkJumpFraming, type FramingStatus } from '@/lib/pose/framing';
 import { cancelSpeech, speak } from '@/lib/a11y/speech';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { logger } from '@/shared/logger/logger';
+
+const log = logger.child('jump-test');
 import { TestStage } from '@/components/tests/shared/TestStage';
 import { FramingBadge } from '@/components/tests/shared/FramingBadge';
 import { InstructionsPanel } from '@/components/tests/shared/InstructionsPanel';
@@ -74,6 +77,15 @@ export function JumpTest({
   const phaseRef = useRef<Phase>('idle');
   const lastFramingRef = useRef<FramingStatus | null>(null);
   const resultHeadingRef = useRef<HTMLHeadingElement | null>(null);
+
+  // onComplete'i ref'te sabitle. Parent inline arrow olarak verirse her
+  // render'da yeni reference olur → analyze effect deps'ini değiştirir →
+  // effect re-fire → sonuç store'a iki kez yazılır. Bu pattern her test
+  // bileşeninde aynı şekilde kullanılır.
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     phaseRef.current = phase;
@@ -158,9 +170,11 @@ export function JumpTest({
           : null;
       setScore(computedScore);
       setPhase('result');
-      onComplete?.({ ...analysis, score: computedScore });
+      onCompleteRef.current?.({ ...analysis, score: computedScore });
     } catch (err) {
-      console.error('[JumpTest] analiz hatası', err);
+      log.error('analiz hatası', {
+        cause: err instanceof Error ? err.message : String(err),
+      });
       setResult({
         jumpUnits: 0,
         jumpHeightCm: null,
@@ -177,7 +191,10 @@ export function JumpTest({
       setScore(null);
       setPhase('result');
     }
-  }, [phase, childAgeYears, childSex, childHeightCm, onComplete]);
+    // onComplete kasten dışarıda: inline arrow olarak gelirse her parent
+    // render'ında deps değişir, analyze etkisi yeniden ateşler ve test
+    // sonucu store'a iki kez yazılır. Ref ile sabitledik.
+  }, [phase, childAgeYears, childSex, childHeightCm]);
 
   useEffect(() => {
     if (phase === 'result' && resultHeadingRef.current) {

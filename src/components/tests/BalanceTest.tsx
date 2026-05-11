@@ -24,6 +24,9 @@ import {
   frameToPostureSample,
 } from '@/lib/tests/balance';
 import type { PoseFrame } from '@/types';
+import { logger } from '@/shared/logger/logger';
+
+const log = logger.child('balance-test');
 
 type Phase =
   | 'idle'
@@ -59,6 +62,17 @@ export function BalanceTest({ onComplete, childAgeYears }: Props) {
   const rightSamplesRef = useRef<PostureSample[]>([]);
   const leftSamplesRef = useRef<PostureSample[]>([]);
   const phaseRef = useRef<Phase>('idle');
+  // Framing diff-guard — diğer test bileşenlerinde olduğu gibi, her
+  // frame'de setFraming çağrısı yapılmasın. Statik framing 30 fps'de
+  // re-render flood'una neden oluyordu.
+  const lastFramingRef = useRef<FramingStatus | null>(null);
+
+  // onComplete'i ref'te sabitle — inline arrow parent'tan geldiğinde
+  // analyze effect re-fire ile sonuç çift kayıt olmasın.
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     phaseRef.current = phase;
@@ -73,7 +87,12 @@ export function BalanceTest({ onComplete, childAgeYears }: Props) {
       p === 'leftCountdown' ||
       p === 'switch'
     ) {
-      setFraming(checkBalanceFraming(frame));
+      const next = checkBalanceFraming(frame);
+      const prev = lastFramingRef.current;
+      if (!prev || prev.ready !== next.ready || prev.hint !== next.hint) {
+        lastFramingRef.current = next;
+        setFraming(next);
+      }
     }
 
     if (!frame) return;
@@ -164,9 +183,11 @@ export function BalanceTest({ onComplete, childAgeYears }: Props) {
       );
       setResult(analysis);
       setPhase('result');
-      onComplete?.(analysis);
+      onCompleteRef.current?.(analysis);
     } catch (err) {
-      console.error('[BalanceTest] analiz hatası', err);
+      log.error('analiz hatası', {
+        cause: err instanceof Error ? err.message : String(err),
+      });
       setResult({
         right: {
           score: 0,
@@ -189,7 +210,8 @@ export function BalanceTest({ onComplete, childAgeYears }: Props) {
       });
       setPhase('result');
     }
-  }, [childAgeYears, phase, onComplete]);
+    // onComplete kasten dışarıda — bkz. JumpTest.tsx açıklaması.
+  }, [childAgeYears, phase]);
 
   return (
     <div className="space-y-6">

@@ -2,14 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Menu, X } from 'lucide-react';
+import { MenuIcon, XIcon } from '@/components/icons';
 
 const NAV_ITEMS = [
   { label: 'TESTLER', href: '#tests' },
   { label: 'ANALİZ', href: '#analysis' },
   { label: 'BRANŞLAR', href: '#branches' },
   { label: 'ROZETLER', href: '#badges' },
-  { label: 'TESTE BAŞLA', href: '#enroll' },
 ];
 
 export function LandingNavigation() {
@@ -41,7 +40,7 @@ export function LandingNavigation() {
 
   return (
     <nav
-      className="fixed left-0 top-0 z-50 w-full transition-all duration-500"
+      className="fixed top-0 left-0 z-50 w-full transition-all duration-500"
       style={{
         background: scrolled ? 'rgba(255, 245, 225, 0.95)' : 'transparent',
         backdropFilter: scrolled ? 'blur(12px)' : 'none',
@@ -76,14 +75,28 @@ export function LandingNavigation() {
             </button>
           ))}
           <Link
-            href="/profile"
+            href="/auth/sign-in?next=/profile"
             className="text-xs font-bold tracking-[0.2em] transition-colors duration-300 hover:opacity-70"
             style={{
               color: scrolled ? '#2C3E6B' : '#FFF5E1',
               fontFamily: 'var(--font-display)',
             }}
           >
-            CÜZDAN
+            GİRİŞ
+          </Link>
+          <Link
+            href="/auth/sign-up?next=/profile"
+            className="inline-flex h-9 items-center rounded-full px-4 text-[11px] font-black tracking-[0.25em] uppercase transition-transform hover:scale-[1.04]"
+            style={{
+              background: scrolled
+                ? 'var(--form-navy)'
+                : 'var(--track-mustard)',
+              color: scrolled ? 'var(--whistle-cream)' : 'var(--form-navy)',
+              fontFamily: 'var(--font-display)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
+            }}
+          >
+            Teste Başla
           </Link>
         </div>
 
@@ -91,16 +104,17 @@ export function LandingNavigation() {
           type="button"
           className="md:hidden"
           onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Menüyü aç"
+          aria-label={mobileOpen ? 'Menüyü kapat' : 'Menüyü aç'}
+          aria-expanded={mobileOpen}
           style={{ color: scrolled ? '#2C3E6B' : '#FFF5E1' }}
         >
-          {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+          {mobileOpen ? <XIcon size={24} /> : <MenuIcon size={24} />}
         </button>
       </div>
 
       {mobileOpen && (
         <div
-          className="absolute left-0 top-16 flex w-full flex-col gap-4 px-6 py-6 md:hidden"
+          className="absolute top-16 left-0 flex w-full flex-col gap-4 px-6 py-6 md:hidden"
           style={{
             background: 'rgba(255, 245, 225, 0.98)',
             borderBottom: '2px solid #2C3E6B',
@@ -121,7 +135,7 @@ export function LandingNavigation() {
             </button>
           ))}
           <Link
-            href="/profile"
+            href="/auth/sign-in?next=/profile"
             onClick={() => setMobileOpen(false)}
             className="py-2 text-left text-sm font-bold tracking-[0.2em]"
             style={{
@@ -129,7 +143,19 @@ export function LandingNavigation() {
               fontFamily: 'var(--font-display)',
             }}
           >
-            CÜZDAN
+            GİRİŞ
+          </Link>
+          <Link
+            href="/auth/sign-up?next=/profile"
+            onClick={() => setMobileOpen(false)}
+            className="mt-1 inline-flex h-10 items-center justify-center rounded-full px-4 text-[11px] font-black tracking-[0.25em] uppercase"
+            style={{
+              background: 'var(--track-mustard)',
+              color: 'var(--form-navy)',
+              fontFamily: 'var(--font-display)',
+            }}
+          >
+            Teste Başla
           </Link>
         </div>
       )}

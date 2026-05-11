@@ -26,6 +26,9 @@ import {
   frameToBroadJumpSample,
 } from '@/lib/tests/broadJump';
 import type { PoseFrame } from '@/types';
+import { logger } from '@/shared/logger/logger';
+
+const log = logger.child('broad-jump-test');
 
 type Phase = 'idle' | 'countdown' | 'capture' | 'analyze' | 'result';
 
@@ -69,6 +72,12 @@ export function BroadJumpTest({
   const phaseRef = useRef<Phase>('idle');
   const lastFramingRef = useRef<FramingStatus | null>(null);
   const resultHeadingRef = useRef<HTMLHeadingElement | null>(null);
+
+  // onComplete'i ref'te sabitle (bkz. JumpTest açıklaması).
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     phaseRef.current = phase;
@@ -153,10 +162,12 @@ export function BroadJumpTest({
       setScore(computedScore);
       setPhase('result');
       if (analysis.valid && computedScore != null) {
-        onComplete?.({ ...analysis, score: computedScore });
+        onCompleteRef.current?.({ ...analysis, score: computedScore });
       }
     } catch (err) {
-      console.error('[BroadJumpTest] analiz hatası', err);
+      log.error('analiz hatası', {
+        cause: err instanceof Error ? err.message : String(err),
+      });
       setResult({
         jumpUnits: 0,
         jumpDistanceCm: null,
@@ -168,7 +179,8 @@ export function BroadJumpTest({
       setScore(null);
       setPhase('result');
     }
-  }, [phase, childAgeYears, childSex, childHeightCm, onComplete]);
+    // onComplete kasten dışarıda — inline arrow ile çift kayıt olmasın.
+  }, [phase, childAgeYears, childSex, childHeightCm]);
 
   useEffect(() => {
     if (phase === 'result' && resultHeadingRef.current) {

@@ -1,161 +1,284 @@
-'use client';
+/**
+ * Veli profil sayfası — çocuk listesi + cüzdan/streak.
+ *
+ * Auth zorunlu (middleware redirect eder). Server-rendered child list +
+ * inline "çocuk ekle" formu. Çocuk kartlarına tıklayınca `/children/[id]`
+ * detay sayfasına geçilir; rozet/geçmiş/streak orada per-child gösterilir.
+ */
 
 import Link from 'next/link';
-import { ArrowLeft, Plus } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { gamificationStore } from '@/lib/gamification/store';
-import { BADGES, type Badge } from '@/lib/gamification/badges';
-import { BadgeWallet } from '@/components/gamification/BadgeWallet';
-import { StreakIndicator } from '@/components/gamification/StreakIndicator';
+import { ArrowLeft, LogOut } from 'lucide-react';
+import { getServerClient } from '@/lib/supabase/server';
+import { supabaseChildRepository } from '@/infrastructure/storage/supabase-child-repository';
+import { env } from '@/shared/config/env-public';
+import { signOutAction } from '@/app/auth/actions';
+import { ChildrenSection } from './ChildrenSection';
 
-export default function ProfilePage() {
-  const [unlocked, setUnlocked] = useState<Badge[]>([]);
-  const [recentDates, setRecentDates] = useState<string[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+interface PageProps {
+  searchParams: Promise<{ error?: string; info?: string }>;
+}
 
-  useEffect(() => {
-    setUnlocked(gamificationStore.getAllUnlocked());
-    setRecentDates(gamificationStore.getCurrentStreak().recentDates);
-    setHydrated(true);
-  }, []);
+export default async function ProfilePage({ searchParams }: PageProps) {
+  const { error, info } = await searchParams;
 
-  const totalBadges = Object.keys(BADGES).length;
-  const completionPercent = Math.round(
-    (unlocked.length / totalBadges) * 100
-  );
+  // Auth yapılandırılmamışsa demo modunda dur — kullanıcıya bilgilendir.
+  if (!env.isSupabaseConfigured) {
+    return <UnconfiguredView />;
+  }
+
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Middleware zaten redirect ediyor ama defensive:
+  if (!user) {
+    return <UnauthView />;
+  }
+
+  const childrenResult = await supabaseChildRepository.list();
+  const children = childrenResult.ok ? childrenResult.value : [];
+  const displayName =
+    (user.user_metadata?.full_name as string | undefined) ?? user.email ?? '';
 
   return (
-    <main className="min-h-screen bg-[var(--color-canvas)] text-[var(--color-ink-1)]">
-      <ProfileHeader />
+    <main
+      className="min-h-screen"
+      style={{
+        background: 'var(--whistle-cream)',
+        color: 'var(--form-navy)',
+      }}
+    >
+      <ProfileHeader email={user.email ?? ''} displayName={displayName} />
 
-      <div className="mx-auto max-w-6xl px-6 pb-16 pt-12 md:px-12 md:pt-20">
-        <header className="space-y-4">
-          <p className="eyebrow">Cüzdan</p>
-          <h1 className="headline-display max-w-3xl">
-            Topladığın
-            <br />
-            <span className="text-[var(--color-signal)]">rozetler.</span>
+      <div className="mx-auto max-w-6xl px-6 pt-10 pb-16 md:px-12 md:pt-16">
+        <header className="space-y-3">
+          <p
+            className="text-xs font-bold uppercase tracking-[0.3em]"
+            style={{ color: 'var(--track-mustard)' }}
+          >
+            Veli paneli
+          </p>
+          <h1
+            className="text-4xl font-black md:text-5xl"
+            style={{
+              color: 'var(--form-navy)',
+              fontFamily: 'var(--font-display)',
+            }}
+          >
+            Merhaba {displayName.split(' ')[0] || 'veli'}!
           </h1>
-          <p className="max-w-2xl text-lg text-[var(--color-ink-2)]">
-            Her test seni bir adım ileriye taşır. Farklı yönlerin geliştikçe
-            yeni rozetler kazanırsın.
+          <p
+            className="max-w-2xl text-base md:text-lg"
+            style={{ color: 'var(--form-navy)', opacity: 0.75 }}
+          >
+            Çocuklarını ekle, her birinin yetenek profilini ayrı ayrı
+            oluştur. Her test çocuğa özel kaydedilir, geçmişi takip
+            edebilirsin.
           </p>
         </header>
 
-        {hydrated ? (
-          <>
-            <section className="mt-12 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <Stat
-                label="Rozet"
-                value={`${unlocked.length}`}
-                sub={`/ ${totalBadges} toplam`}
-              />
-              <Stat
-                label="Tamamlanmışlık"
-                value={`%${completionPercent}`}
-                sub="Cüzdan doluluğu"
-              />
-              <Stat
-                label="Son 14 gün"
-                value={`${recentDates.length}`}
-                sub="Test yapılan gün"
-              />
-            </section>
-
-            {unlocked.length === 0 ? (
-              <EmptyState />
-            ) : (
-              <>
-                <section className="mt-16">
-                  <h2 className="mb-6 text-2xl font-bold md:text-3xl">
-                    Cüzdan
-                  </h2>
-                  <BadgeWallet badges={unlocked} />
-                </section>
-
-                <section className="mt-16">
-                  <h2 className="mb-6 text-2xl font-bold md:text-3xl">
-                    Süreklilik
-                  </h2>
-                  <StreakIndicator recentDates={recentDates} />
-                </section>
-              </>
-            )}
-          </>
-        ) : (
-          <div className="mt-16 rounded-3xl border border-[var(--color-line)] bg-[var(--color-surface)] p-12 text-center text-[var(--color-ink-3)]">
-            Yükleniyor…
+        {error && (
+          <div
+            className="mt-6 rounded-xl border p-3 text-sm"
+            style={{
+              background: 'rgba(244, 182, 194, 0.2)',
+              borderColor: 'var(--mindar-pink)',
+              color: 'var(--deep-navy)',
+            }}
+            role="alert"
+          >
+            {error}
           </div>
         )}
+        {info && (
+          <div
+            className="mt-6 rounded-xl border p-3 text-sm"
+            style={{
+              background: 'rgba(168, 213, 186, 0.25)',
+              borderColor: 'var(--field-mint)',
+              color: 'var(--deep-navy)',
+            }}
+            role="status"
+          >
+            {info}
+          </div>
+        )}
+
+        <ChildrenSection items={children} />
+
+        <section
+          className="mt-12 rounded-2xl border-2 p-5 text-sm"
+          style={{
+            background: 'rgba(168, 213, 186, 0.12)',
+            borderColor: 'var(--field-mint)',
+            color: 'var(--deep-navy)',
+          }}
+        >
+          <strong>İpucu.</strong> Her çocuğun rozet cüzdanı, test geçmişi ve
+          sürekliliği kendi sayfasında durur. Yukarıdaki kartlardan birine
+          tıklayarak detayı aç.
+        </section>
       </div>
     </main>
   );
 }
 
-function ProfileHeader() {
+function ProfileHeader({
+  email,
+  displayName,
+}: {
+  email: string;
+  displayName: string;
+}) {
   return (
-    <header className="border-b border-[var(--color-line)] bg-[var(--color-canvas)]">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5 md:px-12">
+    <header
+      className="border-b-2"
+      style={{
+        background: 'var(--whistle-cream)',
+        borderColor: 'rgba(44, 62, 107, 0.1)',
+      }}
+    >
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-5 md:px-12">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-sm text-[var(--color-ink-2)] transition-colors hover:text-[var(--color-ink-1)]"
+          className="inline-flex items-center gap-2 text-sm font-bold"
+          style={{
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
         >
           <ArrowLeft className="h-4 w-4" />
-          Ana sayfa
+          YETENEK
         </Link>
-        <Link
-          href="/test/full"
-          className="inline-flex h-10 items-center gap-2 rounded-full bg-[var(--color-signal)] px-4 text-sm font-semibold text-[var(--color-canvas)] transition-colors hover:bg-amber-300"
-        >
-          <Plus className="h-4 w-4" />
-          Yeni Test
-        </Link>
+        <div className="flex items-center gap-4">
+          <div className="hidden text-right md:block">
+            <div
+              className="text-sm font-bold"
+              style={{ color: 'var(--form-navy)' }}
+            >
+              {displayName}
+            </div>
+            <div
+              className="text-xs"
+              style={{ color: 'var(--form-navy)', opacity: 0.6 }}
+            >
+              {email}
+            </div>
+          </div>
+          <form action={signOutAction}>
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 rounded-full border-2 px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors hover:bg-neutral-50"
+              style={{
+                borderColor: 'var(--form-navy)',
+                color: 'var(--form-navy)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Çıkış
+            </button>
+          </form>
+        </div>
       </div>
     </header>
   );
 }
 
-function Stat({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-}) {
+function UnconfiguredView() {
   return (
-    <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6">
-      <div className="text-xs font-semibold tracking-wider text-[var(--color-signal)] uppercase">
-        {label}
-      </div>
-      <div className="font-display mt-2 text-4xl font-bold tracking-tight md:text-5xl">
-        {value}
-      </div>
-      {sub && (
-        <div className="mt-1 text-sm text-[var(--color-ink-3)]">{sub}</div>
-      )}
-    </div>
+    <main
+      className="flex min-h-screen items-center justify-center px-6 py-12"
+      style={{ background: 'var(--whistle-cream)' }}
+    >
+      <section
+        className="w-full max-w-md rounded-3xl border-2 p-8 text-center"
+        style={{ background: '#fff', borderColor: 'var(--track-mustard)' }}
+      >
+        <h1
+          className="text-xl font-black"
+          style={{
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
+          Profil servisi yapılandırılmamış
+        </h1>
+        <p
+          className="mt-3 text-sm"
+          style={{ color: 'var(--form-navy)', opacity: 0.7 }}
+        >
+          Geliştirici: <code>.env.local</code>'a Supabase URL ve anon-key
+          ekleyin.
+        </p>
+        <Link
+          href="/"
+          className="mt-6 inline-block rounded-full px-5 py-2 text-sm font-bold"
+          style={{
+            background: 'var(--track-mustard)',
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
+          Anasayfa
+        </Link>
+      </section>
+    </main>
   );
 }
 
-function EmptyState() {
+function UnauthView() {
   return (
-    <div className="grain mt-16 rounded-3xl border border-[var(--color-signal)]/30 bg-gradient-to-br from-[var(--color-signal)]/10 via-[var(--color-canvas)] to-[var(--color-surface)] p-12 text-center">
-      <div className="text-4xl">🌱</div>
-      <h3 className="mt-4 text-2xl font-bold md:text-3xl">
-        İlk rozeti seni bekliyor
-      </h3>
-      <p className="mx-auto mt-3 max-w-md text-base text-[var(--color-ink-2)]">
-        Hemen 5 dakikalık tam akışı tamamla. İlk testte bile birkaç rozet
-        kazanırsın.
-      </p>
-      <Link
-        href="/test/full"
-        className="mt-8 inline-flex h-12 items-center gap-2 rounded-full bg-[var(--color-signal)] px-6 font-bold text-[var(--color-canvas)] transition-colors hover:bg-amber-300"
+    <main
+      className="flex min-h-screen items-center justify-center px-6 py-12"
+      style={{ background: 'var(--whistle-cream)' }}
+    >
+      <section
+        className="w-full max-w-md rounded-3xl border-2 p-8 text-center"
+        style={{ background: '#fff', borderColor: 'var(--form-navy)' }}
       >
-        Tam Akışa Başla
-      </Link>
-    </div>
+        <h1
+          className="text-xl font-black"
+          style={{
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
+          Önce hesap aç
+        </h1>
+        <p
+          className="mt-3 text-sm"
+          style={{ color: 'var(--form-navy)', opacity: 0.7 }}
+        >
+          Çocuğunun yetenek profilini oluşturmak için ücretsiz veli hesabı
+          aç. 30 saniye, e-posta yeterli.
+        </p>
+        <div className="mt-6 flex flex-col gap-2">
+          <Link
+            href="/auth/sign-up?next=/profile"
+            className="rounded-full px-5 py-2.5 text-sm font-bold uppercase tracking-widest"
+            style={{
+              background: 'var(--track-mustard)',
+              color: 'var(--form-navy)',
+              fontFamily: 'var(--font-display)',
+            }}
+          >
+            Kayıt Ol
+          </Link>
+          <Link
+            href="/auth/sign-in?next=/profile"
+            className="rounded-full border-2 px-5 py-2 text-xs font-bold uppercase tracking-widest"
+            style={{
+              borderColor: 'var(--form-navy)',
+              color: 'var(--form-navy)',
+              fontFamily: 'var(--font-display)',
+            }}
+          >
+            Zaten hesabım var
+          </Link>
+        </div>
+      </section>
+    </main>
   );
 }

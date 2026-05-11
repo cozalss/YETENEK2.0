@@ -1,11 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { memo, useEffect, useRef, useState } from 'react';
+import { ChevronDownIcon } from '@/components/icons';
 import { LazyVideo } from './LazyVideo';
 
-function FlipDigit({ value }: { value: number }) {
+// memo: yalnız `value` değiştiğinde re-render eder. FlipClock saniyede bir
+// kez güncellense de 6 FlipDigit içinde sadece değişen digit re-render
+// olur (örn. saniye birinde 5 → 6 olduğunda diğer 5 digit dokunulmaz).
+const FlipDigit = memo(function FlipDigit({ value }: { value: number }) {
   const [displayValue, setDisplayValue] = useState(value);
   const [flipping, setFlipping] = useState(false);
   const prevValue = useRef(value);
@@ -32,7 +35,7 @@ function FlipDigit({ value }: { value: number }) {
       </div>
     </div>
   );
-}
+});
 
 function FlipClock() {
   // SSR ve hydrate öncesi: ready=false → ekrana hiç basılmaz, böylece
@@ -208,7 +211,7 @@ export function HeroSection() {
 
       <div className="relative z-10 flex h-full flex-col items-center justify-center px-6">
         <div
-          className="mb-8 animate-fade-in opacity-0"
+          className="animate-fade-in mb-8 opacity-0"
           style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}
         >
           <FlipClock />
@@ -274,7 +277,7 @@ export function HeroSection() {
           }`}
         >
           <Link
-            href="/test/full"
+            href="/auth/sign-up?next=/profile"
             className="inline-flex h-12 items-center gap-2 rounded-full px-7 text-xs font-bold tracking-[0.25em] uppercase transition-transform hover:scale-[1.03]"
             style={{
               background: 'var(--track-mustard)',
@@ -303,12 +306,12 @@ export function HeroSection() {
           className="scroll-indicator absolute bottom-10 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2 opacity-60 transition-opacity hover:opacity-100"
         >
           <span
-            className="text-[10px] uppercase tracking-[0.3em]"
+            className="text-[10px] tracking-[0.3em] uppercase"
             style={{ color: '#FFF5E1', fontFamily: 'var(--font-display)' }}
           >
             Keşfet
           </span>
-          <ChevronDown size={20} style={{ color: '#FFF5E1' }} />
+          <ChevronDownIcon size={20} style={{ color: '#FFF5E1' }} />
         </button>
       </div>
     </section>

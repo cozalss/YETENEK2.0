@@ -28,6 +28,9 @@ import {
   frameToJackSample,
 } from '@/lib/tests/enduranceJacks';
 import type { PoseFrame } from '@/types';
+import { logger } from '@/shared/logger/logger';
+
+const log = logger.child('endurance-test');
 
 type Phase = 'idle' | 'countdown' | 'capture' | 'rest' | 'analyze' | 'result';
 
@@ -76,6 +79,13 @@ export function EnduranceJacksTest({
   });
   const lastFramingRef = useRef<FramingStatus | null>(null);
   const resultHeadingRef = useRef<HTMLHeadingElement | null>(null);
+
+  // onComplete'i ref'te sabitle — analyze effect re-fire ile çift kayıt
+  // olmasın.
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => () => cancelSpeech(), []);
 
@@ -171,10 +181,12 @@ export function EnduranceJacksTest({
       setResult(final);
       setPhase('result');
       if (analysis.valid) {
-        onComplete?.(final);
+        onCompleteRef.current?.(final);
       }
     } catch (err) {
-      console.error('[EnduranceJacksTest] analiz hatası', err);
+      log.error('analiz hatası', {
+        cause: err instanceof Error ? err.message : String(err),
+      });
       setResult({
         totalReps: 0,
         first5sReps: 0,
@@ -187,7 +199,8 @@ export function EnduranceJacksTest({
       });
       setPhase('result');
     }
-  }, [phase, childAgeYears, childSex, onComplete]);
+    // onComplete kasten dışarıda — inline arrow ile çift kayıt olmasın.
+  }, [phase, childAgeYears, childSex]);
 
   return (
     <TestStage

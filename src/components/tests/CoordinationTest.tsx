@@ -28,6 +28,9 @@ import {
   computeDotPosition,
   defaultLissajous,
 } from '@/lib/tests/coordination';
+import { logger } from '@/shared/logger/logger';
+
+const log = logger.child('coordination-test');
 
 type Phase = 'idle' | 'countdown' | 'capture' | 'analyze' | 'result';
 
@@ -63,6 +66,13 @@ export function CoordinationTest({ onComplete, onSkip }: Props) {
   const lastMoveAtRef = useRef(0);
   // Buffer cap: 25sn boyunca tek session'da 1000+ touch tutmaya gerek yok.
   const MAX_TOUCHES = 1000;
+
+  // onComplete'i ref'te sabitle — analyze effect inline arrow ile re-fire'a
+  // takılmasın, sonuç çift kayıt olmasın (bkz. JumpTest açıklaması).
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => () => cancelSpeech(), []);
 
@@ -213,10 +223,12 @@ export function CoordinationTest({ onComplete, onSkip }: Props) {
       setResult(analysis);
       setPhase('result');
       if (analysis.valid) {
-        onComplete?.(analysis);
+        onCompleteRef.current?.(analysis);
       }
     } catch (err) {
-      console.error('[CoordinationTest] analiz hatası', err);
+      log.error('analiz hatası', {
+        cause: err instanceof Error ? err.message : String(err),
+      });
       setResult({
         trackingEvents: 0,
         avgErrorPx: 0,
@@ -228,7 +240,8 @@ export function CoordinationTest({ onComplete, onSkip }: Props) {
       });
       setPhase('result');
     }
-  }, [phase, onComplete]);
+    // onComplete kasten dışarıda — inline arrow ile çift kayıt olmasın.
+  }, [phase]);
 
   return (
     <div className="space-y-6">

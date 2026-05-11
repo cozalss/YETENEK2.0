@@ -536,9 +536,9 @@ function NextSteps({ session }: { session: SessionSummary }) {
           />
         )}
         <NextStepRow
-          href="/test/full"
+          href="/profile"
           label="Yeni test başlat"
-          sub="İlerlemeni görmek için tekrar test et"
+          sub="Profilden çocuk seç, ilerlemeyi tekrar ölç"
         />
         <NextStepRow
           href="/profile"

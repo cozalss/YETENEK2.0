@@ -7,30 +7,23 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 import { ArrowLeft, Trash2, Calendar, Trophy } from 'lucide-react';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { SiteFooter } from '@/components/layout/SiteFooter';
 import { historyStore, type HistoryEntry } from '@/lib/history/store';
+import { useHistory } from '@/hooks/useHistory';
 
 export default function HistoryPage() {
-  const [entries, setEntries] = useState<HistoryEntry[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+  // useSyncExternalStore: hydrated double-render kalktı. Server snapshot
+  // boş array → ilk paint anında empty state veya kayıt listesi doğru
+  // gelir, ek useEffect tetikleme yok.
+  const entries = useHistory();
 
-  useEffect(() => {
-    setEntries(historyStore.list());
-    setHydrated(true);
-  }, []);
-
-  const remove = (id: string) => {
-    historyStore.remove(id);
-    setEntries(historyStore.list());
-  };
+  const remove = (id: string) => historyStore.remove(id);
 
   const clearAll = () => {
     if (!confirm('Tüm geçmiş silinsin mi? Bu işlem geri alınamaz.')) return;
     historyStore.clear();
-    setEntries([]);
   };
 
   return (
@@ -59,11 +52,7 @@ export default function HistoryPage() {
           </p>
         </header>
 
-        {!hydrated ? (
-          <div className="mt-16 rounded-3xl border border-[var(--color-line)] bg-[var(--color-surface)] p-12 text-center text-[var(--color-ink-3)]">
-            Yükleniyor…
-          </div>
-        ) : entries.length === 0 ? (
+        {entries.length === 0 ? (
           <EmptyState />
         ) : (
           <>
@@ -179,10 +168,10 @@ function EmptyState() {
         kalır, istediğinde silebilirsin.
       </p>
       <Link
-        href="/test/full"
+        href="/profile"
         className="mt-8 inline-flex h-12 items-center gap-2 rounded-full bg-[var(--color-signal)] px-6 font-bold text-[var(--color-canvas)] transition-colors hover:bg-amber-300"
       >
-        Tam Akışa Başla
+        Profile Git
       </Link>
     </div>
   );

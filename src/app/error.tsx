@@ -24,20 +24,44 @@ export default function GlobalError({ error, reset }: Props) {
   }, [error]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-neutral-950 px-6 text-center text-white">
+    <main
+      className="flex min-h-screen flex-col items-center justify-center gap-6 px-6 text-center"
+      style={{
+        background: 'var(--whistle-cream)',
+        color: 'var(--form-navy)',
+      }}
+    >
       <div className="max-w-md space-y-4">
-        <p className="text-xs uppercase tracking-widest text-amber-300">
+        <p
+          className="text-xs uppercase tracking-widest"
+          style={{
+            color: 'var(--track-mustard)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
           Bir aksilik oldu
         </p>
-        <h1 className="text-2xl font-semibold sm:text-3xl">
+        <h1
+          className="text-2xl font-bold sm:text-3xl"
+          style={{
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
           Sayfa yüklenirken bir sorun çıktı
         </h1>
-        <p className="text-sm leading-relaxed text-neutral-300">
+        <p
+          className="text-sm leading-relaxed"
+          style={{ color: 'var(--form-navy)', opacity: 0.7 }}
+        >
           Üzgünüz, beklenmeyen bir hata oluştu. Tekrar denemek için aşağıdaki
           butona basabilir veya ana sayfaya dönebilirsin.
         </p>
         {error.digest && (
-          <p className="font-mono text-[10px] text-neutral-500">
+          <p
+            className="font-mono text-[10px]"
+            style={{ color: 'var(--form-navy)', opacity: 0.5 }}
+          >
             ref: {error.digest}
           </p>
         )}
@@ -46,13 +70,23 @@ export default function GlobalError({ error, reset }: Props) {
         <button
           type="button"
           onClick={reset}
-          className="rounded-full bg-amber-400 px-6 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-amber-300 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:outline-none"
+          className="rounded-full px-6 py-3 text-sm font-bold transition-transform hover:scale-[1.02] focus-visible:outline-none"
+          style={{
+            background: 'var(--track-mustard)',
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
         >
           Tekrar Dene
         </button>
         <Link
           href="/"
-          className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
+          className="rounded-full border-2 px-6 py-3 text-sm font-bold transition-colors hover:bg-neutral-50 focus-visible:outline-none"
+          style={{
+            borderColor: 'var(--form-navy)',
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
         >
           Ana Sayfa
         </Link>

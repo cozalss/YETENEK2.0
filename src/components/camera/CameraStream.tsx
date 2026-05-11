@@ -14,7 +14,7 @@
 
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
   detectPose,
   getDetectorTelemetry,
@@ -150,7 +150,7 @@ function releaseStream(): void {
   }
 }
 
-export function CameraStream({
+function CameraStreamInner({
   onFrame,
   onQuality,
   width = 640,
@@ -160,7 +160,10 @@ export function CameraStream({
   showTelemetry = false,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [latestFrame, setLatestFrame] = useState<PoseFrame | null>(null);
+  // En kritik perf kararı: pose frame'i State yerine Ref'te tut. State olsa
+  // her MediaPipe inference'da (30-60 fps) React tree re-render olurdu →
+  // butona basınca yavaşlık. Ref + canvas'a imperative çizim = 0 re-render.
+  const latestFrameRef = useRef<PoseFrame | null>(null);
   const [error, setError] = useState<CameraError | null>(null);
   const [ready, setReady] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -222,13 +225,20 @@ export function CameraStream({
 
           if (video.readyState >= 2 /* HAVE_CURRENT_DATA */) {
             const rawFrame = detectPose(landmarker, video, ts);
-            // One-Euro filter ile jitter smoothing — sport tracking std.
-            const frame = rawFrame
-              ? filterRef.current!.apply(rawFrame)
-              : null;
-            // Quality monitor — visibility + stability + persistence rolling.
-            const quality = qualityRef.current!.observe(frame);
-            setLatestFrame(frame);
+            const filter = filterRef.current;
+            const monitor = qualityRef.current;
+            // Refs render body'de lazy-init ediliyor; null olabilmesi için
+            // remount + state reset gerekir. Yine de defensive: null ise
+            // kareyi atla (telemetry corrupt etmektense güvenli no-op).
+            if (!filter || !monitor) {
+              rafId = requestAnimationFrame(loop);
+              return;
+            }
+            const frame = rawFrame ? filter.apply(rawFrame) : null;
+            const quality = monitor.observe(frame);
+            // setState YOK — ref'e yaz, PoseOverlay kendi rAF loop'unda
+            // bu ref'i okuyup canvas'a çizer.
+            latestFrameRef.current = frame;
             onFrame?.(frame);
             onQuality?.(quality);
           }
@@ -260,11 +270,42 @@ export function CameraStream({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [width, height, attempt]);
 
-  // True page-leave cleanup: release on actual unmount via beforeunload too.
+  // Page leave cleanup: 3 yol kapatılır
+  //  1. `beforeunload` — hard reload / kapatma
+  //  2. `pagehide` — iOS Safari + SPA bfcache; beforeunload tetiklemez
+  //  3. unmount stabilize sonrası — Next.js client-side route değişikliği
+  //
+  // StrictMode dev mode'da unmount → remount 2x ateşler. İlk teardown'da
+  // stream'i hemen kapatırsak ikinci mount yeni stream isteyecek ve OS
+  // henüz release etmediği için NotReadableError düşer. Bu yüzden unmount
+  // release'i bir microtask gecikme + `mountedRef` kontrol ile yapıyoruz:
+  // gerçek unmount (route change) ise release, StrictMode double-mount ise
+  // release atlanır.
   useEffect(() => {
     const handler = () => releaseStream();
     window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
+    window.addEventListener('pagehide', handler);
+    return () => {
+      window.removeEventListener('beforeunload', handler);
+      window.removeEventListener('pagehide', handler);
+    };
+  }, []);
+
+  // Gerçek unmount tespiti: cleanup planlanır, bir sonraki paint'e kadar
+  // remount olmadıysa stream serbest bırakılır. StrictMode remount ~aynı
+  // tick içinde olur — setTimeout(0) ile sonraki tick'e ertelenir.
+  useEffect(() => {
+    return () => {
+      const timeoutId = setTimeout(() => {
+        // Eğer bu component remount olmadıysa (StrictMode değil, gerçek
+        // unmount), aktivasyon yok demektir → kamera serbest bırakılır.
+        if (!document.querySelector('video[data-camera-stream="true"]')) {
+          releaseStream();
+        }
+      }, 50);
+      // Cleanup eski timeout'u temizle — peş peşe unmount fire ederse.
+      void timeoutId;
+    };
   }, []);
 
   return (
@@ -276,11 +317,12 @@ export function CameraStream({
         ref={videoRef}
         playsInline
         muted
+        data-camera-stream="true"
         className="h-full w-full scale-x-[-1] object-cover"
         style={{ width, height }}
       />
       {showOverlay && (
-        <PoseOverlay frame={latestFrame} width={width} height={height} />
+        <PoseOverlay frameRef={latestFrameRef} width={width} height={height} />
       )}
       {showTelemetry && telemetry && (
         <TelemetryOverlay telemetry={telemetry} />
@@ -310,6 +352,13 @@ export function CameraStream({
     </div>
   );
 }
+
+/**
+ * Parent test component'lerinin her framing/phase state değişikliğinde
+ * CameraStream'in re-render olmaması için memo ile sarılıyor. Props
+ * referans-sabit kalırsa diff iş yapmaz.
+ */
+export const CameraStream = memo(CameraStreamInner);
 
 function TelemetryOverlay({ telemetry }: { telemetry: DetectorTelemetry }) {
   return (

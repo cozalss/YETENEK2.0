@@ -1,7 +1,6 @@
-'use client';
-
 /**
  * BranchesSection — landing'in 12 branş showcase'i.
+ * Server Component — statik veri + Reveal/LazyVideo client leaf.
  *
  * Bu liste artık algoritmanın gerçek tavsiye listesiyle (sportProfiles.ts)
  * SENKRONİZE. Önceki sürümde binicilik/kayak/buz pateni gibi videosu olan
@@ -13,10 +12,12 @@
  * ölçebiliyor (kaynak: sportProfiles.ts bibliyografisi).
  */
 
+import Link from 'next/link';
 import { Reveal } from '@/components/motion/Reveal';
 import { LazyVideo } from './LazyVideo';
 
 interface BranchCard {
+  slug: string;
   name: string;
   en: string;
   src: string;
@@ -25,18 +26,102 @@ interface BranchCard {
 }
 
 const BRANCHES: BranchCard[] = [
-  { name: 'VOLEYBOL', en: 'Volleyball', src: '/videos/sport-volleyball.mp4', poster: '/images/sport-volleyball-poster.jpg', color: '#F2C94C' },
-  { name: 'BASKETBOL', en: 'Basketball', src: '/videos/sport-basketball.mp4', poster: '/images/sport-basketball-poster.jpg', color: '#8BB8E8' },
-  { name: 'FUTBOL', en: 'Football', src: '/videos/sport-football.mp4', poster: '/images/sport-football-poster.jpg', color: '#A8D5BA' },
-  { name: 'TENİS', en: 'Tennis', src: '/videos/sport-tennis.mp4', poster: '/images/sport-tennis-poster.jpg', color: '#C4E0D0' },
-  { name: 'MASA TENİSİ', en: 'Table Tennis', src: '/videos/sport-tabletennis.mp4', poster: '/images/sport-tabletennis-poster.jpg', color: '#F4B6C2' },
-  { name: 'YÜZME', en: 'Swimming', src: '/videos/sport-swimmer.mp4', poster: '/images/sport-swimmer-poster.jpg', color: '#A8D5BA' },
-  { name: 'ATLETİZM', en: 'Athletics', src: '/videos/sport-athletics.mp4', poster: '/images/sport-athletics-poster.jpg', color: '#F2C94C' },
-  { name: 'JİMNASTİK', en: 'Gymnastics', src: '/videos/sport-gymnastics.mp4', poster: '/images/sport-gymnastics-poster.jpg', color: '#F4B6C2' },
-  { name: 'TEKVANDO', en: 'Taekwondo', src: '/videos/sport-taekwondo.mp4', poster: '/images/sport-taekwondo-poster.jpg', color: '#E8A0B0' },
-  { name: 'JUDO', en: 'Judo', src: '/videos/sport-judo.mp4', poster: '/images/sport-judo-poster.jpg', color: '#A8D5BA' },
-  { name: 'BADMİNTON', en: 'Badminton', src: '/videos/sport-badminton.mp4', poster: '/images/sport-badminton-poster.jpg', color: '#F4B6C2' },
-  { name: 'BOKS', en: 'Boxing', src: '/videos/sport-boks.mp4', poster: '/images/sport-boks-poster.jpg', color: '#F2C94C' },
+  {
+    slug: 'voleybol',
+    name: 'VOLEYBOL',
+    en: 'Volleyball',
+    src: '/videos/sport-volleyball.mp4',
+    poster: '/images/sport-volleyball-poster.jpg',
+    color: '#F2C94C',
+  },
+  {
+    slug: 'basketbol',
+    name: 'BASKETBOL',
+    en: 'Basketball',
+    src: '/videos/sport-basketball.mp4',
+    poster: '/images/sport-basketball-poster.jpg',
+    color: '#8BB8E8',
+  },
+  {
+    slug: 'futbol',
+    name: 'FUTBOL',
+    en: 'Football',
+    src: '/videos/sport-football.mp4',
+    poster: '/images/sport-football-poster.jpg',
+    color: '#A8D5BA',
+  },
+  {
+    slug: 'tenis',
+    name: 'TENİS',
+    en: 'Tennis',
+    src: '/videos/sport-tennis.mp4',
+    poster: '/images/sport-tennis-poster.jpg',
+    color: '#C4E0D0',
+  },
+  {
+    slug: 'masa-tenisi',
+    name: 'MASA TENİSİ',
+    en: 'Table Tennis',
+    src: '/videos/sport-tabletennis.mp4',
+    poster: '/images/sport-tabletennis-poster.jpg',
+    color: '#F4B6C2',
+  },
+  {
+    slug: 'yuzme',
+    name: 'YÜZME',
+    en: 'Swimming',
+    src: '/videos/sport-swimmer.mp4',
+    poster: '/images/sport-swimmer-poster.jpg',
+    color: '#A8D5BA',
+  },
+  {
+    slug: 'atletizm',
+    name: 'ATLETİZM',
+    en: 'Athletics',
+    src: '/videos/sport-athletics.mp4',
+    poster: '/images/sport-athletics-poster.jpg',
+    color: '#F2C94C',
+  },
+  {
+    slug: 'cimnastik',
+    name: 'CİMNASTİK',
+    en: 'Gymnastics',
+    src: '/videos/sport-gymnastics.mp4',
+    poster: '/images/sport-gymnastics-poster.jpg',
+    color: '#F4B6C2',
+  },
+  {
+    slug: 'taekwondo',
+    name: 'TEKVANDO',
+    en: 'Taekwondo',
+    src: '/videos/sport-taekwondo.mp4',
+    poster: '/images/sport-taekwondo-poster.jpg',
+    color: '#E8A0B0',
+  },
+  {
+    slug: 'judo',
+    name: 'JUDO',
+    en: 'Judo',
+    src: '/videos/sport-judo.mp4',
+    poster: '/images/sport-judo-poster.jpg',
+    color: '#A8D5BA',
+  },
+  {
+    slug: 'badminton',
+    name: 'BADMİNTON',
+    en: 'Badminton',
+    src: '/videos/sport-badminton.mp4',
+    poster: '/images/sport-badminton-poster.jpg',
+    color: '#F4B6C2',
+  },
+  {
+    slug: 'boks',
+    name: 'BOKS',
+    en: 'Boxing',
+    src: '/videos/sport-boks.mp4',
+    poster: '/images/sport-boks-poster.jpg',
+    color: '#F2C94C',
+  },
 ];
 
 export function BranchesSection() {
@@ -47,7 +132,7 @@ export function BranchesSection() {
       style={{ background: 'var(--whistle-cream)' }}
     >
       <div
-        className="absolute left-0 top-0 h-[2px] w-full"
+        className="absolute top-0 left-0 h-[2px] w-full"
         style={{ background: 'var(--form-navy)' }}
       />
 
@@ -55,7 +140,7 @@ export function BranchesSection() {
         <Reveal>
           <div className="mb-16 text-center">
             <p
-              className="mb-4 text-xs uppercase tracking-[0.4em]"
+              className="mb-4 text-xs tracking-[0.4em] uppercase"
               style={{
                 color: 'var(--form-navy)',
                 opacity: 0.5,
@@ -86,8 +171,8 @@ export function BranchesSection() {
               }}
             >
               Voleyboldan badmintona — yapay zeka, çocuğun benzersiz fiziksel
-              profilini telefon kamerasıyla ölçtüğü bio-motor verilerle gerçekten
-              parlayacağı sporla eşleştirir.
+              profilini telefon kamerasıyla ölçtüğü bio-motor verilerle
+              gerçekten parlayacağı sporla eşleştirir.
             </p>
           </div>
         </Reveal>
@@ -95,8 +180,10 @@ export function BranchesSection() {
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 lg:gap-6">
           {BRANCHES.map((branch, i) => (
             <Reveal key={branch.name} delay={(i % 4) * 0.08}>
-              <div
-                className="group relative cursor-pointer overflow-hidden rounded-xl"
+              <Link
+                href={`/sports/${branch.slug}`}
+                aria-label={`${branch.name} spor rehberi`}
+                className="group relative block overflow-hidden rounded-xl"
                 style={{ background: branch.color }}
               >
                 <div className="relative aspect-square overflow-hidden">
@@ -107,11 +194,14 @@ export function BranchesSection() {
                   />
 
                   <div
-                    className="absolute inset-0 flex flex-col items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                    style={{ background: 'rgba(26, 37, 64, 0.6)' }}
+                    className="absolute inset-x-0 bottom-0 p-4 transition-all duration-300 group-hover:translate-y-0"
+                    style={{
+                      background:
+                        'linear-gradient(to top, rgba(26, 37, 64, 0.86), transparent)',
+                    }}
                   >
                     <h3
-                      className="text-lg font-black tracking-wider"
+                      className="text-sm font-black tracking-wider md:text-lg"
                       style={{
                         color: '#FFF5E1',
                         fontFamily: 'var(--font-display)',
@@ -120,10 +210,9 @@ export function BranchesSection() {
                       {branch.name}
                     </h3>
                     <p
-                      className="mt-1 text-[10px] uppercase tracking-[0.2em]"
+                      className="mt-1 text-[10px] tracking-[0.2em] uppercase opacity-70 transition-opacity group-hover:opacity-100"
                       style={{
                         color: '#FFF5E1',
-                        opacity: 0.7,
                         fontFamily: 'var(--font-body)',
                       }}
                     >
@@ -131,7 +220,7 @@ export function BranchesSection() {
                     </p>
                   </div>
                 </div>
-              </div>
+              </Link>
             </Reveal>
           ))}
         </div>

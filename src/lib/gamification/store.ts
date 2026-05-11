@@ -16,8 +16,10 @@
 
 import type { Badge } from './badges';
 import { BADGES } from './badges';
+import { logger } from '@/shared/logger/logger';
 
 const STORAGE_KEY = 'yetenek:gamification';
+const log = logger.child('gamification-store');
 
 interface PersistedState {
   unlockedBadgeIds: string[];
@@ -58,8 +60,11 @@ class GamificationStore {
         this.state = parsed as PersistedState;
         return this.state;
       }
-    } catch {
-      // bozuk veri — sıfırla
+      log.warn('gamification payload beklenen şekilde değil, sıfırlanıyor');
+    } catch (err) {
+      log.warn('gamification parse hatası, sıfırlanıyor', {
+        cause: err instanceof Error ? err.message : String(err),
+      });
     }
     this.state = { unlockedBadgeIds: [], testDates: [] };
     return this.state;
@@ -67,7 +72,14 @@ class GamificationStore {
 
   private save(): void {
     if (typeof window === 'undefined' || !this.state) return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+    } catch (err) {
+      // Quota exhaust / private-mode write block — gizli kalmamalı.
+      log.warn('gamification yazma başarısız (quota?)', {
+        cause: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
   /**

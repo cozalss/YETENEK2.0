@@ -1,26 +1,89 @@
-'use client';
-
+// Server Component — statik veri + Reveal/LazyVideo client leaf.
 import { Reveal } from '@/components/motion/Reveal';
 import { LazyVideo } from './LazyVideo';
-import { Star, Trophy, Zap, Target, Flame, Award, Crown, Medal } from 'lucide-react';
+import {
+  Star,
+  Trophy,
+  Zap,
+  Target,
+  Flame,
+  Award,
+  Crown,
+  Medal,
+} from 'lucide-react';
 
 const BADGES = [
-  { icon: Star, label: 'Yıldız', color: '#F2C94C', description: 'Bir testte ilk %10' },
-  { icon: Trophy, label: 'Şampiyon', color: '#F2C94C', description: 'Branşta 1. sıra' },
-  { icon: Zap, label: 'Şimşek', color: '#F4B6C2', description: 'En hızlı reaksiyon' },
-  { icon: Target, label: 'Hassasiyet', color: '#A8D5BA', description: 'Mükemmel denge' },
-  { icon: Flame, label: 'Güç', color: '#F2C94C', description: 'En yüksek CMJ' },
-  { icon: Award, label: 'Çok Yönlü', color: '#A8D5BA', description: 'Tüm testlerde ilk %25' },
-  { icon: Crown, label: 'Kraliyet', color: '#F2C94C', description: '3 ardışık 1. sıra' },
-  { icon: Medal, label: 'Veteran', color: '#C4E0D0', description: '50 test tamamlanmış' },
+  {
+    icon: Star,
+    label: 'İlk Adım',
+    color: '#F2C94C',
+    description: 'İlk test tamamlandı',
+  },
+  {
+    icon: Trophy,
+    label: 'Tam Tarama',
+    color: '#F2C94C',
+    description: '7 testin tamamı bitti',
+  },
+  {
+    icon: Zap,
+    label: 'Şimşek',
+    color: '#F4B6C2',
+    description: 'Reaksiyon skoru 80+',
+  },
+  {
+    icon: Target,
+    label: 'Akrobat',
+    color: '#A8D5BA',
+    description: 'Denge skoru 80+',
+  },
+  {
+    icon: Flame,
+    label: 'Roketsırtı',
+    color: '#F2C94C',
+    description: 'Sıçrama skoru 80+',
+  },
+  {
+    icon: Award,
+    label: 'Yedi Yıldız',
+    color: '#A8D5BA',
+    description: '7 boyutta 60+',
+  },
+  {
+    icon: Crown,
+    label: 'Spor Profili',
+    color: '#F2C94C',
+    description: 'Spor eşleşmesi %80+',
+  },
+  {
+    icon: Medal,
+    label: 'Süreklilik',
+    color: '#C4E0D0',
+    description: 'Son 14 günde test günleri',
+  },
 ];
 
-const LEADERBOARD = [
-  { rank: 1, name: 'Elif Y.', score: 97.4, branch: 'Jimnastik' },
-  { rank: 2, name: 'Can D.', score: 95.1, branch: 'Yüzme' },
-  { rank: 3, name: 'Zeynep A.', score: 93.8, branch: 'Okçuluk' },
-  { rank: 4, name: 'Kerem B.', score: 91.2, branch: 'Basketbol' },
-  { rank: 5, name: 'Ela S.', score: 89.7, branch: 'Eskrim' },
+const PROGRESS_STEPS = [
+  {
+    label: 'Çocuk bazlı',
+    value: 'Ayrı profil',
+    detail: 'Her çocuğun rozetleri ve geçmişi ayrı tutulur.',
+  },
+  {
+    label: 'Performans',
+    value: '80+ skor',
+    detail: 'Testlerde güçlü boyutlar rozet olarak görünür.',
+  },
+  {
+    label: 'Eşleşme',
+    value: '%80+',
+    detail: 'Spor önerisi yüksek güvenle geldiğinde profil rozeti açılır.',
+  },
+  {
+    label: 'Süreklilik',
+    value: '14 gün',
+    detail: 'Yakın dönem test günleri gelişim takibi için sayılır.',
+  },
 ];
 
 export function BadgesSection() {
@@ -31,7 +94,7 @@ export function BadgesSection() {
       style={{ background: 'var(--mindar-pink)' }}
     >
       <div
-        className="absolute left-0 top-0 h-[2px] w-full"
+        className="absolute top-0 left-0 h-[2px] w-full"
         style={{ background: 'var(--form-navy)' }}
       />
 
@@ -39,7 +102,7 @@ export function BadgesSection() {
         <Reveal>
           <div className="mb-16 text-center">
             <p
-              className="mb-4 text-xs uppercase tracking-[0.4em]"
+              className="mb-4 text-xs tracking-[0.4em] uppercase"
               style={{
                 color: 'var(--form-navy)',
                 opacity: 0.5,
@@ -55,7 +118,7 @@ export function BadgesSection() {
                 fontFamily: 'var(--font-display)',
               }}
             >
-              SIRALAMA & ROZETLER
+              ROZETLER & GELİŞİM
             </h2>
             <div
               className="mx-auto mt-4 h-[3px] w-16"
@@ -87,7 +150,7 @@ export function BadgesSection() {
               />
               <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
                 <p
-                  className="mb-2 text-[10px] uppercase tracking-[0.3em]"
+                  className="mb-2 text-[10px] tracking-[0.3em] uppercase"
                   style={{
                     color: 'var(--whistle-cream)',
                     fontFamily: 'var(--font-body)',
@@ -115,13 +178,13 @@ export function BadgesSection() {
           <Reveal>
             <div>
               <h3
-                className="mb-6 text-center text-sm font-bold uppercase tracking-[0.2em] lg:text-left"
+                className="mb-6 text-center text-sm font-bold tracking-[0.2em] uppercase lg:text-left"
                 style={{
                   color: 'var(--form-navy)',
                   fontFamily: 'var(--font-display)',
                 }}
               >
-                KAZANILABILECEK ROZETLER
+                KAZANILABİLECEK ROZETLER
               </h3>
               <div className="grid grid-cols-4 gap-3">
                 {BADGES.map((badge) => {
@@ -144,7 +207,7 @@ export function BadgesSection() {
                         <Icon size={18} style={{ color: 'var(--form-navy)' }} />
                       </div>
                       <span
-                        className="text-center text-[8px] uppercase leading-tight tracking-wider"
+                        className="text-center text-[8px] leading-tight tracking-wider uppercase"
                         style={{
                           color: 'var(--form-navy)',
                           fontFamily: 'var(--font-display)',
@@ -163,13 +226,13 @@ export function BadgesSection() {
           <Reveal from="right">
             <div>
               <h3
-                className="mb-6 text-center text-sm font-bold uppercase tracking-[0.2em] lg:text-left"
+                className="mb-6 text-center text-sm font-bold tracking-[0.2em] uppercase lg:text-left"
                 style={{
                   color: 'var(--form-navy)',
                   fontFamily: 'var(--font-display)',
                 }}
               >
-                HAFTALIK LİDERLİK
+                NASIL İŞLER?
               </h3>
               <div
                 className="overflow-hidden rounded-xl"
@@ -179,107 +242,60 @@ export function BadgesSection() {
                   border: '2px solid rgba(44, 62, 107, 0.15)',
                 }}
               >
-                <div
-                  className="grid grid-cols-12 gap-2 px-4 py-3"
-                  style={{
-                    borderBottom: '1px solid rgba(44, 62, 107, 0.15)',
-                    background: 'rgba(44, 62, 107, 0.05)',
-                  }}
-                >
-                  <span
-                    className="col-span-2 text-[9px] font-bold uppercase tracking-wider"
-                    style={{
-                      color: 'var(--form-navy)',
-                      opacity: 0.5,
-                      fontFamily: 'var(--font-display)',
-                    }}
-                  >
-                    Sıra
-                  </span>
-                  <span
-                    className="col-span-4 text-[9px] font-bold uppercase tracking-wider"
-                    style={{
-                      color: 'var(--form-navy)',
-                      opacity: 0.5,
-                      fontFamily: 'var(--font-display)',
-                    }}
-                  >
-                    Sporcu
-                  </span>
-                  <span
-                    className="col-span-3 text-[9px] font-bold uppercase tracking-wider"
-                    style={{
-                      color: 'var(--form-navy)',
-                      opacity: 0.5,
-                      fontFamily: 'var(--font-display)',
-                    }}
-                  >
-                    Branş
-                  </span>
-                  <span
-                    className="col-span-3 text-right text-[9px] font-bold uppercase tracking-wider"
-                    style={{
-                      color: 'var(--form-navy)',
-                      opacity: 0.5,
-                      fontFamily: 'var(--font-display)',
-                    }}
-                  >
-                    Skor
-                  </span>
-                </div>
-
-                {LEADERBOARD.map((entry) => (
+                {PROGRESS_STEPS.map((entry, index) => (
                   <div
-                    key={entry.rank}
-                    className="grid grid-cols-12 gap-2 px-4 py-3 transition-colors duration-200 hover:bg-white/30"
-                    style={{ borderBottom: '1px solid rgba(44, 62, 107, 0.08)' }}
+                    key={entry.label}
+                    className="grid grid-cols-12 gap-3 px-4 py-4 transition-colors duration-200 hover:bg-white/30"
+                    style={{
+                      borderBottom: '1px solid rgba(44, 62, 107, 0.08)',
+                    }}
                   >
-                    <span className="col-span-2 flex items-center">
+                    <span className="col-span-2 flex items-start">
                       <span
-                        className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black"
+                        className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-black"
                         style={{
                           background:
-                            entry.rank === 1
+                            index === 0
                               ? '#F2C94C'
-                              : entry.rank === 2
+                              : index === 1
                                 ? '#C4E0D0'
-                                : entry.rank === 3
+                                : index === 2
                                   ? '#E8A0B0'
                                   : 'rgba(44,62,107,0.1)',
                           color: 'var(--form-navy)',
                           fontFamily: 'var(--font-display)',
                         }}
                       >
-                        {entry.rank}
+                        {index + 1}
                       </span>
                     </span>
                     <span
-                      className="col-span-4 flex items-center text-xs font-bold"
+                      className="col-span-4 text-xs font-bold tracking-wider uppercase"
                       style={{
                         color: 'var(--form-navy)',
                         fontFamily: 'var(--font-display)',
                       }}
                     >
-                      {entry.name}
+                      {entry.label}
                     </span>
                     <span
-                      className="col-span-3 flex items-center text-[10px]"
+                      className="col-span-3 text-[10px] font-bold"
                       style={{
                         color: 'var(--form-navy)',
-                        opacity: 0.6,
+                        fontFamily: 'var(--font-display)',
+                      }}
+                    >
+                      {entry.value}
+                    </span>
+                    <span
+                      className="col-span-3 text-right text-[10px] leading-snug"
+                      style={{
+                        color: 'var(--form-navy)',
+                        opacity: 0.68,
                         fontFamily: 'var(--font-body)',
                       }}
                     >
-                      {entry.branch}
-                    </span>
-                    <span
-                      className="col-span-3 flex items-center justify-end text-right text-xs font-bold"
-                      style={{
-                        color: 'var(--form-navy)',
-                        fontFamily: 'var(--font-display)',
-                      }}
-                    >
-                      {entry.score}
+                      {entry.detail}
                     </span>
                   </div>
                 ))}

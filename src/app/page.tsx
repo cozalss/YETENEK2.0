@@ -13,9 +13,9 @@ export default function Home() {
   return (
     <>
       {/*
-        Hero için kritik kaynak ipuçları. Browser HTML parse anında bu iki
-        dosyayı (poster + video) JS hydrate'i beklemeden almaya başlar, böylece
-        sayfa açıldığında hero görseli neredeyse anında belirir.
+        Hero için kritik poster ipucu. Video kaynağını LazyVideo eager olarak
+        kendisi başlatıyor; link rel=preload + as=video Chrome'da desteklenmediği
+        için console warning üretiyordu.
       */}
       <link
         rel="preload"
@@ -23,14 +23,6 @@ export default function Home() {
         href="/images/hero-gym-poster.jpg"
         fetchPriority="high"
       />
-      <link
-        rel="preload"
-        as="video"
-        type="video/mp4"
-        href="/videos/hero-gym.mp4"
-        fetchPriority="high"
-      />
-
       <main className="relative bg-[var(--whistle-cream)] text-[var(--form-navy)]">
         <LandingNavigation />
         <HeroSection />

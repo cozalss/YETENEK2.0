@@ -4,7 +4,10 @@ import { BalanceTest } from '@/components/tests/BalanceTest';
 
 export default function BalancePage() {
   return (
-    <main className="min-h-screen bg-neutral-950 p-6 text-white md:p-12">
+    <main
+      className="min-h-screen p-6 md:p-12"
+      style={{ background: 'var(--whistle-cream)', color: 'var(--form-navy)' }}
+    >
       <div className="mx-auto max-w-4xl space-y-6">
         <header>
           <p className="text-sm font-semibold tracking-widest text-amber-400 uppercase">

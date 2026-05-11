@@ -33,6 +33,9 @@ export function ReactionTest({
   onComplete,
 }: Props) {
   const [phase, setPhase] = useState<Phase>('idle');
+  // Trials state'i yalnızca setTrials ile mutate edilir; read tarafı
+  // analysis.trials (analyze sonrası) üzerinden DOM'a düşer.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [trials, setTrials] = useState<ReactionTrial[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [lastReactionMs, setLastReactionMs] = useState<number | null>(null);
@@ -41,6 +44,13 @@ export function ReactionTest({
   const goTimestampRef = useRef<number | null>(null);
   const waitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const phaseRef = useRef<Phase>('idle');
+
+  // onComplete'i ref'te sabitle — parent inline arrow ile callback re-create
+  // ederse handleTap deps'i değişip eski timer/timeout zincirini etkilemesin.
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     phaseRef.current = phase;
@@ -95,22 +105,30 @@ export function ReactionTest({
         reactionMs: reaction,
         falseStart: false,
       };
-      const updatedTrials = [...trials, newTrial];
-      setTrials(updatedTrials);
 
-      if (updatedTrials.length >= TOTAL_TRIALS) {
-        const result = analyzeReaction(updatedTrials, childAgeYears);
-        setAnalysis(result);
-        setPhase('result');
-        onComplete?.(result);
-      } else {
-        setCurrentIndex(currentIndex + 1);
-        setPhase('between');
-        setTimeout(() => startTrial(), FEEDBACK_MS);
-      }
+      // Functional setter: setTrials([...trials, ...]) closure'daki eski
+      // `trials`'ı yakalar (React 19 concurrent mode'da re-render'lar
+      // arası stale olabilir). Functional form prev'i her zaman doğru
+      // alır ve içeride completion logic'i çalıştırır.
+      setTrials((prev) => {
+        const updatedTrials = [...prev, newTrial];
+        if (updatedTrials.length >= TOTAL_TRIALS) {
+          const result = analyzeReaction(updatedTrials, childAgeYears);
+          setAnalysis(result);
+          setPhase('result');
+          onCompleteRef.current?.(result);
+        } else {
+          setCurrentIndex((idx) => idx + 1);
+          setPhase('between');
+          setTimeout(() => startTrial(), FEEDBACK_MS);
+        }
+        return updatedTrials;
+      });
       return;
     }
-  }, [trials, currentIndex, childAgeYears, onComplete, startTrial]);
+    // trials kasten dışarıda: functional setTrials ile prev okuyoruz.
+    // onComplete ref'ten okunuyor — bkz. JumpTest açıklaması.
+  }, [currentIndex, childAgeYears, startTrial]);
 
   // Cleanup
   useEffect(() => {

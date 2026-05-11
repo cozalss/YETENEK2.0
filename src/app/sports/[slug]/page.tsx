@@ -143,7 +143,7 @@ export default async function SportDetailPage({ params }: PageProps) {
             <ExternalLink className="h-5 w-5 text-[var(--color-ink-3)] transition-colors group-hover:text-[var(--color-signal)]" />
           </a>
           <Link
-            href="/test/full"
+            href="/profile"
             className="group flex items-center justify-between rounded-3xl border border-[var(--color-signal)]/30 bg-[var(--color-signal)]/5 p-6 transition-all hover:border-[var(--color-signal)]/60 hover:bg-[var(--color-signal)]/10"
           >
             <div>

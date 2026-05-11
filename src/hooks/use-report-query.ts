@@ -61,7 +61,18 @@ export function useReportQuery(session: SessionSummary | null) {
     queryKey: session
       ? reportQueryKeys.bySession(session)
       : ['report', 'idle'],
-    queryFn: ({ signal }) => fetchReport(session!, signal),
+    queryFn: ({ signal }) => {
+      // `enabled: !!session` queryFn'in çalışmasını engellesin diye var,
+      // ama TanStack Query session'ı queryFn parameter'ına narrow etmiyor.
+      // Manuel refetch() veya enabled kaldırılırsa session null olabilir;
+      // bu yüzden defensive guard — silent null deref yerine açık hata.
+      if (!session) {
+        return Promise.reject(
+          new Error('useReportQuery: session gerekli ama null'),
+        );
+      }
+      return fetchReport(session, signal);
+    },
     enabled: !!session,
     // Rapor üretimi pahalı — bir kez al, 10 dk cache'te tut.
     staleTime: 10 * 60 * 1000,

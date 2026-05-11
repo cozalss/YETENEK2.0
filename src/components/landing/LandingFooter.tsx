@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowUp } from 'lucide-react';
+import { ArrowUpIcon } from '@/components/icons';
 
 const ANCHOR_LINKS = [
-  { label: 'Tests', href: '#tests' },
+  { label: 'Testler', href: '#tests' },
   { label: 'Analiz', href: '#analysis' },
   { label: 'Branşlar', href: '#branches' },
   { label: 'Rozetler', href: '#badges' },
@@ -31,7 +31,7 @@ export function LandingFooter() {
       style={{ background: 'var(--form-navy)' }}
     >
       <div
-        className="absolute left-0 top-0 h-[2px] w-full"
+        className="absolute top-0 left-0 h-[2px] w-full"
         style={{ background: 'var(--track-mustard)' }}
       />
 
@@ -51,7 +51,7 @@ export function LandingFooter() {
             style={{ background: 'var(--track-mustard)' }}
           />
           <p
-            className="mt-4 text-xs uppercase tracking-[0.3em]"
+            className="mt-4 text-xs tracking-[0.3em] uppercase"
             style={{
               color: 'var(--whistle-cream)',
               opacity: 0.5,
@@ -68,7 +68,7 @@ export function LandingFooter() {
               fontFamily: 'var(--font-body)',
             }}
           >
-            5–16 yaş çocuklar için AI tabanlı spor yetenek keşfi. Geleceğin
+            8–15 yaş çocuklar için AI tabanlı spor yetenek keşfi. Geleceğin
             şampiyonlarını biyomekanik hassasiyetle ortaya çıkarır.
           </p>
 
@@ -77,7 +77,7 @@ export function LandingFooter() {
               <a
                 key={link.href}
                 href={link.href}
-                className="text-xs uppercase tracking-[0.2em] transition-opacity hover:opacity-70"
+                className="text-xs tracking-[0.2em] uppercase transition-opacity hover:opacity-70"
                 style={{
                   color: 'var(--whistle-cream)',
                   opacity: 0.55,
@@ -95,7 +95,7 @@ export function LandingFooter() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-xs uppercase tracking-[0.2em] transition-opacity hover:opacity-70"
+                className="text-xs tracking-[0.2em] uppercase transition-opacity hover:opacity-70"
                 style={{
                   color: 'var(--whistle-cream)',
                   opacity: 0.4,
@@ -137,7 +137,7 @@ export function LandingFooter() {
             <button
               type="button"
               onClick={scrollToTop}
-              className="flex items-center gap-2 text-[10px] uppercase tracking-wider transition-opacity hover:opacity-70"
+              className="flex items-center gap-2 text-[10px] tracking-wider uppercase transition-opacity hover:opacity-70"
               style={{
                 color: 'var(--whistle-cream)',
                 opacity: 0.45,
@@ -146,7 +146,7 @@ export function LandingFooter() {
               }}
             >
               Başa dön
-              <ArrowUp size={12} />
+              <ArrowUpIcon size={12} />
             </button>
           </div>
         </div>

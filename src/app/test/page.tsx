@@ -96,7 +96,7 @@ function Header() {
 function FullFlowCallout() {
   return (
     <Link
-      href="/test/full"
+      href="/profile"
       className="grain group relative mt-12 block overflow-hidden rounded-3xl border border-[var(--color-signal)]/30 bg-gradient-to-br from-[var(--color-signal)]/15 via-[var(--color-canvas)] to-[var(--color-surface)] p-8 transition-all hover:border-[var(--color-signal)]/60 md:p-12"
     >
       <div className="relative z-10 flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">

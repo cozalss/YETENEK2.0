@@ -22,6 +22,9 @@ import {
   type PoseLandmarkerResult,
 } from '@mediapipe/tasks-vision';
 import type { PoseFrame } from '@/types';
+import { logger } from '@/shared/logger/logger';
+
+const log = logger.child('pose-detector');
 
 const TASKS_VERSION = '0.10.35';
 const WASM_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VERSION}/wasm`;
@@ -153,7 +156,9 @@ export function getPoseLandmarker(
         return landmarker;
       } catch (err) {
         // GPU delegate başarısız olursa CPU'ya düş.
-        console.warn('[detector] GPU delegate başarısız, CPU\'ya düşülüyor', err);
+        log.warn('GPU delegate başarısız, CPU\'ya düşülüyor', {
+          cause: err instanceof Error ? err.message : String(err),
+        });
         const landmarker = await PoseLandmarker.createFromOptions(fileset, {
           baseOptions: {
             modelAssetPath: MODELS[targetTier],
@@ -202,9 +207,12 @@ export function detectPose(
     telemetry.errorCount += 1;
     telemetry.lastError = err instanceof Error ? err.message : String(err);
     consecutiveErrors += 1;
-    console.error('[detectPose] MediaPipe inference failed:', err);
+    log.error('MediaPipe inference failed', {
+      cause: err instanceof Error ? err.message : String(err),
+      consecutiveErrors,
+    });
     if (consecutiveErrors >= 3) {
-      console.warn('[detectPose] 3 ardışık hata — auto-recovery tetikleniyor');
+      log.warn('3 ardışık hata — auto-recovery tetikleniyor');
       void disposePoseLandmarker();
       consecutiveErrors = 0;
     }
@@ -262,11 +270,21 @@ export async function disposePoseLandmarker(): Promise<void> {
   landmarkerPromise = null;
   configuredTier = null;
   consecutiveErrors = 0;
+  // Rolling telemetry buffer'larını da temizle — yeni session önceki
+  // session'ın FPS/latency verilerini taşımasın.
+  inferenceLatencies.length = 0;
+  inferenceTimestamps.length = 0;
+  telemetry.avgInferenceMs = 0;
+  telemetry.avgFps = 0;
+  telemetry.errorCount = 0;
+  telemetry.lastError = null;
   try {
     const landmarker = await cached;
     landmarker.close();
-  } catch {
-    // Promise was already rejected; nothing to close.
+  } catch (err) {
+    log.debug('dispose: cached landmarker promise reject olmuş', {
+      cause: err instanceof Error ? err.message : String(err),
+    });
   }
 }
 

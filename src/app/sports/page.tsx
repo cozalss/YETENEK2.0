@@ -34,9 +34,11 @@ export default function SportsIndexPage() {
             Spor Rehberi
           </p>
           <h1 className="text-5xl leading-[0.95] font-bold tracking-tight md:text-7xl">
-            14 branş.
+            12 branş.
             <br />
-            <span className="text-[var(--color-signal)]">Türkiye haritası.</span>
+            <span className="text-[var(--color-signal)]">
+              Türkiye haritası.
+            </span>
           </h1>
           <p className="max-w-2xl text-lg leading-relaxed text-[var(--color-ink-2)] md:text-xl">
             Çocuğun profili bir spor önerirken, sen veli olarak "nereden

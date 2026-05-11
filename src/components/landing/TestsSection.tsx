@@ -1,5 +1,4 @@
-'use client';
-
+// Server Component — sadece statik veri + leaf (Reveal/LazyVideo) client.
 import { Reveal } from '@/components/motion/Reveal';
 import { LazyVideo } from './LazyVideo';
 
@@ -14,7 +13,7 @@ const TESTS = [
     poster: '/images/test-cmj-poster.jpg',
     color: '#F4B6C2',
     metric: '24.3 cm',
-    metricLabel: 'Ortalama sıçrama',
+    metricLabel: 'Örnek ölçüm',
   },
   {
     id: 'balance',
@@ -26,7 +25,7 @@ const TESTS = [
     poster: '/images/test-balance-poster.jpg',
     color: '#A8D5BA',
     metric: '32.8 sn',
-    metricLabel: 'Ortalama denge',
+    metricLabel: 'Örnek ölçüm',
   },
   {
     id: 'reaction',
@@ -38,8 +37,15 @@ const TESTS = [
     poster: '/images/test-reaction-poster.jpg',
     color: '#F2C94C',
     metric: '0.24 sn',
-    metricLabel: 'Ortalama tepki',
+    metricLabel: 'Örnek ölçüm',
   },
+];
+
+const FULL_FLOW_TESTS = [
+  'Yatay sıçrama',
+  'Çeviklik',
+  'Koordinasyon',
+  'Dayanıklılık',
 ];
 
 export function TestsSection() {
@@ -50,7 +56,7 @@ export function TestsSection() {
       style={{ background: 'var(--whistle-cream)' }}
     >
       <div
-        className="absolute left-0 top-0 h-[2px] w-full"
+        className="absolute top-0 left-0 h-[2px] w-full"
         style={{ background: 'var(--form-navy)' }}
       />
 
@@ -58,7 +64,7 @@ export function TestsSection() {
         <Reveal>
           <div className="mb-16 text-center">
             <p
-              className="mb-4 text-xs uppercase tracking-[0.4em]"
+              className="mb-4 text-xs tracking-[0.4em] uppercase"
               style={{
                 color: 'var(--form-navy)',
                 opacity: 0.5,
@@ -88,8 +94,9 @@ export function TestsSection() {
                 fontFamily: 'var(--font-body)',
               }}
             >
-              Üç temel atletik blok: patlayıcı güç, denge kontrolü ve reaksiyon
-              hızı. Sıralı bir akış, tek bir telefon kamerası.
+              İlk ekranda üç çekirdek test: patlayıcı güç, denge kontrolü ve
+              reaksiyon hızı. Tam akışta bunlara dört ek boyut eklenir; tek
+              telefon kamerasıyla 7 boyutlu profil çıkar.
             </p>
           </div>
         </Reveal>
@@ -108,7 +115,7 @@ export function TestsSection() {
                     className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
                   <div
-                    className="absolute right-4 top-4 rounded-full px-3 py-1.5"
+                    className="absolute top-4 right-4 rounded-full px-3 py-1.5"
                     style={{
                       background: 'rgba(255, 245, 225, 0.9)',
                       backdropFilter: 'blur(8px)',
@@ -136,7 +143,7 @@ export function TestsSection() {
                     {test.title}
                   </h3>
                   <p
-                    className="mb-3 text-xs uppercase tracking-[0.2em]"
+                    className="mb-3 text-xs tracking-[0.2em] uppercase"
                     style={{
                       color: 'var(--form-navy)',
                       opacity: 0.6,
@@ -160,7 +167,7 @@ export function TestsSection() {
                     style={{ borderTop: '1px solid rgba(44, 62, 107, 0.2)' }}
                   >
                     <span
-                      className="text-[10px] uppercase tracking-[0.2em]"
+                      className="text-[10px] tracking-[0.2em] uppercase"
                       style={{
                         color: 'var(--form-navy)',
                         opacity: 0.5,
@@ -175,6 +182,40 @@ export function TestsSection() {
             </Reveal>
           ))}
         </div>
+
+        <Reveal delay={0.25}>
+          <div
+            className="mx-auto mt-10 flex max-w-3xl flex-wrap items-center justify-center gap-2 rounded-xl border px-4 py-3"
+            style={{
+              background: 'rgba(255, 255, 255, 0.42)',
+              borderColor: 'rgba(44, 62, 107, 0.14)',
+            }}
+          >
+            <span
+              className="mr-2 text-[10px] font-bold tracking-[0.24em] uppercase"
+              style={{
+                color: 'var(--form-navy)',
+                opacity: 0.58,
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              Tam akışta ayrıca
+            </span>
+            {FULL_FLOW_TESTS.map((test) => (
+              <span
+                key={test}
+                className="rounded-full px-3 py-1 text-[10px] font-bold tracking-[0.18em] uppercase"
+                style={{
+                  background: 'var(--form-navy)',
+                  color: 'var(--whistle-cream)',
+                  fontFamily: 'var(--font-display)',
+                }}
+              >
+                {test}
+              </span>
+            ))}
+          </div>
+        </Reveal>
 
         <div className="mt-16 flex justify-center">
           <div className="flex items-center gap-4">

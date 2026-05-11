@@ -1,11 +1,17 @@
 /**
  * Renders the 33-keypoint skeleton on a canvas overlay.
- * Pure presentation — given a PoseFrame, draws lines and dots.
+ *
+ * Pure presentation — given a *ref* to the most recent PoseFrame, draws
+ * lines and dots in its own rAF loop. The ref-based input is critical for
+ * perf: parent (CameraStream) used to call `setState(latestFrame)` on every
+ * MediaPipe frame, triggering 30-60 React re-renders per second of the
+ * whole tree. With refs the camera state is decoupled from React render.
  */
 
 'use client';
 
 import { useEffect, useRef } from 'react';
+import type { MutableRefObject } from 'react';
 import type { PoseFrame } from '@/types';
 
 // Skeleton connections (BlazePose pairs that visually form a body).
@@ -35,13 +41,14 @@ const POSE_CONNECTIONS: Array<[number, number]> = [
 ];
 
 type Props = {
-  frame: PoseFrame | null;
+  /** Parent (CameraStream) yazdığı son PoseFrame ref'i. */
+  frameRef: MutableRefObject<PoseFrame | null>;
   width: number;
   height: number;
   flip?: boolean; // mirror for selfie cam
 };
 
-export function PoseOverlay({ frame, width, height, flip = true }: Props) {
+export function PoseOverlay({ frameRef, width, height, flip = true }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -50,41 +57,50 @@ export function PoseOverlay({ frame, width, height, flip = true }: Props) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, width, height);
-    if (!frame) return;
+    let rafId = 0;
+    let cancelled = false;
 
-    // Scale normalized coords to canvas size, with optional horizontal flip.
-    const project = (x: number, y: number) => ({
-      x: flip ? (1 - x) * width : x * width,
-      y: y * height,
-    });
+    const draw = () => {
+      if (cancelled) return;
+      ctx.clearRect(0, 0, width, height);
+      const frame = frameRef.current;
+      if (frame) {
+        // Scale normalized coords to canvas size, with optional horizontal flip.
+        const projectX = (x: number) => (flip ? (1 - x) * width : x * width);
+        const projectY = (y: number) => y * height;
 
-    // Draw connections
-    ctx.strokeStyle = '#22d3ee'; // cyan-400
-    ctx.lineWidth = 2;
-    for (const [a, b] of POSE_CONNECTIONS) {
-      const lmA = frame.landmarks[a];
-      const lmB = frame.landmarks[b];
-      if (!lmA || !lmB) continue;
-      if ((lmA.visibility ?? 1) < 0.5 || (lmB.visibility ?? 1) < 0.5) continue;
-      const pa = project(lmA.x, lmA.y);
-      const pb = project(lmB.x, lmB.y);
-      ctx.beginPath();
-      ctx.moveTo(pa.x, pa.y);
-      ctx.lineTo(pb.x, pb.y);
-      ctx.stroke();
-    }
+        // Draw connections
+        ctx.strokeStyle = '#22d3ee'; // cyan-400
+        ctx.lineWidth = 2;
+        for (const [a, b] of POSE_CONNECTIONS) {
+          const lmA = frame.landmarks[a];
+          const lmB = frame.landmarks[b];
+          if (!lmA || !lmB) continue;
+          if ((lmA.visibility ?? 1) < 0.5 || (lmB.visibility ?? 1) < 0.5) continue;
+          ctx.beginPath();
+          ctx.moveTo(projectX(lmA.x), projectY(lmA.y));
+          ctx.lineTo(projectX(lmB.x), projectY(lmB.y));
+          ctx.stroke();
+        }
 
-    // Draw keypoints
-    ctx.fillStyle = '#f59e0b'; // amber-500
-    for (const lm of frame.landmarks) {
-      if ((lm.visibility ?? 1) < 0.5) continue;
-      const p = project(lm.x, lm.y);
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }, [frame, width, height, flip]);
+        // Draw keypoints
+        ctx.fillStyle = '#f59e0b'; // amber-500
+        for (const lm of frame.landmarks) {
+          if ((lm.visibility ?? 1) < 0.5) continue;
+          ctx.beginPath();
+          ctx.arc(projectX(lm.x), projectY(lm.y), 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      rafId = requestAnimationFrame(draw);
+    };
+    rafId = requestAnimationFrame(draw);
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+    };
+  }, [frameRef, width, height, flip]);
 
   return (
     <canvas

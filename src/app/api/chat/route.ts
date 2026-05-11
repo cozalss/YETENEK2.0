@@ -20,6 +20,19 @@ import {
 } from '@/lib/llm/coachPrompt';
 import { GeminiError, isGeminiConfigured, streamText } from '@/lib/llm/gemini';
 import type { SessionSummary } from '@/lib/session/store';
+import {
+  balanceSummarySchema,
+  broadJumpSummarySchema,
+  coordinationSummarySchema,
+  enduranceSummarySchema,
+  jumpSummarySchema,
+  lateralHopsSummarySchema,
+  reactionSummarySchema,
+  sportMatchSchema,
+} from '@/core/schemas/session.schema';
+import { logger } from '@/shared/logger/logger';
+
+const log = logger.child('api:chat');
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,18 +54,21 @@ const messageSchema = z.object({
   content: z.string().max(2000),
 });
 
+// Her test summary alt-schema'sı `core/schemas/session.schema.ts`'den
+// reuse ediliyor — z.unknown() ile loose forward yerine Zod-validated.
+// Bu Gemini prompt boundary'sinin gerçek tip güvenliğini sağlar.
 const payloadSchema = z.object({
   session: z
     .object({
       child: childSchema,
-      jump: z.unknown().optional(),
-      balance: z.unknown().optional(),
-      reaction: z.unknown().optional(),
-      broadJump: z.unknown().optional(),
-      lateralHops: z.unknown().optional(),
-      coordination: z.unknown().optional(),
-      endurance: z.unknown().optional(),
-      recommendations: z.array(z.unknown()).optional(),
+      jump: jumpSummarySchema.optional(),
+      balance: balanceSummarySchema.optional(),
+      reaction: reactionSummarySchema.optional(),
+      broadJump: broadJumpSummarySchema.optional(),
+      lateralHops: lateralHopsSummarySchema.optional(),
+      coordination: coordinationSummarySchema.optional(),
+      endurance: enduranceSummarySchema.optional(),
+      recommendations: z.array(sportMatchSchema).max(20).optional(),
       injuryWarnings: z.array(z.string().max(300)).max(10),
       completedTests: z.array(z.string()).optional(),
       startedAt: z.string(),
@@ -130,7 +146,13 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
+  // Zod schema artık test alanlarını da validate ediyor; cast tipinin
+  // SessionSummary'e uyumlu olması için minimum normalizasyon yapıyoruz.
   const session = rawSession as unknown as SessionSummary;
+  log.debug('chat session validated', {
+    ageYears: rawSession.child.ageYears,
+    completedCount: rawSession.completedTests?.length ?? 0,
+  });
   const sessionContext = buildCoachContext(session);
   const systemPrompt = `${COACH_SYSTEM_PROMPT}\n\n## Çocuğun profili\n${sessionContext}`;
 

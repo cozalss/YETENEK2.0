@@ -59,11 +59,11 @@ export function SiteFooter() {
           </div>
 
           <FooterCol title="Ürün">
-            <FooterLink href="/test">Test Bataryası</FooterLink>
-            <FooterLink href="/test/full">Tam Akış</FooterLink>
-            <FooterLink href="/test/full?mode=quick">Hızlı Akış</FooterLink>
+            <FooterLink href="/profile">Hesap & Çocuk Profilleri</FooterLink>
+            <FooterLink href="/test">Test Bataryası Bilgisi</FooterLink>
             <FooterLink href="/result/demo">Örnek Sonuç</FooterLink>
-            <FooterLink href="/profile">Cüzdanım</FooterLink>
+            <FooterLink href="/auth/sign-up">Kayıt Ol</FooterLink>
+            <FooterLink href="/auth/sign-in">Giriş Yap</FooterLink>
           </FooterCol>
 
           <FooterCol title="Kaynaklar">

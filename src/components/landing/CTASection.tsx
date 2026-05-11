@@ -1,9 +1,8 @@
-'use client';
-
+// Server Component — Link RSC-safe, Reveal/LazyVideo leaf client.
 import Link from 'next/link';
 import { Reveal } from '@/components/motion/Reveal';
 import { LazyVideo } from './LazyVideo';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRightIcon } from '@/components/icons';
 
 export function CTASection() {
   return (
@@ -26,7 +25,7 @@ export function CTASection() {
         <Reveal>
           <div className="mb-12 text-center">
             <p
-              className="mb-4 text-xs uppercase tracking-[0.4em]"
+              className="mb-4 text-xs tracking-[0.4em] uppercase"
               style={{
                 color: 'var(--whistle-cream)',
                 opacity: 0.5,
@@ -74,7 +73,7 @@ export function CTASection() {
             }}
           >
             <p
-              className="mb-2 text-[10px] uppercase tracking-[0.3em]"
+              className="mb-2 text-[10px] tracking-[0.3em] uppercase"
               style={{
                 color: 'var(--form-navy)',
                 opacity: 0.6,
@@ -110,8 +109,8 @@ export function CTASection() {
 
             <div className="mt-8 flex flex-col gap-3">
               <Link
-                href="/test/full"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-lg px-6 text-sm font-black uppercase tracking-[0.25em] transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                href="/auth/sign-up?next=/profile"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-lg px-6 text-sm font-black tracking-[0.25em] uppercase transition-transform hover:scale-[1.02] active:scale-[0.98]"
                 style={{
                   background: 'var(--form-navy)',
                   color: 'var(--whistle-cream)',
@@ -120,19 +119,19 @@ export function CTASection() {
                     '0 6px 0 var(--deep-navy), 0 8px 20px rgba(0,0,0,0.2)',
                 }}
               >
-                Tam Akış
-                <ArrowRight size={16} />
+                Hesap Aç & Başla
+                <ArrowRightIcon size={16} />
               </Link>
               <Link
-                href="/test/full?mode=quick"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border-2 px-6 text-xs font-bold uppercase tracking-[0.25em] transition-colors hover:bg-[rgba(44,62,107,0.05)]"
+                href="/auth/sign-in?next=/profile"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border-2 px-6 text-xs font-bold tracking-[0.25em] uppercase transition-colors hover:bg-[rgba(44,62,107,0.05)]"
                 style={{
                   borderColor: 'rgba(44, 62, 107, 0.3)',
                   color: 'var(--form-navy)',
                   fontFamily: 'var(--font-display)',
                 }}
               >
-                Hızlı Akış (3 dk)
+                Zaten hesabım var
               </Link>
               <Link
                 href="/result/demo"

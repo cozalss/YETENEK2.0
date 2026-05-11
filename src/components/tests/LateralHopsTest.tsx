@@ -23,6 +23,9 @@ import {
   lateralHopsScore,
 } from '@/lib/tests/lateralHops';
 import type { PoseFrame } from '@/types';
+import { logger } from '@/shared/logger/logger';
+
+const log = logger.child('lateral-hops-test');
 
 type Phase =
   | 'idle'
@@ -87,6 +90,12 @@ export function LateralHopsTest({
   useEffect(() => {
     phaseRef.current = phase;
   }, [phase]);
+
+  // onComplete'i ref'te sabitle (analyze effect re-fire önlenir).
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => () => cancelSpeech(), []);
 
@@ -164,19 +173,32 @@ export function LateralHopsTest({
     return () => clearTimeout(t);
   }, [phase, countdown]);
 
+  // Tek interval: 200ms tick'le elapsed delta üzerinden remaining hesaplanır.
+  // Eski versiyon her 100ms'de setState çağırıyordu — 150 re-render boyunca
+  // MediaPipe rAF loop'unu thrash ediyor, mobilde frame drop yaratıyordu.
+  // 200ms tick + Date.now okuma 5 update/s = display için yeterli, GPU
+  // pipeline'a nefes aldırır.
+  const captureStartRef = useRef<number | null>(null);
   useEffect(() => {
-    if (phase !== 'capture') return;
-    if (captureRemainingMs <= 0) {
-      captureActiveRef.current = false;
-      setPhase('analyze');
+    if (phase !== 'capture') {
+      captureStartRef.current = null;
       return;
     }
-    const t = setTimeout(
-      () => setCaptureRemainingMs((c) => Math.max(0, c - 100)),
-      100
-    );
-    return () => clearTimeout(t);
-  }, [phase, captureRemainingMs]);
+    captureStartRef.current = Date.now();
+    const id = setInterval(() => {
+      const start = captureStartRef.current;
+      if (start == null) return;
+      const elapsed = Date.now() - start;
+      const remaining = Math.max(0, LATERAL_HOPS_DURATION_MS - elapsed);
+      setCaptureRemainingMs(remaining);
+      if (remaining <= 0) {
+        clearInterval(id);
+        captureActiveRef.current = false;
+        setPhase('analyze');
+      }
+    }, 200);
+    return () => clearInterval(id);
+  }, [phase]);
 
   useEffect(() => {
     if (phase !== 'analyze') return;
@@ -192,10 +214,12 @@ export function LateralHopsTest({
       setResult(final);
       setPhase('result');
       if (analysis.valid) {
-        onComplete?.(final);
+        onCompleteRef.current?.(final);
       }
     } catch (err) {
-      console.error('[LateralHopsTest] analiz hatası', err);
+      log.error('analiz hatası', {
+        cause: err instanceof Error ? err.message : String(err),
+      });
       setResult({
         hopCount: 0,
         frequencyHz: 0,
@@ -207,7 +231,8 @@ export function LateralHopsTest({
       });
       setPhase('result');
     }
-  }, [phase, childAgeYears, childSex, onComplete]);
+    // onComplete kasten dışarıda — inline arrow ile çift kayıt olmasın.
+  }, [phase, childAgeYears, childSex]);
 
   useEffect(() => {
     if (phase === 'result' && resultHeadingRef.current) {

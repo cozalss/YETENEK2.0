@@ -52,7 +52,7 @@ export function SiteHeader() {
         </nav>
 
         <Link
-          href="/test/full"
+          href="/profile"
           className="inline-flex h-10 items-center gap-2 rounded-full px-5 text-[11px] font-black uppercase tracking-[0.25em] transition-transform hover:scale-[1.03]"
           style={{
             background: 'var(--form-navy)',
