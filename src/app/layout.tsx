@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     url: SITE_URL,
     images: [
       {
-        url: '/og-default.png',
+        url: '/api/og',
         width: 1200,
         height: 630,
         alt: 'Yetenek 2.0 — Çocuk Spor Yeteneği Keşfi',
@@ -74,7 +74,7 @@ export const metadata: Metadata = {
     title: 'Yetenek 2.0 — Çocuğunun Spor Yeteneğini Keşfet',
     description:
       '5 dakikada AI tabanlı 7 boyutlu spor yetenek profili. Telefonun kamerasıyla.',
-    images: ['/og-default.png'],
+    images: ['/api/og'],
   },
   manifest: '/manifest.webmanifest',
   alternates: {
@@ -106,6 +106,7 @@ export default function RootLayout({
   return (
     <html
       lang="tr"
+      data-scroll-behavior="smooth"
       className={`${montserrat.variable} ${courierPrime.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">

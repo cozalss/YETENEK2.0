@@ -18,8 +18,10 @@ const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 
 // Build sırasında değerler inline edildiği için bu warning sadece
-// eksik konfigürasyon halinde tetiklenir.
+// eksik konfigürasyon halinde tetiklenir. Production bundle'ında
+// kullanıcı konsoluna sızmasın diye sadece dev modunda log atılır.
 if (
+  process.env.NODE_ENV !== 'production' &&
   typeof window !== 'undefined' &&
   (!supabaseUrl || !supabaseAnonKey)
 ) {

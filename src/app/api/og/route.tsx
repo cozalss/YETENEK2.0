@@ -4,15 +4,17 @@
  * `next/og` ImageResponse ile gerçek PNG üretir → Twitter Cards, LinkedIn,
  * tüm modern sosyal platformlar destekler (SVG yetersiz kalıyordu).
  *
- * Edge runtime gerekli — `next/og` Node.js runtime'da çalışmaz. Cache
- * 1 saat — query parametresi varsa farklı imaj.
+ * Runtime nodejs — Next 13.4+ ile next/og artık Node'da da çalışır;
+ * edge runtime build'de "static generation disabled" uyarısı verirdi,
+ * API route zaten dinamik olduğu için bu opt-out anlamsızdı.
+ *
+ * Cache 1 saat — query parametresi varsa farklı imaj.
  *
  * Query: ?name=Zeynep&age=11&sport=Voleybol&score=92
  */
 
 import { ImageResponse } from 'next/og';
 
-export const runtime = 'edge';
 export const revalidate = 3600;
 
 export async function GET(request: Request) {

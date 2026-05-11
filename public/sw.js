@@ -1,4 +1,3 @@
-/* eslint-disable */
 /**
  * Yetenek 2.0 — Service Worker.
  *

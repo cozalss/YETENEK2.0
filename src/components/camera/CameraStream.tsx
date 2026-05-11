@@ -14,6 +14,7 @@
 
 'use client';
 
+import Link from 'next/link';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
   detectPose,
@@ -58,6 +59,8 @@ interface Props {
 interface CameraError {
   title: string;
   hint: string;
+  /** Hata kalıcı (izin reddi, cihaz yok) — demo'ya yönlendirme öneriliyor. */
+  fatal?: boolean;
 }
 
 // Module-level lock: ensures only one MediaStream lives across StrictMode double-invokes.
@@ -71,13 +74,15 @@ function translateError(err: unknown): CameraError {
   if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
     return {
       title: 'Kamera izni verilmedi',
-      hint: 'Tarayıcı adres çubuğundaki kamera ikonundan izin ver, sayfayı yenile.',
+      hint: 'Tarayıcı adres çubuğundaki kamera ikonundan izin ver ve sayfayı yenile. İzin vermeden örnek bir profili incelemek istersen aşağıdaki bağlantıyı kullan.',
+      fatal: true,
     };
   }
   if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
     return {
       title: 'Kamera bulunamadı',
-      hint: 'Bilgisayara bağlı kamera olduğundan emin ol.',
+      hint: 'Cihazda kamera bulunamadı. Telefonundan tekrar dene ya da örnek profilleri incele.',
+      fatal: true,
     };
   }
   if (
@@ -333,20 +338,34 @@ function CameraStreamInner({
         </div>
       )}
       {error && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/85 p-6 text-center">
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/85 p-6 text-center"
+        >
           <div className="text-base font-semibold text-red-300">
             {error.title}
           </div>
           <div className="max-w-xs text-sm leading-relaxed text-neutral-300">
             {error.hint}
           </div>
-          <button
-            type="button"
-            onClick={retry}
-            className="mt-2 rounded-full bg-amber-400 px-4 py-2 text-sm font-semibold text-neutral-950 transition-colors hover:bg-amber-300 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none"
-          >
-            Tekrar Dene
-          </button>
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={retry}
+              className="rounded-full bg-amber-400 px-4 py-2 text-sm font-semibold text-neutral-950 transition-colors hover:bg-amber-300 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none"
+            >
+              Tekrar Dene
+            </button>
+            {error.fatal && (
+              <Link
+                href="/demo"
+                className="rounded-full border border-white/30 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none"
+              >
+                Örnek profili incele
+              </Link>
+            )}
+          </div>
         </div>
       )}
     </div>

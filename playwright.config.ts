@@ -36,7 +36,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `pnpm dev -- -p ${port}`,
+    command: `pnpm exec next dev -p ${port}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

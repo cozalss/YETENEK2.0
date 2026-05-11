@@ -18,13 +18,13 @@
 
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import {
   PolarAngleAxis,
   PolarGrid,
   PolarRadiusAxis,
   Radar,
   RadarChart,
-  ResponsiveContainer,
 } from 'recharts';
 
 export interface BioMotorRadarProps {
@@ -56,10 +56,21 @@ export function BioMotorRadar({
     { axis: 'Denge', value: clamp(balance) },
   ];
 
+  const { containerRef, size, ready } = useSquareSize(280, 448);
+
   return (
-    <div className="aspect-square w-full max-w-md">
-      <ResponsiveContainer width="100%" height="100%">
-        <RadarChart data={data} outerRadius="75%">
+    <div
+      ref={containerRef}
+      className="w-full max-w-md"
+      style={{ minHeight: 280 }}
+    >
+      {ready && (
+        <RadarChart
+          width={size}
+          height={size}
+          data={data}
+          outerRadius="75%"
+        >
           <PolarGrid stroke="#404040" />
           <PolarAngleAxis
             dataKey="axis"
@@ -80,9 +91,36 @@ export function BioMotorRadar({
             strokeWidth={2}
           />
         </RadarChart>
-      </ResponsiveContainer>
+      )}
     </div>
   );
+}
+
+/**
+ * Parent genişliğini ölçüp [min, max] arasında kare boyut döner.
+ * ResponsiveContainer'ın "width(-1) height(-1)" yarışını engeller —
+ * gerçek width'i ResizeObserver ile aldıktan sonra render eder.
+ */
+function useSquareSize(min: number, max: number) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [size, setSize] = useState(0);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const measure = () => {
+      const w = el.clientWidth;
+      if (w > 0) {
+        setSize(Math.max(min, Math.min(max, w)));
+      }
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [min, max]);
+
+  return { containerRef, size, ready: size > 0 };
 }
 
 function clamp(v: number): number {
