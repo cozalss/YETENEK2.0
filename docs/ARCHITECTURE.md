@@ -138,6 +138,52 @@ yıkıp yeniden yazma** yerine:
 
 Bu yaklaşım hackathon hızı + uzun-vade saygısı dengesi sağlar.
 
+### 4.1 `src/lib/*` taşıma planı (kademeli, post-hackathon)
+
+| Mevcut `lib/*` modülü                | Hedef katman                                  | Öncelik | Not |
+|---                                    |---                                            |---      |---  |
+| `lib/session/store.ts`                | `infrastructure/storage/local-session-repository.ts` (var) → hook'lara `core/ports/session-repository` üzerinden bağlan | Y       | UI hâlâ `sessionStore`'u doğrudan import ediyor; ilk taşıma adımı port'a geçmek. |
+| `lib/history/store.ts`                | `infrastructure/storage/local-history-repository.ts` (var) → `useHistory` hook'una bağla                                | Y       | localStorage offline-first fallback olarak kalır; Supabase canonic. |
+| `lib/llm/geminiReport.ts`             | `infrastructure/llm/gemini-report-adapter.ts` (var) → `core/ports/report-generator` üzerinden                            | Y       | `claudeReport` adı 0003 ile temizlendi; import yolu yeni adapter'a güncellenecek. |
+| `lib/llm/gemini.ts`                   | `infrastructure/llm/gemini-client.ts`         | O       | Düşük seviye HTTP istemcisi. |
+| `lib/matching/*`                      | `core/domain/sport-matching.ts` (yeni)        | O       | Pure logic; doğrudan core'a taşınabilir. |
+| `lib/gamification/badges.ts`          | `core/domain/badges.ts` (yeni)                | O       | Pure tablo; constants. |
+| `lib/gamification/store.ts`           | Kaldırılacak                                  | D       | `child_badges` Supabase tablosu + `supabaseChildProgressRepository` yerini aldı. |
+| `lib/tests/*`                         | `core/domain/test-analyses/*` (yeni)          | D       | Pure analiz fonksiyonları; biraz dosya, ileride. |
+| `lib/pose/*`                          | `infrastructure/pose/*` (var ama boş)         | D       | MediaPipe browser-only; bundle ayrımı için. |
+| `lib/training/programs.ts`            | `core/domain/training-programs.ts`            | D       | Statik içerik. |
+| `lib/content/*`, `lib/demo/*`, `lib/a11y/*` | Olduğu yerde kalır (statik içerik / view util) | -       | Domain-bağımsız view yardımcıları; taşımaya değmez. |
+
+Öncelik: **Y**üksek (release-blocker temizlik), **O**rta (refactor PR'ları),
+**D**üşük (long-tail clean-up).
+
+### 4.2 Veri kaydı (dual-write) — kanonik akış
+
+```
+                                      ┌──────────────────┐
+                                      │  /test/full      │
+                                      │   (childId var)  │
+                                      └────────┬─────────┘
+                                               │  sessionStore.finalize()
+                                               ▼
+              ┌────────────────────────────────────────────────────┐
+              │           DUAL WRITE  (kayıp-dayanıklı)            │
+              ├────────────────────────────────────────────────────┤
+              │ (1) historyStore.add(final)  → localStorage         │
+              │     • offline-first fallback                       │
+              │     • anon kullanıcı, Supabase down vb. için       │
+              │     • /history sayfası okur                         │
+              │                                                    │
+              │ (2) recordChildSessionAction(...) → Supabase        │
+              │     • sessions + child_badges insert (RLS'li)      │
+              │     • /children/[id] sayfası kanonik kaynağı       │
+              │     • childId yoksa skip                            │
+              └────────────────────────────────────────────────────┘
+```
+
+Supabase yazımı başarısız olursa konsola `warn` düşer ve localStorage kopyası
+kullanıcının elindedir — silent fail yapılmaz.
+
 ## 5. Gelecek
 
 - `src/features/test-flow` — sub-domain slicing

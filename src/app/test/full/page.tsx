@@ -41,6 +41,9 @@ import {
   type SessionSummary,
 } from '@/lib/session/store';
 import { historyStore } from '@/lib/history/store';
+import { disposePoseLandmarker } from '@/lib/pose/detector';
+import { computeBadgesForSession } from '@/lib/gamification/badges';
+import { recordChildSessionAction } from '@/app/children/[id]/actions';
 import type { JumpAnalysis } from '@/lib/tests/jump';
 import type { BroadJumpAnalysis } from '@/lib/tests/broadJump';
 import type { BalanceAnalysis } from '@/lib/tests/balance';
@@ -98,8 +101,14 @@ export default function FullFlowPage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen bg-neutral-950 p-4 text-white">
-          <div className="mx-auto max-w-5xl pt-12 text-center text-neutral-300">
+        <main
+          className="min-h-screen p-4"
+          style={{
+            background: 'var(--whistle-cream)',
+            color: 'var(--form-navy)',
+          }}
+        >
+          <div className="mx-auto max-w-5xl pt-12 text-center opacity-70">
             Yükleniyor…
           </div>
         </main>
@@ -113,6 +122,7 @@ export default function FullFlowPage() {
 function FullFlowInner() {
   const searchParams = useSearchParams();
   const mode: Mode = searchParams.get('mode') === 'quick' ? 'quick' : 'full';
+  const childIdParam = searchParams.get('childId');
 
   const [phase, setPhase] = useState<Phase>('profile');
   const [child, setChild] = useState<ChildIdentity | null>(null);
@@ -120,27 +130,107 @@ function FullFlowInner() {
   const [finalSession, setFinalSession] = useState<SessionSummary | null>(
     null
   );
+  const [childLoadError, setChildLoadError] = useState<string | null>(null);
 
   const phaseOrder = mode === 'quick' ? QUICK_PHASE_ORDER : FULL_PHASE_ORDER;
   const stepLabels =
     mode === 'quick' ? QUICK_FLOW_STEP_LABELS : FULL_FLOW_STEP_LABELS;
+
+  // childId query param varsa: profile form'unu atla, child'ı API'den getir,
+  // sessionStore'u başlat. Hata olursa form'a düşer ve mesaj gösterilir.
+  useEffect(() => {
+    if (!childIdParam || child) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/children/${encodeURIComponent(childIdParam)}`,
+        );
+        if (!res.ok) {
+          if (cancelled) return;
+          const code = res.status === 401
+            ? 'Önce giriş yap.'
+            : res.status === 404
+              ? 'Çocuk bulunamadı.'
+              : 'Çocuk bilgisi getirilemedi.';
+          setChildLoadError(code);
+          return;
+        }
+        const json: { child?: { displayName: string; ageYears: number; sex: 'male' | 'female'; heightCm?: number; weightKg?: number } } = await res.json();
+        if (cancelled || !json.child) return;
+        const identity: ChildIdentity = {
+          name: json.child.displayName,
+          ageYears: json.child.ageYears,
+          sex: json.child.sex,
+          heightCm: json.child.heightCm,
+          weightKg: json.child.weightKg,
+        };
+        sessionStore.start(identity);
+        setChild(identity);
+        setPhase(phaseOrder[0]);
+      } catch {
+        if (!cancelled) {
+          setChildLoadError('Bağlantı hatası, tekrar dene.');
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // phaseOrder mode'a göre değişebilir; child set olduktan sonra yeniden
+    // tetiklenmemeli — child guard zaten engelliyor.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childIdParam]);
 
   const currentStepIndex = useMemo(() => {
     if (phase === 'profile' || phase === 'result') return -1;
     return phaseOrder.indexOf(phase);
   }, [phase, phaseOrder]);
 
-  // Result fazı: finalize çağır + sessionStore.current()'i state'e al
-  // + history'ye arşivle (tamamlanmış session).
+  // Result fazı: finalize + persist.
+  //
+  // KAYIT STRATEJİSİ (dual-write):
+  //   1. localStorage history (her zaman) → /history sayfası, offline-first
+  //      fallback. Anon kullanıcı veya Supabase down → veri burada kalır.
+  //   2. Supabase sessions + child_badges (yalnız childId varsa + auth'lı).
+  //      → /children/[id] sayfasının kanonik kaynağı, RLS ile veliye kilitli.
+  //
+  // childIdParam yoksa: tek-seferlik anonim test akışı (örn. demo veya
+  // çocuk profili yokken). Sonuç sadece cihazda kalır.
+  //
+  // MediaPipe PoseLandmarker'ı dispose ediyoruz — GPU/WASM tahsisleri
+  // (~10MB) result ekranı boyunca tutulmaya gerek yok, mobile cihazlarda
+  // diğer demolarla çakışmayı önler.
   useEffect(() => {
     if (phase !== 'result') return;
+    void disposePoseLandmarker();
     const final = sessionStore.finalize();
-    if (final) {
-      setFinalSession(final);
-      if (final.completedAt) {
-        historyStore.add(final);
+    if (!final) return;
+    setFinalSession(final);
+    if (!final.completedAt) return;
+
+    // (1) Her durumda localStorage'a yaz (offline-first fallback).
+    historyStore.add(final);
+
+    // (2) Supabase persist — yalnız childId varsa.
+    if (!childIdParam) return;
+    const earnedBadgeIds = computeBadgesForSession(final).map((b) => b.id);
+    void recordChildSessionAction({
+      childId: childIdParam,
+      summary: final,
+      earnedBadgeIds,
+      startedAt: final.startedAt,
+      completedAt: final.completedAt,
+    }).then((result) => {
+      // Fire-and-forget; ancak hatayı sessizce yutmuyoruz. Console'a
+      // düşürüp Sentry/Logger entegrasyonu eklendiğinde otomatik
+      // yakalanacak. Kullanıcı localStorage kopyasını /history'de görür.
+      if (!result.ok) {
+        console.warn('[test/full] Supabase session kaydı başarısız:', result.error);
       }
-    }
+    });
+    // phase tek tetikleyici; childIdParam zaten ilk mount'tan sabit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
   const handleProfileSubmit = (c: ChildIdentity) => {
@@ -174,12 +264,60 @@ function FullFlowInner() {
   const stepNumber = currentStepIndex + 1;
 
   return (
-    <main className="min-h-screen bg-neutral-950 p-4 text-white sm:p-6 md:p-12">
+    <main
+      className="min-h-screen p-4 sm:p-6 md:p-12"
+      style={{
+        background: 'var(--whistle-cream)',
+        color: 'var(--form-navy)',
+      }}
+    >
       <div className="mx-auto max-w-5xl space-y-6">
         <BrandHeader mode={mode} />
 
         {phase === 'profile' && (
-          <ProfileForm onSubmit={handleProfileSubmit} />
+          <>
+            {childLoadError && (
+              <div
+                className="mx-auto mb-4 max-w-xl rounded-xl border-2 px-4 py-3 text-sm"
+                style={{
+                  background: 'rgba(244, 182, 194, 0.2)',
+                  borderColor: 'var(--mindar-pink)',
+                  color: 'var(--deep-navy)',
+                }}
+                role="alert"
+              >
+                {childLoadError}
+              </div>
+            )}
+            {!childIdParam && (
+              <div
+                className="mx-auto mb-4 flex max-w-xl flex-col items-start gap-2 rounded-xl border-2 px-4 py-3 text-sm md:flex-row md:items-center md:justify-between"
+                style={{
+                  background: 'rgba(168, 213, 186, 0.18)',
+                  borderColor: 'var(--field-mint)',
+                  color: 'var(--deep-navy)',
+                }}
+                role="status"
+              >
+                <span>
+                  Çocuğun bilgisini her test öncesi tekrar girmen gerekmesin
+                  diye <strong>profil sayfasında çocuk ekle</strong>.
+                </span>
+                <a
+                  href="/profile"
+                  className="inline-flex shrink-0 items-center justify-center rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-widest transition-transform hover:scale-[1.03]"
+                  style={{
+                    background: 'var(--track-mustard)',
+                    color: 'var(--form-navy)',
+                    fontFamily: 'var(--font-display)',
+                  }}
+                >
+                  Profil sayfası
+                </a>
+              </div>
+            )}
+            <ProfileForm onSubmit={handleProfileSubmit} />
+          </>
         )}
 
         {phase === 'cmj' && child && (

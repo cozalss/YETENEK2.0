@@ -4,7 +4,7 @@
 
 ## Bağlam
 
-Mevcut `claudeReport.ts`, `chat/route.ts`, `gemini.ts` gibi modüller throw
+Mevcut `geminiReport.ts`, `chat/route.ts`, `gemini.ts` gibi modüller throw
 edip catch'lerde fallback üretiyor. Bu pattern bazı sorunlar yaratıyor:
 
 - TypeScript `throw` türünü `unknown` olarak ele alır → her catch'te

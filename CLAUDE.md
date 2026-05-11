@@ -146,7 +146,7 @@ src/
     ├── pose/{detector,extractKeypoints,framing,oneEuroFilter,quality}.ts
     ├── tests/{jump,balance,reaction,broadJump,lateralHops,coordination,enduranceJacks}.ts
     ├── matching/{recommend,sportProfiles}.ts
-    ├── llm/{gemini,claudeReport,coachPrompt,reportPrompt,fallbackReport}.ts
+    ├── llm/{gemini,geminiReport,coachPrompt,reportPrompt,fallbackReport}.ts
     ├── session/store.ts, history/store.ts
     ├── gamification/{badges,store}.ts
     ├── training/programs.ts

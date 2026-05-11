@@ -12,8 +12,11 @@
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { generateReport } from '@/lib/llm/claudeReport';
+import { generateReport } from '@/lib/llm/geminiReport';
 import type { SessionSummary } from '@/lib/session/store';
+import { logger } from '@/shared/logger/logger';
+
+const log = logger.child('api:report');
 
 // Route segment config — Next.js 16
 // dynamic: 'force-dynamic' → her istek server'da çalışsın (cache yok, KVKK gereği)
@@ -207,6 +210,9 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (data.coordination) inferredCompleted.push('coordination');
   if (data.endurance) inferredCompleted.push('endurance');
 
+  // Zod schema her test alanını yapısal olarak validate ediyor; aşağıdaki
+  // cast yalnızca branded `SessionSummary` tipinin TypeScript view'ını
+  // alır — runtime garantisini Zod schema'sı sağlar.
   const session = {
     ...data,
     completedTests: data.completedTests ?? inferredCompleted,
@@ -220,7 +226,9 @@ export async function POST(request: Request): Promise<NextResponse> {
       // reason sadece dev/log'da; cevaba istemiyoruz çünkü kullanıcıya görünür.
     });
   } catch (err) {
-    console.error('[/api/report] beklenmedik hata:', err);
+    log.error('rapor üretiminde beklenmedik hata', {
+      cause: err instanceof Error ? err.message : String(err),
+    });
     return NextResponse.json(
       { error: 'Rapor üretilemedi, lütfen tekrar deneyin.' },
       { status: 500 }

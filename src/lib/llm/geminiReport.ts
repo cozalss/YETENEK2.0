@@ -1,15 +1,9 @@
 /**
  * AI rapor üretimi — Google Gemini ile.
  *
- * Dosya adı tarihsel sebeple `claudeReport.ts` kaldı (route ve UI'lar
- * import bu yoldan); içerik Gemini'ye port edildi.
- *
- * Mimari:
- *   - Server-only (API key process.env'den okunur, browser'a SIZMAMALI).
- *   - REST API + fetch (no SDK dep).
- *   - Hata durumunda fallback (rule-based) rapor üretilir → demo asla
- *     boş ekran kalmaz.
- *   - Model: gemini-2.0-flash (varsayılan, hızlı + ücretsiz tier).
+ * Server-only (API key process.env'den okunur, browser'a SIZMAMALI).
+ * Hata durumunda fallback (rule-based) rapor üretilir → demo asla
+ * boş ekran kalmaz. Model: gemini-2.0-flash (varsayılan, hızlı + ücretsiz tier).
  */
 
 import 'server-only';

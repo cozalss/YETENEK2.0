@@ -9,12 +9,12 @@ session, history, gamification, training, content, demo, a11y, tests).
 Her biri **hem domain mantığı hem dış IO hem React'a bağlı kod** içeriyor:
 
 - `lib/session/store.ts` — domain (Session entity) + IO (localStorage)
-- `lib/llm/claudeReport.ts` — orchestration + Gemini SDK
+- `lib/llm/geminiReport.ts` — orchestration + Gemini SDK
 - `lib/history/store.ts` — repository + IO + TTL logic
 
 Bu birlikte sıkışma:
 
-- Test ederken Gemini'yi mock'lamak için claudeReport'u parçalamak gerek.
+- Test ederken Gemini'yi mock'lamak için geminiReport'u parçalamak gerek.
 - Storage backend'i değiştirmek (Supabase'e geçmek) tüm dosyayı yeniden
   yazmak demek.
 - Domain mantığını Web Worker'a taşımak imkansız (DOM'a bağımlı).
