@@ -338,16 +338,40 @@ function Instructions({
   framing: FramingStatus;
 }) {
   return (
-    <div className="space-y-4 rounded-2xl border border-neutral-800 p-6">
-      <h2 className="text-xl font-bold">Tek Bacak Denge Testi</h2>
-      <ol className="list-inside list-decimal space-y-2 text-sm text-neutral-300">
+    <div
+      className="space-y-4 rounded-2xl border-2 p-6"
+      style={{
+        background: 'rgba(255, 255, 255, 0.7)',
+        borderColor: 'rgba(44, 62, 107, 0.18)',
+      }}
+    >
+      <h2
+        className="text-xl font-black"
+        style={{
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+        }}
+      >
+        Tek Bacak Denge Testi
+      </h2>
+      <ol
+        className="list-inside list-decimal space-y-2 text-sm leading-relaxed"
+        style={{ color: 'var(--color-ink-2)' }}
+      >
         <li>Kamerayı 1.5m yüksekliğe koy, baştan ayağa görünmelisin.</li>
         <li>İlk olarak SAĞ bacakta 15 saniye dur, sol ayak yerden 10cm yukarda.</li>
         <li>3 saniye dinlenme, sonra SOL bacakta 15 saniye.</li>
         <li>Kollar yanda veya kalçada olabilir, başını öne eğme.</li>
       </ol>
       {!canStart && (
-        <div className="rounded-lg border border-amber-700 bg-amber-950/30 p-3 text-sm text-amber-200">
+        <div
+          className="rounded-lg border-2 p-3 text-sm font-medium"
+          style={{
+            background: 'rgba(242, 201, 76, 0.18)',
+            borderColor: 'var(--track-mustard)',
+            color: 'var(--form-navy)',
+          }}
+        >
           {framing.hint}
         </div>
       )}
@@ -355,11 +379,23 @@ function Instructions({
         type="button"
         onClick={onStart}
         disabled={!canStart}
-        className={`h-12 w-full rounded-full font-bold transition-colors focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none ${
+        className="h-12 w-full rounded-full text-base font-black tracking-wide transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        style={
           canStart
-            ? 'bg-amber-400 text-neutral-950 hover:bg-amber-300'
-            : 'cursor-not-allowed bg-neutral-800 text-neutral-400'
-        }`}
+            ? {
+                background: 'var(--track-mustard)',
+                color: 'var(--form-navy)',
+                fontFamily: 'var(--font-display)',
+                boxShadow:
+                  '0 6px 0 rgba(44, 62, 107, 0.18), 0 18px 36px -12px rgba(242, 201, 76, 0.45)',
+              }
+            : {
+                background: 'rgba(44, 62, 107, 0.08)',
+                color: 'rgba(44, 62, 107, 0.55)',
+                cursor: 'not-allowed',
+                fontFamily: 'var(--font-display)',
+              }
+        }
       >
         {canStart ? 'Hazırım, Başla' : 'Vücudun tam görünmüyor'}
       </button>
@@ -374,18 +410,23 @@ function ResultPanel({
   result: BalanceAnalysis;
   onRetry: () => void;
 }) {
+  const warn = result.asymmetryWarning;
   return (
     <div
-      className={`space-y-4 rounded-2xl border p-6 ${
-        result.asymmetryWarning
-          ? 'border-amber-700 bg-amber-950/20'
-          : 'border-emerald-800 bg-emerald-950/20'
-      }`}
+      className="space-y-4 rounded-2xl border-2 p-6"
+      style={{
+        background: warn
+          ? 'rgba(244, 182, 194, 0.22)'
+          : 'rgba(168, 213, 186, 0.22)',
+        borderColor: warn ? 'var(--mindar-pink)' : 'var(--field-mint)',
+      }}
     >
       <h3
-        className={`text-lg font-bold ${
-          result.asymmetryWarning ? 'text-amber-300' : 'text-emerald-300'
-        }`}
+        className="text-lg font-black"
+        style={{
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+        }}
       >
         Test Tamamlandı
       </h3>
@@ -409,14 +450,17 @@ function ResultPanel({
       </div>
 
       <div
-        className={`rounded-lg p-4 text-sm ${
-          result.asymmetryWarning
-            ? 'border border-amber-700 bg-amber-950/30 text-amber-100'
-            : 'border border-emerald-800 bg-emerald-950/20 text-emerald-100'
-        }`}
+        className="rounded-lg border-2 p-4 text-sm leading-relaxed"
+        style={{
+          background: 'rgba(255, 255, 255, 0.6)',
+          borderColor: warn
+            ? 'rgba(244, 182, 194, 0.55)'
+            : 'rgba(168, 213, 186, 0.55)',
+          color: 'var(--form-navy)',
+        }}
       >
-        {result.asymmetryWarning && (
-          <span className="mb-2 block font-semibold">
+        {warn && (
+          <span className="mb-2 block font-bold">
             ⚠ Sakatlanma riski uyarısı
           </span>
         )}
@@ -426,7 +470,13 @@ function ResultPanel({
       <button
         type="button"
         onClick={onRetry}
-        className="h-11 rounded-full bg-amber-400 px-5 font-semibold text-neutral-950 transition-colors hover:bg-amber-300 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
+        className="h-11 rounded-full px-5 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        style={{
+          background: 'var(--track-mustard)',
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+          boxShadow: '0 4px 0 rgba(44, 62, 107, 0.18)',
+        }}
       >
         Tekrar Dene
       </button>
@@ -445,17 +495,27 @@ function Metric({
 }) {
   return (
     <div
-      className={`rounded-xl border p-3 ${
-        accent ? 'border-amber-700' : 'border-neutral-800'
-      }`}
+      className="rounded-xl border-2 p-3"
+      style={{
+        background: 'var(--color-surface-elevated)',
+        borderColor: accent ? 'var(--track-mustard)' : 'var(--color-line)',
+      }}
     >
-      <div className="text-xs uppercase tracking-wider text-neutral-400">
+      <div
+        className="text-[10px] font-bold uppercase tracking-[0.18em]"
+        style={{
+          color: 'var(--color-ink-3)',
+          fontFamily: 'var(--font-display)',
+        }}
+      >
         {label}
       </div>
       <div
-        className={`mt-1 text-xl font-bold ${
-          accent ? 'text-amber-400' : 'text-white'
-        }`}
+        className="mt-1 text-xl font-black"
+        style={{
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+        }}
       >
         {value}
       </div>

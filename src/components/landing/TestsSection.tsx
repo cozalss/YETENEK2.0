@@ -103,7 +103,7 @@ export function TestsSection() {
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3 lg:gap-10">
           {TESTS.map((test, i) => (
-            <Reveal key={test.id} delay={i * 0.1}>
+            <Reveal key={test.id} delay={i * 120}>
               <div
                 className="group relative overflow-hidden rounded-xl"
                 style={{ background: test.color }}
@@ -183,7 +183,7 @@ export function TestsSection() {
           ))}
         </div>
 
-        <Reveal delay={0.25}>
+        <Reveal delay={300}>
           <div
             className="mx-auto mt-10 flex max-w-3xl flex-wrap items-center justify-center gap-2 rounded-xl border px-4 py-3"
             style={{

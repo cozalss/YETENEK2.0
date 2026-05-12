@@ -21,19 +21,43 @@ export function InjuryWarning({
   if (warnings.length === 0) return null;
 
   return (
-    <div className="space-y-3 rounded-2xl border border-amber-700/60 bg-amber-950/20 p-5">
+    <div
+      className="space-y-3 rounded-2xl border-2 p-5"
+      style={{
+        background: 'rgba(244, 182, 194, 0.22)',
+        borderColor: 'var(--mindar-pink)',
+      }}
+    >
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-xl">
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl"
+          style={{
+            background: 'var(--mindar-pink)',
+            color: 'var(--form-navy)',
+          }}
+        >
           ⚠
         </div>
         <div className="flex-1">
-          <h3 className="text-base font-bold text-amber-300">
+          <h3
+            className="text-base font-black"
+            style={{
+              color: 'var(--form-navy)',
+              fontFamily: 'var(--font-display)',
+            }}
+          >
             Sakatlanma Riski Erken Uyarısı
           </h3>
           {asymmetryPercent != null && weakerSide && (
-            <p className="mt-1 text-sm text-amber-200/80">
+            <p
+              className="mt-1 text-sm"
+              style={{ color: 'var(--color-ink-2)' }}
+            >
               {weakerSide === 'right' ? 'Sağ' : 'Sol'} bacak{' '}
-              <span className="font-semibold">
+              <span
+                className="font-bold"
+                style={{ color: 'var(--form-navy)' }}
+              >
                 %{asymmetryPercent.toFixed(0)} asimetrik
               </span>
             </p>
@@ -41,7 +65,10 @@ export function InjuryWarning({
         </div>
       </div>
 
-      <ul className="space-y-1.5 pl-13 text-sm text-amber-100/90">
+      <ul
+        className="space-y-1.5 pl-13 text-sm"
+        style={{ color: 'var(--form-navy)' }}
+      >
         {warnings.map((w, i) => (
           <li key={i} className="leading-relaxed">
             {w}
@@ -49,7 +76,14 @@ export function InjuryWarning({
         ))}
       </ul>
 
-      <div className="rounded-lg border border-amber-700/40 bg-amber-950/40 p-3 text-xs text-amber-200/80">
+      <div
+        className="rounded-lg border p-3 text-xs leading-relaxed"
+        style={{
+          background: 'rgba(255, 255, 255, 0.6)',
+          borderColor: 'rgba(244, 182, 194, 0.6)',
+          color: 'var(--color-ink-2)',
+        }}
+      >
         Bu uyarı tıbbi tanı değildir. Belirgin bir asimetri tespit edildiğinde
         önerilen yaklaşım: spor hekimi/fizyoterapist görüşü + tek bacak
         güçlendirme egzersizleri.

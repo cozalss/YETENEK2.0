@@ -313,15 +313,39 @@ function Instructions({
   onSkip?: () => void;
 }) {
   return (
-    <div className="space-y-4 rounded-2xl border border-neutral-800 p-6">
-      <h2 className="text-xl font-bold">Koordinasyon Testi</h2>
-      <ol className="list-inside list-decimal space-y-2 text-sm text-neutral-200">
+    <div
+      className="space-y-4 rounded-2xl border-2 p-6"
+      style={{
+        background: 'rgba(255, 255, 255, 0.7)',
+        borderColor: 'rgba(44, 62, 107, 0.18)',
+      }}
+    >
+      <h2
+        className="text-xl font-black"
+        style={{
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+        }}
+      >
+        Koordinasyon Testi
+      </h2>
+      <ol
+        className="list-inside list-decimal space-y-2 text-sm leading-relaxed"
+        style={{ color: 'var(--color-ink-2)' }}
+      >
         <li>Ekrandaki sarı nokta hareket etmeye başlayacak.</li>
         <li>Parmağınla noktayı takip et. Dokun, kaydır, dokun.</li>
         <li>25 saniye boyunca devam et. Acelen yok — sadece doğru takip et.</li>
       </ol>
 
-      <p className="rounded-lg border border-neutral-800 bg-neutral-900/40 p-3 text-xs text-neutral-300">
+      <p
+        className="rounded-lg border-2 p-3 text-xs leading-relaxed"
+        style={{
+          background: 'var(--color-canvas)',
+          borderColor: 'var(--color-line)',
+          color: 'var(--color-ink-2)',
+        }}
+      >
         Bu test gözle takip gerektirir. Görme zorluğun varsa atlayabilirsin —
         raporda bu boyut "ölçülmedi" olarak işaretlenecek, başka becerilerine
         bakılacak.
@@ -331,7 +355,14 @@ function Instructions({
         <button
           type="button"
           onClick={onStart}
-          className="h-12 flex-1 rounded-full bg-amber-400 font-bold text-neutral-950 transition-colors hover:bg-amber-300 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
+          className="h-12 flex-1 rounded-full text-base font-black tracking-wide transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          style={{
+            background: 'var(--track-mustard)',
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+            boxShadow:
+              '0 6px 0 rgba(44, 62, 107, 0.18), 0 18px 36px -12px rgba(242, 201, 76, 0.45)',
+          }}
         >
           Başla
         </button>
@@ -339,7 +370,12 @@ function Instructions({
           <button
             type="button"
             onClick={onSkip}
-            className="h-12 rounded-full border border-neutral-700 px-6 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
+            className="h-12 rounded-full border-2 px-6 text-xs font-bold uppercase tracking-wider transition-opacity hover:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+            style={{
+              borderColor: 'rgba(44, 62, 107, 0.3)',
+              color: 'var(--form-navy)',
+              fontFamily: 'var(--font-display)',
+            }}
           >
             Bu testi atla
           </button>
@@ -360,19 +396,37 @@ function ResultPanel({
 }) {
   if (!result.valid) {
     return (
-      <div className="space-y-3 rounded-2xl border border-red-800 bg-red-950/30 p-6">
+      <div
+        className="space-y-3 rounded-2xl border-2 p-6"
+        style={{
+          background: 'rgba(244, 182, 194, 0.22)',
+          borderColor: 'var(--mindar-pink)',
+        }}
+      >
         <h3
           ref={headingRef}
           tabIndex={-1}
-          className="text-lg font-bold text-red-300 focus-visible:outline-none"
+          className="text-lg font-black focus-visible:outline-none"
+          style={{
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
         >
           Yeterli takip kaydedilemedi
         </h3>
-        <p className="text-sm text-red-200">{result.reason}</p>
+        <p className="text-sm" style={{ color: 'var(--color-ink-2)' }}>
+          {result.reason}
+        </p>
         <button
           type="button"
           onClick={onRetry}
-          className="h-11 rounded-full bg-amber-400 px-5 font-semibold text-neutral-950 transition-colors hover:bg-amber-300 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
+          className="h-11 rounded-full px-5 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          style={{
+            background: 'var(--track-mustard)',
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+            boxShadow: '0 4px 0 rgba(44, 62, 107, 0.18)',
+          }}
         >
           Tekrar Dene
         </button>
@@ -380,11 +434,21 @@ function ResultPanel({
     );
   }
   return (
-    <div className="space-y-4 rounded-2xl border border-emerald-800 bg-emerald-950/20 p-6">
+    <div
+      className="space-y-4 rounded-2xl border-2 p-6"
+      style={{
+        background: 'rgba(168, 213, 186, 0.22)',
+        borderColor: 'var(--field-mint)',
+      }}
+    >
       <h3
         ref={headingRef}
         tabIndex={-1}
-        className="text-lg font-bold text-emerald-300 focus-visible:outline-none"
+        className="text-lg font-black focus-visible:outline-none"
+        style={{
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+        }}
       >
         Test Tamamlandı
       </h3>
@@ -407,7 +471,13 @@ function ResultPanel({
       <button
         type="button"
         onClick={onRetry}
-        className="h-11 rounded-full bg-amber-400 px-5 font-semibold text-neutral-950 transition-colors hover:bg-amber-300 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
+        className="h-11 rounded-full px-5 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        style={{
+          background: 'var(--track-mustard)',
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+          boxShadow: '0 4px 0 rgba(44, 62, 107, 0.18)',
+        }}
       >
         Tekrar Dene
       </button>
@@ -425,14 +495,28 @@ function Metric({
   accent?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-neutral-800 p-3">
-      <div className="text-xs uppercase tracking-wider text-neutral-300">
+    <div
+      className="rounded-xl border-2 p-3"
+      style={{
+        background: 'var(--color-surface-elevated)',
+        borderColor: accent ? 'var(--track-mustard)' : 'var(--color-line)',
+      }}
+    >
+      <div
+        className="text-[10px] font-bold uppercase tracking-[0.18em]"
+        style={{
+          color: 'var(--color-ink-3)',
+          fontFamily: 'var(--font-display)',
+        }}
+      >
         {label}
       </div>
       <div
-        className={`mt-1 text-xl font-bold ${
-          accent ? 'text-amber-400' : 'text-white'
-        }`}
+        className="mt-1 text-xl font-black"
+        style={{
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+        }}
       >
         {value}
       </div>

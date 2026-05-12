@@ -319,7 +319,10 @@ export function LateralHopsTest({
             helper={!framing.ready ? framing.hint : undefined}
             cta={<StartCTA onStart={start} canStart={framing.ready} />}
             footer={
-              <p className="text-center text-xs text-neutral-300">
+              <p
+                className="text-center text-xs"
+                style={{ color: 'var(--color-ink-3)' }}
+              >
                 Futbol, badminton, taekwondo için kritik boyut.
               </p>
             }
@@ -341,22 +344,60 @@ function PhaseStatusCard({
 }) {
   if (phase === 'capture') {
     return (
-      <div className="rounded-3xl border border-amber-700/40 bg-amber-950/15 p-7 backdrop-blur-sm">
-        <p className="text-xs font-semibold tracking-[0.2em] text-amber-400 uppercase">
+      <div
+        className="rounded-3xl border-2 p-7"
+        style={{
+          background: 'rgba(242, 201, 76, 0.16)',
+          borderColor: 'var(--track-mustard)',
+        }}
+      >
+        <p
+          className="text-xs font-bold tracking-[0.25em] uppercase"
+          style={{
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
           Kayıt aktif
         </p>
-        <h2 className="mt-2 text-2xl font-bold text-white">Sıçrayışın sayılıyor</h2>
-        <div className="mt-6 rounded-2xl bg-neutral-950/60 p-6 text-center">
-          <div className="font-display text-7xl leading-none font-black text-amber-300">
+        <h2
+          className="mt-2 text-2xl font-black"
+          style={{
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
+          Sıçrayışın sayılıyor
+        </h2>
+        <div
+          className="mt-6 rounded-2xl p-6 text-center"
+          style={{
+            background: 'var(--color-surface-elevated)',
+            border: '2px solid var(--color-line)',
+          }}
+        >
+          <div
+            className="font-display text-7xl leading-none font-black"
+            style={{ color: 'var(--form-navy)' }}
+          >
             {liveHopCount}
           </div>
-          <div className="mt-1 text-xs uppercase tracking-widest text-amber-200/80">
+          <div
+            className="mt-1 text-xs uppercase tracking-widest"
+            style={{
+              color: 'var(--color-ink-3)',
+              fontFamily: 'var(--font-display)',
+            }}
+          >
             Toplam hop
           </div>
         </div>
-        <p className="mt-5 text-sm leading-relaxed text-neutral-200">
-          15 saniye boyunca olabildiğince çok sıçra. Tempodan düşme — son saniyelerde
-          de devam et.
+        <p
+          className="mt-5 text-sm leading-relaxed"
+          style={{ color: 'var(--color-ink-2)' }}
+        >
+          15 saniye boyunca olabildiğince çok sıçra. Tempodan düşme — son
+          saniyelerde de devam et.
         </p>
       </div>
     );
@@ -385,12 +426,37 @@ function PhaseStatusCard({
   const { eyebrow, title, body } = messages[phase];
   if (!title) return null;
   return (
-    <div className="rounded-3xl border border-neutral-800 bg-neutral-900/60 p-7 backdrop-blur-sm">
-      <p className="text-xs font-semibold tracking-[0.2em] text-amber-400 uppercase">
+    <div
+      className="rounded-3xl border-2 p-7"
+      style={{
+        background: 'rgba(255, 255, 255, 0.7)',
+        borderColor: 'rgba(44, 62, 107, 0.18)',
+      }}
+    >
+      <p
+        className="text-xs font-bold tracking-[0.25em] uppercase"
+        style={{
+          color: 'var(--color-ink-3)',
+          fontFamily: 'var(--font-display)',
+        }}
+      >
         {eyebrow}
       </p>
-      <h2 className="mt-2 text-2xl font-bold text-white">{title}</h2>
-      <p className="mt-4 text-sm leading-relaxed text-neutral-200">{body}</p>
+      <h2
+        className="mt-2 text-2xl font-black"
+        style={{
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+        }}
+      >
+        {title}
+      </h2>
+      <p
+        className="mt-4 text-sm leading-relaxed"
+        style={{ color: 'var(--color-ink-2)' }}
+      >
+        {body}
+      </p>
     </div>
   );
 }
@@ -406,21 +472,40 @@ function ResultCard({
 }) {
   if (!result.valid) {
     return (
-      <div className="rounded-3xl border border-red-800/70 bg-red-950/30 p-7 backdrop-blur-sm">
+      <div
+        className="rounded-3xl border-2 p-7"
+        style={{
+          background: 'rgba(244, 182, 194, 0.22)',
+          borderColor: 'var(--mindar-pink)',
+        }}
+      >
         <h3
           ref={headingRef}
           tabIndex={-1}
-          className="text-xl font-bold text-red-200 focus-visible:outline-none"
+          className="text-xl font-black focus-visible:outline-none"
+          style={{
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
         >
           Yeterli sıçrama algılanamadı
         </h3>
-        <p className="mt-3 text-sm leading-relaxed text-red-100">
+        <p
+          className="mt-3 text-sm leading-relaxed"
+          style={{ color: 'var(--color-ink-2)' }}
+        >
           {result.reason}
         </p>
         <button
           type="button"
           onClick={onRetry}
-          className="mt-5 h-11 rounded-full bg-amber-400 px-6 font-semibold text-neutral-950 transition-colors hover:bg-amber-300 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
+          className="mt-5 h-11 rounded-full px-6 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          style={{
+            background: 'var(--track-mustard)',
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+            boxShadow: '0 4px 0 rgba(44, 62, 107, 0.18)',
+          }}
         >
           Tekrar Dene
         </button>
@@ -428,14 +513,31 @@ function ResultCard({
     );
   }
   return (
-    <div className="rounded-3xl border border-emerald-700/60 bg-emerald-950/25 p-7 backdrop-blur-sm">
-      <p className="text-xs font-semibold tracking-[0.2em] text-emerald-300 uppercase">
+    <div
+      className="rounded-3xl border-2 p-7"
+      style={{
+        background: 'rgba(168, 213, 186, 0.22)',
+        borderColor: 'var(--field-mint)',
+      }}
+    >
+      <p
+        className="text-xs font-bold tracking-[0.25em] uppercase"
+        style={{
+          color: 'var(--form-navy)',
+          opacity: 0.7,
+          fontFamily: 'var(--font-display)',
+        }}
+      >
         Tamam · 04
       </p>
       <h3
         ref={headingRef}
         tabIndex={-1}
-        className="mt-2 text-2xl font-bold text-white focus-visible:outline-none"
+        className="mt-2 text-2xl font-black focus-visible:outline-none"
+        style={{
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+        }}
       >
         Çeviklik kaydedildi
       </h3>
@@ -449,14 +551,24 @@ function ResultCard({
         />
       </dl>
       {result.dataQuality === 'low' && (
-        <p className="mt-5 text-xs leading-relaxed text-amber-200">
+        <p
+          className="mt-5 text-xs leading-relaxed"
+          style={{ color: 'var(--color-ink-2)' }}
+        >
           Frame eksikliği yüksek — daha iyi aydınlatma ile tekrar deneyebilirsin.
         </p>
       )}
       <button
         type="button"
         onClick={onRetry}
-        className="mt-6 h-11 w-full rounded-full bg-amber-400 font-semibold text-neutral-950 transition-colors hover:bg-amber-300 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
+        className="mt-6 h-11 w-full rounded-full text-base font-black tracking-wide transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        style={{
+          background: 'var(--track-mustard)',
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+          boxShadow:
+            '0 6px 0 rgba(44, 62, 107, 0.18), 0 18px 36px -12px rgba(242, 201, 76, 0.45)',
+        }}
       >
         Tekrar Dene
       </button>
@@ -474,14 +586,24 @@ function Stat({
   accent?: boolean;
 }) {
   return (
-    <div className="flex items-baseline justify-between border-b border-emerald-800/60 pb-3 last:border-0 last:pb-0">
-      <dt className="text-xs uppercase tracking-wider text-emerald-200/80">
+    <div
+      className="flex items-baseline justify-between border-b pb-3 last:border-0 last:pb-0"
+      style={{ borderColor: 'rgba(44, 62, 107, 0.18)' }}
+    >
+      <dt
+        className="text-[10px] font-bold uppercase tracking-[0.2em]"
+        style={{
+          color: 'var(--color-ink-3)',
+          fontFamily: 'var(--font-display)',
+        }}
+      >
         {label}
       </dt>
       <dd
-        className={`font-mono text-base font-semibold ${
-          accent ? 'text-amber-300' : 'text-white'
-        }`}
+        className="font-mono text-base font-bold"
+        style={{
+          color: accent ? 'var(--form-navy)' : 'var(--color-ink-2)',
+        }}
       >
         {value}
       </dd>

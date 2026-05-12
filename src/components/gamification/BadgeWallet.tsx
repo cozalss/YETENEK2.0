@@ -26,9 +26,15 @@ const CATEGORY_LABELS: Record<BadgeCategory, string> = {
 export function BadgeWallet({ badges, emptyState }: Props) {
   if (badges.length === 0) {
     return (
-      <div className="rounded-3xl border border-neutral-800 bg-neutral-900/40 p-8 text-center">
+      <div
+        className="rounded-3xl border-2 p-8 text-center"
+        style={{
+          background: 'var(--color-surface-elevated)',
+          borderColor: 'var(--color-line)',
+        }}
+      >
         {emptyState ?? (
-          <p className="text-neutral-400">
+          <p style={{ color: 'var(--color-ink-2)' }}>
             Henüz rozetin yok. İlk testi tamamlayarak başla.
           </p>
         )}
@@ -51,7 +57,13 @@ export function BadgeWallet({ badges, emptyState }: Props) {
         if (items.length === 0) return null;
         return (
           <section key={cat}>
-            <h3 className="mb-3 text-sm font-semibold tracking-wider text-amber-400 uppercase">
+            <h3
+              className="mb-3 text-xs font-bold tracking-[0.25em] uppercase"
+              style={{
+                color: 'var(--color-ink-3)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
               {CATEGORY_LABELS[cat]} ({items.length})
             </h3>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">

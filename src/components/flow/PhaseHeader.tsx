@@ -34,17 +34,36 @@ export function PhaseHeader({ current, labels, childName }: Props) {
 
   return (
     <header
-      className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-4"
+      className="rounded-2xl border p-4"
+      style={{
+        background: 'rgba(255, 255, 255, 0.55)',
+        borderColor: 'rgba(44, 62, 107, 0.18)',
+      }}
       aria-label={`Test ${current} bölü ${total}`}
     >
       <div className="flex items-baseline justify-between">
         <div>
-          <p className="text-xs font-semibold tracking-widest text-amber-400 uppercase">
+          <p
+            className="text-xs font-bold tracking-[0.25em] uppercase"
+            style={{
+              color: 'var(--form-navy)',
+              fontFamily: 'var(--font-display)',
+            }}
+          >
             Test {current} / {total}
           </p>
           {childName && (
-            <p className="mt-0.5 text-sm text-neutral-400">
-              Şu an: <span className="text-white">{childName}</span>
+            <p
+              className="mt-0.5 text-sm"
+              style={{ color: 'rgba(44, 62, 107, 0.65)' }}
+            >
+              Şu an:{' '}
+              <span
+                className="font-bold"
+                style={{ color: 'var(--form-navy)' }}
+              >
+                {childName}
+              </span>
             </p>
           )}
         </div>
@@ -57,35 +76,49 @@ export function PhaseHeader({ current, labels, childName }: Props) {
             className="flex flex-1 items-center gap-1.5 min-w-0"
           >
             <div
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                step.status === 'done'
-                  ? 'bg-emerald-500 text-neutral-950'
-                  : step.status === 'current'
-                    ? 'bg-amber-400 text-neutral-950 ring-4 ring-amber-400/20'
-                    : 'bg-neutral-800 text-neutral-300'
-              }`}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black"
+              style={{
+                background:
+                  step.status === 'done'
+                    ? 'var(--field-mint)'
+                    : step.status === 'current'
+                      ? 'var(--track-mustard)'
+                      : 'rgba(44, 62, 107, 0.12)',
+                color: 'var(--form-navy)',
+                boxShadow:
+                  step.status === 'current'
+                    ? '0 0 0 4px rgba(242, 201, 76, 0.25)'
+                    : 'none',
+                fontFamily: 'var(--font-display)',
+              }}
               aria-hidden="true"
             >
               {step.status === 'done' ? '✓' : idx + 1}
             </div>
             <span
-              className={`hidden truncate text-xs font-medium md:inline ${
-                step.status === 'current'
-                  ? 'text-amber-400'
-                  : step.status === 'done'
-                    ? 'text-emerald-300'
-                    : 'text-neutral-300'
-              }`}
+              className="hidden truncate text-xs font-bold tracking-wider md:inline"
+              style={{
+                color:
+                  step.status === 'current'
+                    ? 'var(--form-navy)'
+                    : step.status === 'done'
+                      ? 'var(--form-navy)'
+                      : 'rgba(44, 62, 107, 0.5)',
+                opacity: step.status === 'upcoming' ? 0.7 : 1,
+                fontFamily: 'var(--font-display)',
+              }}
             >
               {step.label}
             </span>
             {idx < steps.length - 1 && (
               <span
-                className={`h-px flex-1 ${
-                  step.status === 'done'
-                    ? 'bg-emerald-500'
-                    : 'bg-neutral-800'
-                }`}
+                className="h-px flex-1"
+                style={{
+                  background:
+                    step.status === 'done'
+                      ? 'var(--field-mint)'
+                      : 'rgba(44, 62, 107, 0.18)',
+                }}
                 aria-hidden="true"
               />
             )}

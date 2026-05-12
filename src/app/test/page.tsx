@@ -6,35 +6,42 @@ import {
   Zap,
 } from 'lucide-react';
 import { Reveal } from '@/components/motion/Reveal';
+import { SiteHeader } from '@/components/layout/SiteHeader';
+import { SiteFooter } from '@/components/layout/SiteFooter';
 
 export default function TestIndex() {
   return (
     <main className="min-h-screen bg-[var(--color-canvas)] text-[var(--color-ink-1)]">
-      <Header />
+      <SiteHeader />
       <div className="mx-auto max-w-7xl px-6 py-16 md:px-12 md:py-24">
         <Reveal>
           <p className="eyebrow">Test Bataryası</p>
         </Reveal>
-        <Reveal delay={0.1}>
+        <Reveal delay={80}>
           <h1 className="headline-display mt-4 max-w-3xl text-balance">
             Yedi test. Bir profil.
           </h1>
         </Reveal>
-        <Reveal delay={0.2}>
+        <Reveal delay={160}>
           <p className="mt-6 max-w-2xl text-lg text-[var(--color-ink-2)] leading-relaxed">
             Tam akış 7 boyutlu taramayı sırayla yapar ve AI raporunu üretir.
             Daha kısa başlamak istersen hızlı akışta 3 çekirdek test var.
           </p>
         </Reveal>
 
-        <Reveal delay={0.3}>
+        <Reveal delay={240}>
           <FullFlowCallout />
         </Reveal>
 
         <section className="mt-12">
           <Reveal>
-            <p className="eyebrow">Çekirdek Testler</p>
+            <p className="eyebrow">Tek Test Dene</p>
           </Reveal>
+          <p className="mt-2 max-w-2xl text-sm text-[var(--color-ink-2)]">
+            Önce sistemi tanımak istersen üç çekirdek testten birini tek başına
+            deneyebilirsin. Sonuç kaydedilir ama spor önerisi için tam akışı
+            tamamlaman gerekir.
+          </p>
           <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-6">
             <TestCard
               href="/test/jump"
@@ -66,37 +73,15 @@ export default function TestIndex() {
           </div>
         </section>
       </div>
+      <SiteFooter />
     </main>
-  );
-}
-
-function Header() {
-  return (
-    <header className="border-b border-[var(--color-line)]">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 md:px-12">
-        <Link href="/" className="font-display text-xl font-bold tracking-tight">
-          Yetenek<span className="text-[var(--color-signal)]">.</span>
-        </Link>
-        <nav className="flex items-center gap-6 text-sm font-medium text-[var(--color-ink-2)]">
-          <Link href="/" className="hover:text-[var(--color-ink-1)]">
-            Ana Sayfa
-          </Link>
-          <Link
-            href="/profile"
-            className="hover:text-[var(--color-ink-1)]"
-          >
-            Cüzdanım
-          </Link>
-        </nav>
-      </div>
-    </header>
   );
 }
 
 function FullFlowCallout() {
   return (
     <Link
-      href="/profile"
+      href="/test/full"
       className="grain group relative mt-12 block overflow-hidden rounded-3xl border border-[var(--color-signal)]/30 bg-gradient-to-br from-[var(--color-signal)]/15 via-[var(--color-canvas)] to-[var(--color-surface)] p-8 transition-all hover:border-[var(--color-signal)]/60 md:p-12"
     >
       <div className="relative z-10 flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">

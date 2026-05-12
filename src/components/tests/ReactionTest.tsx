@@ -156,26 +156,60 @@ export function ReactionTest({
 
 function Instructions({ onStart }: { onStart: () => void }) {
   return (
-    <div className="space-y-4 rounded-2xl border border-neutral-800 p-6">
-      <h2 className="text-xl font-bold">Reaksiyon Testi</h2>
-      <ol className="list-inside list-decimal space-y-2 text-sm text-neutral-300">
+    <div
+      className="space-y-4 rounded-2xl border-2 p-6"
+      style={{
+        background: 'rgba(255, 255, 255, 0.7)',
+        borderColor: 'rgba(44, 62, 107, 0.18)',
+      }}
+    >
+      <h2
+        className="text-xl font-black"
+        style={{
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+        }}
+      >
+        Reaksiyon Testi
+      </h2>
+      <ol
+        className="list-inside list-decimal space-y-2 text-sm leading-relaxed"
+        style={{ color: 'var(--color-ink-2)' }}
+      >
         <li>5 deneme yapılacak.</li>
         <li>
-          Ekran <span className="font-semibold text-sky-300">LACIVERT</span>{' '}
+          Ekran{' '}
+          <span
+            className="font-bold"
+            style={{ color: 'var(--deep-navy)' }}
+          >
+            LACIVERT
+          </span>{' '}
           olduğunda BEKLE.
         </li>
         <li>
-          Ekran <span className="font-semibold text-emerald-400">YEŞIL</span>{' '}
+          Ekran{' '}
+          <span
+            className="font-bold"
+            style={{ color: '#0e7a4d' }}
+          >
+            YEŞIL
+          </span>{' '}
           olduğunda HEMEN dokun.
         </li>
-        <li>
-          Yeşil olmadan dokunursan deneme tekrarlanır (false start).
-        </li>
+        <li>Yeşil olmadan dokunursan deneme tekrarlanır (false start).</li>
       </ol>
       <button
         type="button"
         onClick={onStart}
-        className="h-12 w-full rounded-full bg-amber-400 font-bold text-neutral-950 transition-colors hover:bg-amber-300 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
+        className="h-12 w-full rounded-full text-base font-black tracking-wide transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        style={{
+          background: 'var(--track-mustard)',
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+          boxShadow:
+            '0 6px 0 rgba(44, 62, 107, 0.18), 0 18px 36px -12px rgba(242, 201, 76, 0.45)',
+        }}
       >
         Başla
       </button>
@@ -277,8 +311,22 @@ function ResultPanel({
   onRetry: () => void;
 }) {
   return (
-    <div className="space-y-4 rounded-2xl border border-emerald-800 bg-emerald-950/20 p-6">
-      <h3 className="text-lg font-bold text-emerald-300">Test Tamamlandı</h3>
+    <div
+      className="space-y-4 rounded-2xl border-2 p-6"
+      style={{
+        background: 'rgba(168, 213, 186, 0.22)',
+        borderColor: 'var(--field-mint)',
+      }}
+    >
+      <h3
+        className="text-lg font-black"
+        style={{
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+        }}
+      >
+        Test Tamamlandı
+      </h3>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <Metric
@@ -298,15 +346,32 @@ function ResultPanel({
         />
       </div>
 
-      <div className="rounded-lg border border-neutral-800 p-3">
-        <div className="mb-2 text-xs uppercase tracking-wider text-neutral-400">
+      <div
+        className="rounded-lg border-2 p-3"
+        style={{
+          background: 'rgba(255, 255, 255, 0.6)',
+          borderColor: 'var(--color-line)',
+        }}
+      >
+        <div
+          className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em]"
+          style={{
+            color: 'var(--color-ink-3)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
           Tüm Denemeler
         </div>
         <div className="flex flex-wrap gap-2">
           {analysis.trials.map((t) => (
             <span
               key={t.index}
-              className="rounded-full bg-neutral-900 px-3 py-1 text-xs"
+              className="rounded-full px-3 py-1 text-xs font-bold"
+              style={{
+                background: 'var(--color-canvas)',
+                color: 'var(--form-navy)',
+                border: '1px solid var(--color-line)',
+              }}
             >
               {t.reactionMs.toFixed(0)} ms
             </span>
@@ -317,7 +382,13 @@ function ResultPanel({
       <button
         type="button"
         onClick={onRetry}
-        className="h-11 rounded-full bg-amber-400 px-5 font-semibold text-neutral-950 transition-colors hover:bg-amber-300 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
+        className="h-11 rounded-full px-5 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        style={{
+          background: 'var(--track-mustard)',
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+          boxShadow: '0 4px 0 rgba(44, 62, 107, 0.18)',
+        }}
       >
         Tekrar Dene
       </button>
@@ -335,14 +406,28 @@ function Metric({
   accent?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-neutral-800 p-3">
-      <div className="text-xs uppercase tracking-wider text-neutral-400">
+    <div
+      className="rounded-xl border-2 p-3"
+      style={{
+        background: 'var(--color-surface-elevated)',
+        borderColor: accent ? 'var(--track-mustard)' : 'var(--color-line)',
+      }}
+    >
+      <div
+        className="text-[10px] font-bold uppercase tracking-[0.18em]"
+        style={{
+          color: 'var(--color-ink-3)',
+          fontFamily: 'var(--font-display)',
+        }}
+      >
         {label}
       </div>
       <div
-        className={`mt-1 text-xl font-bold ${
-          accent ? 'text-amber-400' : 'text-white'
-        }`}
+        className="mt-1 text-xl font-black"
+        style={{
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+        }}
       >
         {value}
       </div>

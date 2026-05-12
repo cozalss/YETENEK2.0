@@ -58,18 +58,18 @@ export function LandingFooter() {
               fontFamily: 'var(--font-body)',
             }}
           >
-            Where Symmetry Meets Talent
+            AI Yetenek Tarama Platformu
           </p>
           <p
             className="mt-6 max-w-md text-sm leading-relaxed"
             style={{
               color: 'var(--whistle-cream)',
-              opacity: 0.6,
+              opacity: 0.65,
               fontFamily: 'var(--font-body)',
             }}
           >
-            8–15 yaş çocuklar için AI tabanlı spor yetenek keşfi. Geleceğin
-            şampiyonlarını biyomekanik hassasiyetle ortaya çıkarır.
+            8–15 yaş çocukları için cihaz-üstü pose estimation ile bio-motor
+            ölçüm ve sporun branş eşleştirmesi. Veri çocuğun cihazında işlenir.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
@@ -125,14 +125,18 @@ export function LandingFooter() {
               © {new Date().getFullYear()} YETENEK. Tüm hakları saklıdır.
             </p>
             <p
-              className="text-[10px] tracking-wider"
+              className="max-w-[18rem] text-[10px] leading-relaxed tracking-wider"
               style={{
                 color: 'var(--whistle-cream)',
-                opacity: 0.3,
+                opacity: 0.4,
                 fontFamily: 'var(--font-body)',
               }}
             >
-              Bompa · Tomkinson · Croisier · Pion · Bridge · Phomsoupha
+              Bilimsel referanslar:
+              {' '}
+              <span style={{ opacity: 0.75 }}>
+                Bompa · Tomkinson · Croisier · Pion · Bridge · Phomsoupha
+              </span>
             </p>
             <button
               type="button"

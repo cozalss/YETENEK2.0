@@ -46,24 +46,50 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div
           role="alert"
-          className="mx-auto my-12 max-w-2xl space-y-4 rounded-2xl border border-red-800 bg-red-950/30 p-8 text-center"
+          className="mx-auto my-12 max-w-2xl space-y-4 rounded-2xl border-2 p-8 text-center"
+          style={{
+            background: 'rgba(244, 182, 194, 0.22)',
+            borderColor: 'var(--mindar-pink)',
+          }}
         >
-          <h2 className="text-xl font-bold text-red-300">
+          <h2
+            className="text-xl font-black"
+            style={{
+              color: 'var(--form-navy)',
+              fontFamily: 'var(--font-display)',
+            }}
+          >
             Beklenmedik bir hata oluştu
           </h2>
-          <p className="text-sm text-red-200">
+          <p
+            className="text-sm leading-relaxed"
+            style={{ color: 'var(--color-ink-2)' }}
+          >
             Test sırasında bir sorun çıktı. Tekrar denemek için butona bas.
             Sorun devam ederse sayfayı yenile.
           </p>
           {this.state.error?.message && (
-            <pre className="overflow-x-auto rounded-lg bg-black/40 p-3 text-left text-xs text-red-200/80">
+            <pre
+              className="overflow-x-auto rounded-lg p-3 text-left text-xs"
+              style={{
+                background: 'rgba(255, 255, 255, 0.6)',
+                color: 'var(--color-ink-2)',
+                border: '1px solid rgba(244, 182, 194, 0.5)',
+              }}
+            >
               {this.state.error.message}
             </pre>
           )}
           <button
             type="button"
             onClick={this.reset}
-            className="h-11 rounded-full bg-amber-400 px-6 font-semibold text-neutral-950 transition-colors hover:bg-amber-300 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
+            className="h-11 rounded-full px-6 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+            style={{
+              background: 'var(--track-mustard)',
+              color: 'var(--form-navy)',
+              fontFamily: 'var(--font-display)',
+              boxShadow: '0 4px 0 rgba(44, 62, 107, 0.18)',
+            }}
           >
             Tekrar Dene
           </button>

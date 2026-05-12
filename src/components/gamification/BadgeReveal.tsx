@@ -52,16 +52,30 @@ export function BadgeReveal({
       : `🎉 ${newlyUnlocked.length} yeni rozet kazandın!`;
 
   return (
-    <section className="rounded-3xl border border-amber-400/40 bg-gradient-to-br from-amber-400/10 via-neutral-950 to-neutral-900 p-6">
-      <div className="mb-5 flex items-baseline justify-between">
-        <h3 className="text-lg font-bold text-amber-400 md:text-xl">
+    <section
+      className="rounded-3xl border-2 p-6"
+      style={{
+        background:
+          'linear-gradient(135deg, rgba(242, 201, 76, 0.18) 0%, var(--color-surface-elevated) 100%)',
+        borderColor: 'var(--track-mustard)',
+      }}
+    >
+      <div className="mb-5 flex items-baseline justify-between gap-4">
+        <h3
+          className="text-lg font-black md:text-xl"
+          style={{
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
           {headline}
         </h3>
         {totalUnlocked != null && totalUnlocked > 0 && (
           <button
             type="button"
             onClick={onWalletClick}
-            className="text-xs font-medium text-amber-300/80 hover:text-amber-300 focus-visible:underline focus-visible:outline-none"
+            className="text-xs font-bold tracking-wide transition-opacity hover:opacity-70 focus-visible:underline focus-visible:outline-none"
+            style={{ color: 'var(--form-navy)' }}
           >
             Tüm rozetleri gör ({totalUnlocked}) →
           </button>
@@ -91,25 +105,49 @@ interface BadgeCardProps {
 export function BadgeCard({ badge, visible, isNew = false }: BadgeCardProps) {
   return (
     <div
-      className={`relative rounded-2xl border bg-neutral-900/60 p-4 text-center transition-all duration-500 ${
+      className={`relative rounded-2xl border-2 p-4 text-center transition-all duration-500 ${
         visible
           ? 'translate-y-0 scale-100 opacity-100'
           : 'translate-y-2 scale-90 opacity-0'
-      } ${isNew ? 'border-amber-400/50' : 'border-neutral-800'}`}
+      }`}
+      style={{
+        background: 'var(--color-surface-elevated)',
+        borderColor: isNew
+          ? 'var(--track-mustard)'
+          : 'var(--color-line)',
+      }}
     >
       {isNew && (
-        <span className="absolute -top-2 -right-2 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold tracking-wider text-neutral-950 uppercase">
+        <span
+          className="absolute -top-2 -right-2 rounded-full px-2 py-0.5 text-[10px] font-black tracking-wider uppercase"
+          style={{
+            background: 'var(--track-mustard)',
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
           Yeni
         </span>
       )}
       <div
-        className="text-4xl leading-none drop-shadow-md"
+        className="text-4xl leading-none drop-shadow-sm"
         aria-hidden="true"
       >
         {badge.emoji}
       </div>
-      <div className="mt-2 text-sm font-bold text-white">{badge.name}</div>
-      <div className="mt-1 text-[11px] leading-snug text-neutral-400">
+      <div
+        className="mt-2 text-sm font-black"
+        style={{
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+        }}
+      >
+        {badge.name}
+      </div>
+      <div
+        className="mt-1 text-[11px] leading-snug"
+        style={{ color: 'var(--color-ink-2)' }}
+      >
         {badge.description}
       </div>
     </div>

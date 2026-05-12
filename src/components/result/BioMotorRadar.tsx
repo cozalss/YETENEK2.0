@@ -71,23 +71,23 @@ export function BioMotorRadar({
           data={data}
           outerRadius="75%"
         >
-          <PolarGrid stroke="#404040" />
+          <PolarGrid stroke="rgba(44, 62, 107, 0.18)" />
           <PolarAngleAxis
             dataKey="axis"
-            tick={{ fill: '#d4d4d4', fontSize: 11 }}
+            tick={{ fill: '#2c3e6b', fontSize: 11, fontWeight: 700 }}
           />
           <PolarRadiusAxis
             angle={90}
             domain={[0, 100]}
-            tick={{ fill: '#525252', fontSize: 10 }}
-            stroke="#404040"
+            tick={{ fill: 'rgba(44, 62, 107, 0.55)', fontSize: 10 }}
+            stroke="rgba(44, 62, 107, 0.18)"
           />
           <Radar
             name="Profil"
             dataKey="value"
-            stroke="#fbbf24"
-            fill="#fbbf24"
-            fillOpacity={0.4}
+            stroke="#f2c94c"
+            fill="#f2c94c"
+            fillOpacity={0.45}
             strokeWidth={2}
           />
         </RadarChart>

@@ -21,10 +21,16 @@ export function GamificationPanel() {
         badges={badges}
         emptyState={
           <div>
-            <p className="text-sm text-neutral-300">
+            <p
+              className="text-sm leading-relaxed"
+              style={{ color: 'var(--color-ink-2)' }}
+            >
               Henüz rozet yok. İlk test tamamlandığında burada görünür.
             </p>
-            <p className="mt-2 text-xs text-neutral-500">
+            <p
+              className="mt-2 text-xs"
+              style={{ color: 'var(--color-ink-3)' }}
+            >
               Rozetler bu cihazdaki tarayıcıda saklanır.
             </p>
           </div>

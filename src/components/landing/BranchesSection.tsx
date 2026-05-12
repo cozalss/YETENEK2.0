@@ -179,7 +179,7 @@ export function BranchesSection() {
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 lg:gap-6">
           {BRANCHES.map((branch, i) => (
-            <Reveal key={branch.name} delay={(i % 4) * 0.08}>
+            <Reveal key={branch.name} delay={(i % 4) * 90}>
               <Link
                 href={`/sports/${branch.slug}`}
                 aria-label={`${branch.name} spor rehberi`}

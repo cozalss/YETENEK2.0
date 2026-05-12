@@ -45,19 +45,46 @@ export function ProfileForm({ onSubmit }: Props) {
     });
   };
 
+  const inputClass =
+    'h-11 w-full rounded-lg border-2 px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 transition-colors';
+  const inputStyle: React.CSSProperties = {
+    background: 'var(--color-canvas)',
+    borderColor: 'var(--color-line-strong)',
+    color: 'var(--form-navy)',
+  };
+
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-5 rounded-3xl border border-neutral-800 bg-neutral-900/40 p-6 md:p-7"
+      className="space-y-5 rounded-3xl border-2 p-6 md:p-7"
+      style={{
+        background: 'var(--color-surface-elevated)',
+        borderColor: 'var(--color-line)',
+      }}
     >
       <header>
-        <p className="text-xs font-semibold tracking-widest text-amber-400 uppercase">
+        <p
+          className="text-xs font-bold tracking-[0.25em] uppercase"
+          style={{
+            color: 'var(--color-ink-3)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
           Adım 1
         </p>
-        <h2 className="mt-1 text-2xl font-bold md:text-3xl">
+        <h2
+          className="mt-1 text-2xl font-black md:text-3xl"
+          style={{
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
           Çocuğun bilgileri
         </h2>
-        <p className="mt-1.5 text-xs text-neutral-300">
+        <p
+          className="mt-1.5 text-xs"
+          style={{ color: 'var(--color-ink-2)' }}
+        >
           Cihazda kalır, hiçbir yere paylaşılmaz.
         </p>
       </header>
@@ -73,7 +100,8 @@ export function ProfileForm({ onSubmit }: Props) {
             maxLength={60}
             required
             placeholder="Zeynep"
-            className="h-11 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
+            className={inputClass}
+            style={inputStyle}
           />
         </Field>
 
@@ -82,7 +110,8 @@ export function ProfileForm({ onSubmit }: Props) {
             id="profile-age"
             value={ageYears}
             onChange={(e) => setAgeYears(Number(e.target.value))}
-            className="h-11 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
+            className={inputClass}
+            style={inputStyle}
           >
             {Array.from({ length: 8 }, (_, i) => i + 8).map((y) => (
               <option key={y} value={y}>
@@ -97,7 +126,8 @@ export function ProfileForm({ onSubmit }: Props) {
             id="profile-sex"
             value={sex}
             onChange={(e) => setSex(e.target.value as 'male' | 'female')}
-            className="h-11 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
+            className={inputClass}
+            style={inputStyle}
           >
             <option value="female">Kız</option>
             <option value="male">Erkek</option>
@@ -106,12 +136,16 @@ export function ProfileForm({ onSubmit }: Props) {
       </div>
 
       {/* Opsiyonel detay — disclosure altında */}
-      <div className="overflow-hidden rounded-xl border border-neutral-800/60">
+      <div
+        className="overflow-hidden rounded-xl border-2"
+        style={{ borderColor: 'var(--color-line)' }}
+      >
         <button
           type="button"
           onClick={() => setShowDetails((v) => !v)}
           aria-expanded={showDetails}
-          className="flex w-full items-center justify-between px-4 py-2.5 text-xs font-medium text-neutral-300 transition-colors hover:text-neutral-100 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
+          className="flex w-full items-center justify-between px-4 py-2.5 text-xs font-bold tracking-wide transition-opacity hover:opacity-70 focus-visible:outline-none"
+          style={{ color: 'var(--color-ink-2)' }}
         >
           <span>+ Detay (opsiyonel) — sıçrama doğruluğunu artırır</span>
           <ChevronDown
@@ -122,7 +156,10 @@ export function ProfileForm({ onSubmit }: Props) {
           />
         </button>
         {showDetails && (
-          <div className="border-t border-neutral-800/60 px-4 py-3">
+          <div
+            className="border-t-2 px-4 py-3"
+            style={{ borderColor: 'var(--color-line)' }}
+          >
             <Field label="Boy (cm)" htmlFor="profile-height">
               <input
                 id="profile-height"
@@ -133,10 +170,14 @@ export function ProfileForm({ onSubmit }: Props) {
                 placeholder="örn. 140"
                 value={heightCm}
                 onChange={(e) => setHeightCm(e.target.value)}
-                className="h-10 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
+                className={inputClass}
+                style={inputStyle}
               />
             </Field>
-            <p className="mt-2 text-[11px] text-neutral-300">
+            <p
+              className="mt-2 text-[11px] leading-snug"
+              style={{ color: 'var(--color-ink-3)' }}
+            >
               Boy verilmezse pose pipeline gerçek-metre kalibrasyonu yapar
               (worldLandmarks); verilirse daha keskin sıçrama cm değeri.
             </p>
@@ -147,11 +188,23 @@ export function ProfileForm({ onSubmit }: Props) {
       <button
         type="submit"
         disabled={!canSubmit}
-        className={`h-12 w-full rounded-full font-bold transition-colors focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none ${
+        className="h-12 w-full rounded-full text-base font-black tracking-wide transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        style={
           canSubmit
-            ? 'bg-amber-400 text-neutral-950 hover:bg-amber-300'
-            : 'cursor-not-allowed bg-neutral-800 text-neutral-300'
-        }`}
+            ? {
+                background: 'var(--track-mustard)',
+                color: 'var(--form-navy)',
+                fontFamily: 'var(--font-display)',
+                boxShadow:
+                  '0 6px 0 rgba(44, 62, 107, 0.18), 0 18px 36px -12px rgba(242, 201, 76, 0.45)',
+              }
+            : {
+                background: 'rgba(44, 62, 107, 0.08)',
+                color: 'rgba(44, 62, 107, 0.55)',
+                cursor: 'not-allowed',
+                fontFamily: 'var(--font-display)',
+              }
+        }
       >
         Testlere Başla →
       </button>
@@ -171,10 +224,21 @@ function Field({ label, htmlFor, required = false, children }: FieldProps) {
     <div>
       <label
         htmlFor={htmlFor}
-        className="mb-1.5 block text-[11px] font-medium tracking-wider text-neutral-300 uppercase"
+        className="mb-1.5 block text-[10px] font-bold tracking-[0.2em] uppercase"
+        style={{
+          color: 'var(--color-ink-3)',
+          fontFamily: 'var(--font-display)',
+        }}
       >
         {label}
-        {required && <span className="ml-1 text-amber-400">*</span>}
+        {required && (
+          <span
+            className="ml-1"
+            style={{ color: 'var(--track-mustard)' }}
+          >
+            *
+          </span>
+        )}
       </label>
       {children}
     </div>

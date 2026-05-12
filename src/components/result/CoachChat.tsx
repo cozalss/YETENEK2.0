@@ -225,7 +225,12 @@ export function CoachChat({ session }: Props) {
       {error && (
         <p
           role="alert"
-          className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200"
+          className="mt-3 rounded-lg border-2 px-3 py-2 text-xs font-medium"
+          style={{
+            borderColor: 'var(--mindar-pink)',
+            background: 'rgba(244, 182, 194, 0.2)',
+            color: 'var(--deep-navy)',
+          }}
         >
           {error}
         </p>
@@ -244,7 +249,12 @@ export function CoachChat({ session }: Props) {
         <button
           type="submit"
           disabled={loading || input.trim().length === 0}
-          className="grid h-11 w-11 place-items-center rounded-full bg-[var(--color-signal)] text-[var(--color-canvas)] shadow-[0_8px_30px_-10px_rgba(246,196,83,0.5)] transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)] focus-visible:outline-none"
+          className="grid h-11 w-11 place-items-center rounded-full transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          style={{
+            background: 'var(--color-signal)',
+            color: 'var(--form-navy)',
+            boxShadow: '0 8px 22px -8px rgba(242, 201, 76, 0.6)',
+          }}
           aria-label="Gönder"
         >
           <Send className="h-4 w-4" />
@@ -265,11 +275,19 @@ function Bubble({
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[88%] rounded-2xl px-4 py-2.5 leading-relaxed ${
+        className="max-w-[88%] rounded-2xl px-4 py-2.5 leading-relaxed"
+        style={
           isUser
-            ? 'bg-[var(--color-signal)] text-[var(--color-canvas)]'
-            : 'bg-[var(--color-surface)] text-[var(--color-ink-1)] ring-1 ring-[var(--color-line)]'
-        }`}
+            ? {
+                background: 'var(--form-navy)',
+                color: 'var(--whistle-cream)',
+              }
+            : {
+                background: 'var(--color-surface-elevated)',
+                color: 'var(--color-ink-1)',
+                boxShadow: 'inset 0 0 0 1px var(--color-line)',
+              }
+        }
       >
         {content || (
           <span className="inline-flex items-center gap-1 text-[var(--color-ink-3)]">

@@ -135,12 +135,20 @@ function DemoHeader() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5 md:px-12">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-sm text-[var(--color-ink-2)] transition-colors hover:text-[var(--color-ink-1)]"
+          className="inline-flex items-center gap-2 text-sm font-bold tracking-wide text-[var(--color-ink-2)] transition-colors hover:text-[var(--form-navy)]"
         >
           <ArrowLeft className="h-4 w-4" />
           Ana sayfaya dön
         </Link>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-signal)]/10 px-3 py-1 text-xs font-semibold text-[var(--color-signal)]">
+        <span
+          className="inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1 text-[11px] font-bold uppercase tracking-wider"
+          style={{
+            borderColor: 'var(--track-mustard)',
+            background: 'rgba(242, 201, 76, 0.2)',
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
           <Sparkles className="h-3 w-3" />
           Örnek sonuç · 7 testlik profil
         </span>

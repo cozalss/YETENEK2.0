@@ -127,7 +127,7 @@ export function BadgesSection() {
           </div>
         </Reveal>
 
-        <Reveal delay={0.1}>
+        <Reveal delay={120}>
           <div
             className="relative mb-16 overflow-hidden rounded-2xl"
             style={{ border: '3px solid rgba(44, 62, 107, 0.3)' }}

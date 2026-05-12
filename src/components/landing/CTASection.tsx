@@ -62,7 +62,7 @@ export function CTASection() {
           </div>
         </Reveal>
 
-        <Reveal delay={0.15}>
+        <Reveal delay={180}>
           <div
             className="w-full max-w-md rounded-2xl p-8 text-center md:p-10"
             style={{

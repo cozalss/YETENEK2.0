@@ -55,7 +55,10 @@ export function AiReportPanel({
     return (
       <ReportContainer source={null}>
         <div className="space-y-3">
-          <p className="text-sm text-red-300">
+          <p
+            className="text-sm font-medium"
+            style={{ color: 'var(--deep-navy)' }}
+          >
             Rapor üretilemedi:{' '}
             {error instanceof Error ? error.message : 'Beklenmedik hata.'}
           </p>
@@ -63,7 +66,13 @@ export function AiReportPanel({
             type="button"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="h-10 rounded-full bg-amber-400 px-4 text-sm font-semibold text-neutral-950 transition-colors hover:bg-amber-300 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none disabled:opacity-50"
+            className="h-10 rounded-full px-4 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] disabled:opacity-50"
+            style={{
+              background: 'var(--track-mustard)',
+              color: 'var(--form-navy)',
+              fontFamily: 'var(--font-display)',
+              boxShadow: '0 4px 0 rgba(44, 62, 107, 0.18)',
+            }}
           >
             {isFetching ? 'Deneniyor…' : 'Tekrar Dene'}
           </button>
@@ -89,21 +98,51 @@ function ReportContainer({
   loading?: boolean;
 }) {
   return (
-    <section className="rounded-3xl border border-neutral-800 bg-neutral-900/40 p-6">
+    <section
+      className="rounded-3xl border-2 p-6"
+      style={{
+        background: 'var(--color-surface-elevated)',
+        borderColor: 'var(--color-line)',
+      }}
+    >
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold tracking-wider text-amber-400 uppercase">
+        <h3
+          className="text-xs font-bold tracking-[0.25em] uppercase"
+          style={{
+            color: 'var(--color-ink-3)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
           Veliye AI Raporu
         </h3>
         {loading && (
-          <span className="text-xs text-neutral-300">Hazırlanıyor…</span>
+          <span
+            className="text-xs font-medium"
+            style={{ color: 'var(--color-ink-3)' }}
+          >
+            Hazırlanıyor…
+          </span>
         )}
         {source === 'gemini' && (
-          <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-300">
+          <span
+            className="rounded-full px-2.5 py-0.5 text-xs font-bold tracking-wide"
+            style={{
+              background: 'var(--field-mint)',
+              color: 'var(--form-navy)',
+            }}
+          >
             Gemini AI
           </span>
         )}
         {source === 'fallback' && (
-          <span className="rounded-full bg-neutral-700/50 px-2.5 py-0.5 text-xs font-medium text-neutral-200">
+          <span
+            className="rounded-full border px-2.5 py-0.5 text-xs font-bold"
+            style={{
+              borderColor: 'var(--color-line-strong)',
+              background: 'var(--color-canvas)',
+              color: 'var(--color-ink-2)',
+            }}
+          >
             Şablon
           </span>
         )}
@@ -115,7 +154,10 @@ function ReportContainer({
 
 function ReportText({ text }: { text: string }) {
   return (
-    <div className="prose prose-invert prose-sm max-w-none whitespace-pre-wrap text-neutral-200">
+    <div
+      className="prose prose-sm max-w-none whitespace-pre-wrap leading-relaxed"
+      style={{ color: 'var(--color-ink-1)' }}
+    >
       {text}
     </div>
   );
@@ -124,10 +166,10 @@ function ReportText({ text }: { text: string }) {
 function Skeleton() {
   return (
     <div className="space-y-3" aria-hidden="true">
-      <div className="h-4 w-3/4 animate-pulse rounded bg-neutral-800" />
-      <div className="h-4 w-full animate-pulse rounded bg-neutral-800" />
-      <div className="h-4 w-5/6 animate-pulse rounded bg-neutral-800" />
-      <div className="h-4 w-4/6 animate-pulse rounded bg-neutral-800" />
+      <div className="h-4 w-3/4 animate-pulse rounded bg-[var(--color-line-strong)]" />
+      <div className="h-4 w-full animate-pulse rounded bg-[var(--color-line-strong)]" />
+      <div className="h-4 w-5/6 animate-pulse rounded bg-[var(--color-line-strong)]" />
+      <div className="h-4 w-4/6 animate-pulse rounded bg-[var(--color-line-strong)]" />
     </div>
   );
 }

@@ -18,15 +18,36 @@ export function StreakIndicator({ recentDates }: Props) {
   const totalActive = recentDates.length;
 
   return (
-    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-5">
+    <div
+      className="rounded-2xl border-2 p-5"
+      style={{
+        background: 'var(--color-surface-elevated)',
+        borderColor: 'var(--color-line)',
+      }}
+    >
       <div className="mb-3 flex items-baseline justify-between">
         <div>
-          <p className="text-xs font-semibold tracking-wider text-amber-400 uppercase">
+          <p
+            className="text-xs font-bold tracking-[0.25em] uppercase"
+            style={{
+              color: 'var(--color-ink-3)',
+              fontFamily: 'var(--font-display)',
+            }}
+          >
             Süreklilik
           </p>
-          <p className="mt-1 text-2xl font-bold">
+          <p
+            className="mt-1 text-2xl font-black"
+            style={{
+              color: 'var(--form-navy)',
+              fontFamily: 'var(--font-display)',
+            }}
+          >
             {totalActive}{' '}
-            <span className="text-sm font-medium text-neutral-400">
+            <span
+              className="text-sm font-medium"
+              style={{ color: 'var(--color-ink-3)' }}
+            >
               / {STREAK_WINDOW_DAYS} gün
             </span>
           </p>
@@ -45,13 +66,25 @@ export function StreakIndicator({ recentDates }: Props) {
           return (
             <div
               key={d.iso}
-              className={`aspect-square rounded-md text-[10px] flex items-center justify-center ${
+              className="aspect-square rounded-md text-[10px] flex items-center justify-center font-bold"
+              style={
                 wasTested
-                  ? 'bg-amber-400 font-bold text-neutral-950'
+                  ? {
+                      background: 'var(--track-mustard)',
+                      color: 'var(--form-navy)',
+                    }
                   : isToday
-                    ? 'border border-amber-400/40 bg-neutral-900 text-neutral-300'
-                    : 'bg-neutral-800/60 text-neutral-400'
-              }`}
+                    ? {
+                        background: 'var(--color-canvas)',
+                        color: 'var(--form-navy)',
+                        border: '2px solid var(--track-mustard)',
+                      }
+                    : {
+                        background: 'var(--color-canvas)',
+                        color: 'var(--color-ink-3)',
+                        border: '1px solid var(--color-line)',
+                      }
+              }
               title={d.iso}
             >
               {d.dayLabel}
@@ -60,7 +93,10 @@ export function StreakIndicator({ recentDates }: Props) {
         })}
       </div>
 
-      <p className="mt-3 text-xs text-neutral-400">
+      <p
+        className="mt-3 text-xs"
+        style={{ color: 'var(--color-ink-3)' }}
+      >
         Düzenli testler profilinin gelişimini takip etmeye yarar.
       </p>
     </div>

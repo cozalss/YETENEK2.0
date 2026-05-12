@@ -38,16 +38,33 @@ export function StartCTA({
       whileHover={canStart ? { scale: 1.015 } : undefined}
       whileTap={canStart ? { scale: 0.985 } : undefined}
       transition={{ type: 'spring', stiffness: 400, damping: 24 }}
-      className={`group relative flex h-14 w-full items-center justify-center gap-2 rounded-full text-base font-bold transition-colors focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none ${
+      className="group relative flex h-14 w-full items-center justify-center gap-2 rounded-full text-base font-black tracking-wide transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+      style={
         canStart
-          ? 'bg-amber-400 text-neutral-950 shadow-[0_15px_45px_-10px_rgba(251,191,36,0.65)] hover:bg-amber-300'
-          : 'cursor-not-allowed bg-neutral-800/80 text-neutral-300 ring-1 ring-neutral-700'
-      }`}
+          ? {
+              background: 'var(--track-mustard)',
+              color: 'var(--form-navy)',
+              boxShadow:
+                '0 6px 0 rgba(44, 62, 107, 0.18), 0 18px 36px -12px rgba(242, 201, 76, 0.45)',
+              fontFamily: 'var(--font-display)',
+            }
+          : {
+              background: 'rgba(44, 62, 107, 0.08)',
+              color: 'rgba(44, 62, 107, 0.55)',
+              cursor: 'not-allowed',
+              boxShadow: 'inset 0 0 0 1px rgba(44, 62, 107, 0.18)',
+              fontFamily: 'var(--font-display)',
+            }
+      }
     >
       {canStart && (
         <span
           aria-hidden="true"
-          className="absolute inset-0 -z-10 rounded-full bg-amber-400/40 blur-2xl"
+          className="absolute inset-0 -z-10 rounded-full"
+          style={{
+            background: 'rgba(242, 201, 76, 0.45)',
+            filter: 'blur(28px)',
+          }}
         />
       )}
       <span>{canStart ? readyLabel : notReadyLabel}</span>

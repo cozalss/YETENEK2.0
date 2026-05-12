@@ -200,6 +200,18 @@ export function HeroSection() {
         style={{ transition: 'transform 0.1s linear', willChange: 'transform' }}
       />
 
+      {/*
+        Sabit base overlay — video üzerine her zaman duran 30% navy katman,
+        metin ve CTA okunabilirliğini garanti eder. Üstüne scroll-driven
+        ikinci overlay biniyor (parallax çıkışta gradient koyulaşır).
+      */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'linear-gradient(to bottom, rgba(26, 37, 64, 0.18) 0%, rgba(26, 37, 64, 0.45) 60%, rgba(26, 37, 64, 0.7) 100%)',
+        }}
+      />
       <div
         className="hero-overlay absolute inset-0"
         style={{
@@ -237,14 +249,14 @@ export function HeroSection() {
           style={{ opacity: 0, transform: 'translateY(30px)' }}
         >
           <p
-            className="text-sm tracking-[0.35em] uppercase md:text-base"
+            className="text-[11px] tracking-[0.35em] uppercase md:text-xs"
             style={{
               color: '#FFF5E1',
               fontFamily: 'var(--font-body)',
-              textShadow: '0 2px 10px rgba(0,0,0,0.3)',
+              textShadow: '0 2px 10px rgba(0,0,0,0.4)',
             }}
           >
-            Est. 2026 — Where Symmetry Meets Talent
+            8–15 yaş · 7 bio-motor test · 5 dakika
           </p>
           <div
             className="mx-auto mt-4 h-[2px] w-24"
@@ -253,20 +265,22 @@ export function HeroSection() {
         </div>
 
         <p
-          className={`mt-8 max-w-lg text-center text-sm leading-relaxed transition-all duration-1000 md:text-base ${
+          className={`mt-8 max-w-xl text-center text-base leading-relaxed transition-all duration-1000 md:text-lg ${
             titleAnimated
               ? 'translate-y-0 opacity-100'
               : 'translate-y-4 opacity-0'
           }`}
           style={{
-            color: 'rgba(255, 245, 225, 0.85)',
+            color: 'rgba(255, 245, 225, 0.95)',
             fontFamily: 'var(--font-body)',
-            textShadow: '0 1px 6px rgba(0,0,0,0.3)',
+            textShadow: '0 2px 8px rgba(0,0,0,0.45)',
           }}
         >
-          AI tabanlı çocuk spor yetenek keşfi.
-          <br />
-          Hassasiyetle ölçülür. Zarafetle açığa çıkar.
+          Çocuğunuzun spor yeteneğini telefon kamerasıyla
+          {' '}
+          <strong style={{ color: 'var(--track-mustard)' }}>5 dakikada</strong>
+          {' '}
+          ölçer; AI 12 spor branşından en uygununu önerir.
         </p>
 
         <div

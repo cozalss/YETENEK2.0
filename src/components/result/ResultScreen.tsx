@@ -35,7 +35,7 @@ const BioMotorRadar = dynamic(
     loading: () => (
       <div
         aria-hidden="true"
-        className="aspect-square w-full max-w-md animate-pulse rounded-2xl bg-neutral-900/40"
+        className="aspect-square w-full max-w-md animate-pulse rounded-2xl bg-[var(--color-surface)]"
       />
     ),
   }
@@ -110,23 +110,50 @@ export function ResultScreen({
   return (
     <div className="space-y-8">
       {/* Hero */}
-      <section className="rounded-3xl border border-neutral-800 bg-gradient-to-br from-neutral-900 via-neutral-950 to-neutral-900 p-8">
-        <p className="text-sm font-semibold tracking-widest text-amber-400 uppercase">
+      <section
+        className="rounded-3xl border-2 p-8"
+        style={{
+          background:
+            'linear-gradient(135deg, var(--color-surface-elevated) 0%, var(--color-surface) 100%)',
+          borderColor: 'var(--color-line)',
+        }}
+      >
+        <p
+          className="text-xs font-bold tracking-[0.3em] uppercase"
+          style={{
+            color: 'var(--color-ink-3)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
           Yetenek Profili
         </p>
-        <h1 className="mt-2 text-4xl font-bold md:text-5xl">
+        <h1
+          className="mt-2 text-4xl font-black md:text-5xl"
+          style={{
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
           {session.child.name}
-          <span className="text-neutral-400">
+          <span style={{ color: 'var(--color-ink-3)' }}>
             {' · '}
             {session.child.ageYears} yaş
           </span>
         </h1>
         {topSport && (
-          <p className="mt-4 max-w-2xl text-lg text-neutral-300 md:text-xl">
+          <p
+            className="mt-4 max-w-2xl text-lg leading-relaxed md:text-xl"
+            style={{ color: 'var(--color-ink-2)' }}
+          >
             En güçlü uyumun{' '}
-            <span className="font-bold text-amber-400">{topSport.sport}</span>{' '}
+            <span
+              className="font-black"
+              style={{ color: 'var(--form-navy)' }}
+            >
+              {topSport.sport}
+            </span>{' '}
             ile{' '}
-            <span className="text-neutral-400">
+            <span style={{ color: 'var(--color-ink-3)' }}>
               (%{topSport.confidencePercent} eşleşme)
             </span>
             . {topSport.reason}
@@ -196,7 +223,11 @@ function TabBar({
     <div
       role="tablist"
       aria-label="Sonuç ekranı bölümleri"
-      className="flex flex-wrap gap-2 rounded-full border border-neutral-800 bg-neutral-900/40 p-1.5"
+      className="flex flex-wrap gap-1 rounded-full border-2 p-1.5"
+      style={{
+        background: 'var(--color-surface-elevated)',
+        borderColor: 'var(--color-line)',
+      }}
     >
       {TABS.map((t) => {
         const active = tab === t.key;
@@ -220,17 +251,26 @@ function TabBar({
                 onChange(TABS[(idx - 1 + TABS.length) % TABS.length].key);
               }
             }}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none ${
-              active
-                ? 'bg-amber-400 text-neutral-950'
-                : 'text-neutral-300 hover:text-white'
-            }`}
+            className="flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold tracking-wide transition-colors focus-visible:outline-none"
+            style={{
+              background: active ? 'var(--color-signal)' : 'transparent',
+              color: active
+                ? 'var(--form-navy)'
+                : 'var(--color-ink-2)',
+              boxShadow: active
+                ? '0 4px 12px -4px rgba(242, 201, 76, 0.5)'
+                : 'none',
+              fontFamily: 'var(--font-display)',
+            }}
           >
             <span
               aria-hidden="true"
-              className={`font-mono text-[10px] tracking-widest ${
-                active ? 'text-neutral-700' : 'text-neutral-500'
-              }`}
+              className="font-mono text-[10px] tracking-widest"
+              style={{
+                color: active
+                  ? 'rgba(44, 62, 107, 0.55)'
+                  : 'var(--color-ink-3)',
+              }}
             >
               {t.eyebrow}
             </span>
@@ -262,8 +302,20 @@ function ProfileTab({
   return (
     <div className="space-y-8">
       <section className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <div className="rounded-3xl border border-neutral-800 bg-neutral-900/40 p-6">
-          <h3 className="mb-4 text-sm font-semibold tracking-wider text-amber-400 uppercase">
+        <div
+          className="rounded-3xl border-2 p-6"
+          style={{
+            background: 'var(--color-surface-elevated)',
+            borderColor: 'var(--color-line)',
+          }}
+        >
+          <h3
+            className="mb-4 text-xs font-bold tracking-[0.25em] uppercase"
+            style={{
+              color: 'var(--color-ink-3)',
+              fontFamily: 'var(--font-display)',
+            }}
+          >
             Bio-Motor Profili
           </h3>
           <div className="flex justify-center">
@@ -366,10 +418,10 @@ function ProfileTab({
 function PdfExportSkeleton() {
   return (
     <div className="rounded-3xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6 animate-pulse">
-      <div className="h-3 w-16 rounded bg-neutral-800" />
-      <div className="mt-2 h-6 w-40 rounded bg-neutral-800" />
-      <div className="mt-2 h-4 w-full rounded bg-neutral-800" />
-      <div className="mt-5 h-11 w-full rounded-full bg-neutral-800" />
+      <div className="h-3 w-16 rounded bg-[var(--color-line-strong)]" />
+      <div className="mt-2 h-6 w-40 rounded bg-[var(--color-line-strong)]" />
+      <div className="mt-2 h-4 w-full rounded bg-[var(--color-line-strong)]" />
+      <div className="mt-5 h-11 w-full rounded-full bg-[var(--color-line-strong)]" />
     </div>
   );
 }
@@ -416,14 +468,31 @@ function Metric({
 }) {
   const citation = citationTag ? filterReferences(citationTag)[0] : null;
   return (
-    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-4">
+    <div
+      className="rounded-2xl border-2 p-4"
+      style={{
+        background: 'var(--color-surface-elevated)',
+        borderColor: 'var(--color-line)',
+      }}
+    >
       <div className="flex items-center justify-between gap-2">
-        <div className="text-xs uppercase tracking-wider text-neutral-400">
+        <div
+          className="text-[10px] font-bold uppercase tracking-[0.18em]"
+          style={{
+            color: 'var(--color-ink-3)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
           {label}
         </div>
         {citation && (
           <span
-            className="rounded-full border border-amber-300/30 bg-amber-300/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-200/90"
+            className="rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+            style={{
+              borderColor: 'rgba(242, 201, 76, 0.5)',
+              background: 'rgba(242, 201, 76, 0.18)',
+              color: 'var(--form-navy)',
+            }}
             title={`${citation.authors} (${citation.year}). ${citation.title}. ${citation.journal}`}
             aria-label={`Bilimsel kaynak: ${citation.authors} ${citation.year}`}
           >
@@ -432,11 +501,31 @@ function Metric({
           </span>
         )}
       </div>
-      <div className="mt-1 text-2xl font-bold text-white">{value}</div>
-      {sub && <div className="mt-0.5 text-xs text-neutral-400">{sub}</div>}
+      <div
+        className="mt-1 text-2xl font-black"
+        style={{
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+        }}
+      >
+        {value}
+      </div>
+      {sub && (
+        <div
+          className="mt-0.5 text-xs"
+          style={{ color: 'var(--color-ink-3)' }}
+        >
+          {sub}
+        </div>
+      )}
       {confidence === 'low' && (
         <div
-          className="mt-2 inline-flex items-center gap-1 rounded-full border border-orange-400/30 bg-orange-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-orange-300"
+          className="mt-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+          style={{
+            borderColor: 'rgba(244, 182, 194, 0.7)',
+            background: 'rgba(244, 182, 194, 0.25)',
+            color: 'var(--deep-navy)',
+          }}
           title="Flight-time ve hip-displacement yöntemleri arasında %30'dan fazla fark var. Sahne ışığı veya pozisyon ölçümü etkilemiş olabilir."
           aria-label="Düşük güven uyarısı"
         >
@@ -513,11 +602,29 @@ function NextSteps({ session }: { session: SessionSummary }) {
     : null;
 
   return (
-    <div className="rounded-3xl border border-neutral-800 bg-neutral-900/40 p-6">
-      <p className="text-xs font-semibold tracking-[0.25em] text-amber-400 uppercase">
+    <div
+      className="rounded-3xl border-2 p-6"
+      style={{
+        background: 'var(--color-surface-elevated)',
+        borderColor: 'var(--color-line)',
+      }}
+    >
+      <p
+        className="text-xs font-bold tracking-[0.25em] uppercase"
+        style={{
+          color: 'var(--color-ink-3)',
+          fontFamily: 'var(--font-display)',
+        }}
+      >
         Sonraki Adımlar
       </p>
-      <h3 className="mt-2 text-xl font-bold text-white md:text-2xl">
+      <h3
+        className="mt-2 text-xl font-black md:text-2xl"
+        style={{
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+        }}
+      >
         Test bitti. Şimdi ne yapsak?
       </h3>
       <ul className="mt-5 space-y-3">
@@ -563,15 +670,33 @@ function NextStepRow({
     <li>
       <a
         href={href}
-        className="group flex items-center justify-between rounded-2xl border border-neutral-800 bg-neutral-950/40 p-4 transition-colors hover:border-amber-400/40"
+        className="group flex items-center justify-between rounded-2xl border-2 p-4 transition-colors hover:bg-[var(--color-surface)]"
+        style={{
+          background: 'var(--color-canvas)',
+          borderColor: 'var(--color-line)',
+        }}
       >
         <div className="min-w-0">
-          <div className="font-semibold text-white">{label}</div>
-          <div className="mt-0.5 text-xs text-neutral-300">{sub}</div>
+          <div
+            className="font-bold"
+            style={{
+              color: 'var(--form-navy)',
+              fontFamily: 'var(--font-display)',
+            }}
+          >
+            {label}
+          </div>
+          <div
+            className="mt-0.5 text-xs"
+            style={{ color: 'var(--color-ink-2)' }}
+          >
+            {sub}
+          </div>
         </div>
         <span
           aria-hidden="true"
-          className="text-amber-400 transition-transform group-hover:translate-x-1"
+          className="font-bold transition-transform group-hover:translate-x-1"
+          style={{ color: 'var(--color-signal)' }}
         >
           →
         </span>

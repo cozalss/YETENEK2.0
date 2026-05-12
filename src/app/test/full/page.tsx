@@ -498,21 +498,36 @@ function FullFlowInner() {
 
 function BrandHeader({ mode }: { mode: Mode }) {
   return (
-    <header className="flex items-baseline justify-between border-b border-[var(--color-line)] pb-6">
+    <header
+      className="flex items-center justify-between gap-4 border-b pb-5"
+      style={{ borderColor: 'rgba(44, 62, 107, 0.2)' }}
+    >
       <Link
         href="/"
-        className="font-display text-xl font-bold tracking-tight"
+        className="text-base font-black tracking-[0.3em] sm:text-lg"
+        style={{
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+        }}
       >
-        Yetenek<span className="text-[var(--color-signal)]">.</span>
+        YETENEK
       </Link>
-      <div className="flex items-center gap-3 text-xs">
+      <div className="flex items-center gap-3 text-[11px]">
         <Link
           href={mode === 'quick' ? '/test/full' : '/test/full?mode=quick'}
-          className="rounded-full border border-neutral-700 px-3 py-1 font-medium text-neutral-300 transition-colors hover:border-neutral-500"
+          className="hidden rounded-full border px-3 py-1 font-bold tracking-[0.18em] uppercase transition-opacity hover:opacity-70 sm:inline-flex"
+          style={{
+            borderColor: 'rgba(44, 62, 107, 0.25)',
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
         >
           {mode === 'quick' ? '7 testlik tam akış' : 'Hızlı 3 testlik akış'}
         </Link>
-        <span className="font-mono tracking-widest text-[var(--color-ink-3)] uppercase">
+        <span
+          className="font-mono tracking-[0.25em] uppercase"
+          style={{ color: 'rgba(44, 62, 107, 0.6)' }}
+        >
           {mode === 'quick' ? 'Hızlı Akış' : 'Tam Akış'}
         </span>
       </div>
@@ -555,12 +570,27 @@ function PhaseShell({
 
       {children}
       {done && (
-        <div className="flex items-center justify-between rounded-2xl border border-emerald-700/60 bg-emerald-950/20 p-5">
+        <div
+          className="flex flex-col items-start justify-between gap-4 rounded-2xl border-2 p-5 sm:flex-row sm:items-center"
+          style={{
+            background: 'rgba(168, 213, 186, 0.22)',
+            borderColor: 'var(--field-mint)',
+          }}
+        >
           <div>
-            <p className="text-sm font-semibold text-emerald-300">
+            <p
+              className="text-sm font-bold"
+              style={{
+                color: 'var(--form-navy)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
               ✓ Test sonuçları kaydedildi
             </p>
-            <p className="mt-0.5 text-xs text-emerald-200/80">
+            <p
+              className="mt-0.5 text-xs"
+              style={{ color: 'rgba(44, 62, 107, 0.7)' }}
+            >
               Hazır olduğunda devam et. Daha iyi yapabileceğini düşünüyorsan
               testi tekrar deneyebilirsin.
             </p>
@@ -568,7 +598,13 @@ function PhaseShell({
           <button
             type="button"
             onClick={onAdvance}
-            className="h-11 shrink-0 rounded-full bg-amber-400 px-5 font-semibold text-neutral-950 transition-colors hover:bg-amber-300 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
+            className="h-11 shrink-0 rounded-full px-5 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            style={{
+              background: 'var(--track-mustard)',
+              color: 'var(--form-navy)',
+              fontFamily: 'var(--font-display)',
+              boxShadow: '0 4px 0 rgba(44, 62, 107, 0.18)',
+            }}
           >
             {advanceLabel} →
           </button>
@@ -579,7 +615,12 @@ function PhaseShell({
           <button
             type="button"
             onClick={onSkip}
-            className="rounded-full border border-neutral-700 px-4 py-2 text-xs font-medium text-neutral-300 transition-colors hover:border-neutral-500 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
+            className="rounded-full border px-4 py-2 text-xs font-bold uppercase tracking-wider transition-opacity hover:opacity-70 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            style={{
+              borderColor: 'rgba(44, 62, 107, 0.3)',
+              color: 'rgba(44, 62, 107, 0.75)',
+              fontFamily: 'var(--font-display)',
+            }}
           >
             Bu testi atla
           </button>
@@ -591,11 +632,26 @@ function PhaseShell({
 
 function FinalizingStage() {
   return (
-    <div className="rounded-3xl border border-neutral-800 bg-neutral-900/40 p-12 text-center">
-      <div className="text-2xl font-semibold text-white">
+    <div
+      className="rounded-3xl border-2 p-12 text-center"
+      style={{
+        background: 'rgba(255, 255, 255, 0.6)',
+        borderColor: 'rgba(44, 62, 107, 0.18)',
+      }}
+    >
+      <div
+        className="text-2xl font-black"
+        style={{
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+        }}
+      >
         Sonuçlar hazırlanıyor…
       </div>
-      <div className="mt-2 text-sm text-neutral-300">
+      <div
+        className="mt-2 text-sm"
+        style={{ color: 'rgba(44, 62, 107, 0.7)' }}
+      >
         AI tüm test verilerini birleştiriyor.
       </div>
     </div>
@@ -617,11 +673,21 @@ function ResultStage({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-neutral-300">{ageDescription}</p>
+        <p
+          className="text-sm font-bold"
+          style={{ color: 'var(--form-navy)' }}
+        >
+          {ageDescription}
+        </p>
         <button
           type="button"
           onClick={onRestart}
-          className="rounded-full border border-neutral-700 px-4 py-2 text-sm text-neutral-200 transition-colors hover:border-neutral-500 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
+          className="rounded-full border px-4 py-2 text-xs font-bold uppercase tracking-wider transition-opacity hover:opacity-70 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          style={{
+            borderColor: 'rgba(44, 62, 107, 0.3)',
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
         >
           Yeni Test
         </button>

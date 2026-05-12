@@ -159,7 +159,13 @@ export function ShareButton({ session, shareUrl, ogImageUrl }: Props) {
           href={whatsappHref}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 text-xs font-semibold text-emerald-200 transition-colors hover:bg-emerald-500/20"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-full border-2 px-4 text-xs font-bold uppercase tracking-wider transition-colors hover:bg-[rgba(168,213,186,0.35)]"
+          style={{
+            borderColor: 'var(--field-mint)',
+            background: 'rgba(168, 213, 186, 0.18)',
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
         >
           <MessageCircle className="h-4 w-4" />
           WhatsApp
@@ -169,7 +175,13 @@ export function ShareButton({ session, shareUrl, ogImageUrl }: Props) {
           href={twitterHref}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-4 text-xs font-semibold text-sky-200 transition-colors hover:bg-sky-500/20"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-full border-2 px-4 text-xs font-bold uppercase tracking-wider transition-colors hover:bg-[var(--color-canvas)]"
+          style={{
+            borderColor: 'var(--color-line-strong)',
+            background: 'var(--color-surface-elevated)',
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
         >
           <Link2 className="h-4 w-4" />
           X / Twitter

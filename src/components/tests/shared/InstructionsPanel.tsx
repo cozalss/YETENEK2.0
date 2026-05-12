@@ -42,23 +42,47 @@ export function InstructionsPanel({
       initial={{ opacity: 0, x: 16 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.5, ease: 'easeOut', delay: 0.1 }}
-      className="flex flex-col gap-6 rounded-3xl border border-neutral-800 bg-neutral-900/60 p-6 backdrop-blur-sm md:p-7"
+      className="flex flex-col gap-6 rounded-3xl border p-6 backdrop-blur-sm md:p-7"
+      style={{
+        background: 'rgba(255, 255, 255, 0.7)',
+        borderColor: 'rgba(44, 62, 107, 0.18)',
+      }}
       aria-labelledby="test-instructions-title"
     >
-      <header className="flex items-start justify-between gap-3 border-b border-neutral-800/80 pb-5">
+      <header
+        className="flex items-start justify-between gap-3 border-b pb-5"
+        style={{ borderColor: 'rgba(44, 62, 107, 0.12)' }}
+      >
         <div>
-          <p className="text-xs font-semibold tracking-[0.2em] text-amber-400 uppercase">
+          <p
+            className="text-xs font-bold tracking-[0.25em] uppercase"
+            style={{
+              color: 'rgba(44, 62, 107, 0.6)',
+              fontFamily: 'var(--font-body)',
+            }}
+          >
             {eyebrow}
           </p>
           <h2
             id="test-instructions-title"
-            className="mt-2 text-2xl leading-tight font-bold text-white md:text-3xl"
+            className="mt-2 text-2xl leading-tight font-black md:text-3xl"
+            style={{
+              color: 'var(--form-navy)',
+              fontFamily: 'var(--font-display)',
+            }}
           >
             {title}
           </h2>
         </div>
         {meta && (
-          <span className="font-mono shrink-0 rounded-full border border-neutral-700/80 bg-neutral-950/40 px-3 py-1 text-[11px] tracking-widest text-neutral-200 uppercase">
+          <span
+            className="font-mono shrink-0 rounded-full border px-3 py-1 text-[11px] tracking-widest uppercase"
+            style={{
+              borderColor: 'rgba(44, 62, 107, 0.2)',
+              background: 'rgba(255, 255, 255, 0.6)',
+              color: 'var(--form-navy)',
+            }}
+          >
             {meta}
           </span>
         )}
@@ -70,7 +94,12 @@ export function InstructionsPanel({
         <div
           role="status"
           aria-live="polite"
-          className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm leading-relaxed text-amber-100"
+          className="rounded-xl border px-4 py-3 text-sm leading-relaxed"
+          style={{
+            background: 'rgba(242, 201, 76, 0.18)',
+            borderColor: 'rgba(242, 201, 76, 0.5)',
+            color: 'var(--form-navy)',
+          }}
         >
           {helper}
         </div>
@@ -90,17 +119,29 @@ function Timeline({ steps }: { steps: string[] }) {
       {/* Vertical line connecting numbered circles */}
       <span
         aria-hidden="true"
-        className="absolute top-3 bottom-3 left-[15px] w-px bg-gradient-to-b from-amber-400/40 via-neutral-700 to-transparent"
+        className="absolute top-3 bottom-3 left-[15px] w-px"
+        style={{
+          background:
+            'linear-gradient(to bottom, rgba(242, 201, 76, 0.6), rgba(44, 62, 107, 0.18) 60%, transparent)',
+        }}
       />
       {steps.map((step, idx) => (
         <li key={idx} className="relative flex gap-4">
           <span
             aria-hidden="true"
-            className="relative z-10 mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-neutral-950 ring-1 ring-amber-400/40 font-mono text-xs font-bold text-amber-300"
+            className="relative z-10 mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full font-mono text-xs font-black"
+            style={{
+              background: 'var(--whistle-cream)',
+              boxShadow: '0 0 0 1px var(--track-mustard)',
+              color: 'var(--form-navy)',
+            }}
           >
             {String(idx + 1).padStart(2, '0')}
           </span>
-          <p className="pt-1 text-sm leading-relaxed text-neutral-200 md:text-[15px]">
+          <p
+            className="pt-1 text-sm leading-relaxed md:text-[15px]"
+            style={{ color: 'var(--form-navy)' }}
+          >
             {step}
           </p>
         </li>
