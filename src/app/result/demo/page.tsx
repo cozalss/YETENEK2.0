@@ -99,7 +99,7 @@ const MOCK_SESSION: SessionSummary = (() => {
     recommendations: recommendSports(
       vector,
       { heightPercentile, bmiPercentile },
-      5
+      3
     ),
     injuryWarnings: [
       'Sol bacak dengesinde belirgin asimetri var (%18). Uzun vadede sakatlanma riskini artırabilir; tek bacak güçlendirme egzersizleri önerilir.',
