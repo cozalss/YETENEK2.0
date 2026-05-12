@@ -1,10 +1,10 @@
 /**
  * POST /api/report
  *
- * Çocuğun session özetini alır, Gemini API üzerinden veliye Türkçe
- * rapor üretir. Anahtar yoksa veya API hata verirse otomatik fallback.
+ * Çocuğun session özetini alır, Anthropic Claude API üzerinden veliye
+ * Türkçe rapor üretir. Anahtar yoksa veya API hata verirse otomatik fallback.
  *
- * Server-only — Gemini API key bu route üzerinden çıkış yapmaz.
+ * Server-only — Anthropic API key bu route üzerinden çıkış yapmaz.
  *
  * Hız sınırı stratejisi: hackathon kapsamında IP başı 10 req/dk basit
  * in-memory limiter. Production için Redis/Upstash gerekir.
@@ -12,7 +12,7 @@
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { generateReport } from '@/lib/llm/geminiReport';
+import { generateReport } from '@/lib/llm/claudeReport';
 import type { SessionSummary } from '@/lib/session/store';
 import { logger } from '@/shared/logger/logger';
 
@@ -21,7 +21,7 @@ const log = logger.child('api:report');
 // Route segment config — Next.js 16
 // dynamic: 'force-dynamic' → her istek server'da çalışsın (cache yok, KVKK gereği)
 // revalidate: 0 → kesin cache yok
-// maxDuration: Vercel için Gemini cevabı için yeterli pencere
+// maxDuration: Vercel için Claude cevabı için yeterli pencere
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;

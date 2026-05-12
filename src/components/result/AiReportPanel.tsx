@@ -3,7 +3,7 @@
  *
  * State akışı (TanStack Query'den türetilir):
  *   - idle/loading: skeleton placeholder + "AI raporu hazırlanıyor…"
- *   - success: rapor metni + kaynak rozeti (Gemini / Fallback)
+ *   - success: rapor metni + kaynak rozeti (Claude / Fallback)
  *   - error: hata mesajı + "Tekrar Dene" butonu (refetch)
  *
  * Cache: useReportQuery.staleTime = 10 dk → aynı session navigation'da
@@ -22,7 +22,7 @@ interface Props {
    * Örnek sonuçlarda ve yedek rapor senaryolarında kullanılır.
    */
   initialReport?: string;
-  initialSource?: 'gemini' | 'fallback';
+  initialSource?: 'claude' | 'fallback';
 }
 
 export function AiReportPanel({
@@ -94,7 +94,7 @@ function ReportContainer({
   loading = false,
 }: {
   children: React.ReactNode;
-  source: 'gemini' | 'fallback' | null;
+  source: 'claude' | 'fallback' | null;
   loading?: boolean;
 }) {
   return (
@@ -123,7 +123,7 @@ function ReportContainer({
             Hazırlanıyor…
           </span>
         )}
-        {source === 'gemini' && (
+        {source === 'claude' && (
           <span
             className="rounded-full px-2.5 py-0.5 text-xs font-bold tracking-wide"
             style={{
@@ -131,7 +131,7 @@ function ReportContainer({
               color: 'var(--form-navy)',
             }}
           >
-            Gemini AI
+            Claude AI
           </span>
         )}
         {source === 'fallback' && (

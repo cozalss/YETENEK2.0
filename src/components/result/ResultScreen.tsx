@@ -60,7 +60,7 @@ interface Props {
    * yapılmaz, doğrudan gösterilir.
    */
   precomputedReport?: string;
-  precomputedReportSource?: 'gemini' | 'fallback';
+  precomputedReportSource?: 'claude' | 'fallback';
 }
 
 type TabKey = 'profile' | 'ai' | 'share';

@@ -1,11 +1,11 @@
 /**
- * AI Coach chat — Gemini streaming endpoint.
+ * AI Coach chat — Anthropic Claude streaming endpoint.
  *
  * Veli "Voleybola ne zaman başlasın?" gibi takip soruları sorar; biz
- * Gemini ile streaming text döneriz. Her istek session bağlamı +
+ * Claude ile streaming text döneriz. Her istek session bağlamı +
  * son 10 mesajı içerir.
  *
- * KVKK: Çocuk ismi + raw anthro Gemini'ye gönderilmiyor. user mesajının
+ * KVKK: Çocuk ismi + raw anthro Claude'a gönderilmiyor. user mesajının
  * içinde paylaşılan PII varsa email/phone regex ile hafif filtre var.
  *
  * Rate limit: IP bazlı 30 mesaj/dakika.
@@ -18,7 +18,11 @@ import {
   COACH_SYSTEM_PROMPT,
   buildCoachContext,
 } from '@/lib/llm/coachPrompt';
-import { GeminiError, isGeminiConfigured, streamText } from '@/lib/llm/gemini';
+import {
+  AnthropicError,
+  isAnthropicConfigured,
+  streamText,
+} from '@/lib/llm/anthropic';
 import type { SessionSummary } from '@/lib/session/store';
 import {
   balanceSummarySchema,
@@ -56,7 +60,7 @@ const messageSchema = z.object({
 
 // Her test summary alt-schema'sı `core/schemas/session.schema.ts`'den
 // reuse ediliyor — z.unknown() ile loose forward yerine Zod-validated.
-// Bu Gemini prompt boundary'sinin gerçek tip güvenliğini sağlar.
+// Bu Claude prompt boundary'sinin gerçek tip güvenliğini sağlar.
 const payloadSchema = z.object({
   session: z
     .object({
@@ -136,11 +140,11 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  if (!isGeminiConfigured()) {
+  if (!isAnthropicConfigured()) {
     return NextResponse.json(
       {
         error:
-          'AI koç şu anda kullanılabilir değil. GEMINI_API_KEY tanımlanmalı.',
+          'AI koç şu anda kullanılabilir değil. ANTHROPIC_API_KEY tanımlanmalı.',
       },
       { status: 503 }
     );
@@ -166,14 +170,14 @@ export async function POST(request: Request): Promise<Response> {
           history,
           generationConfig: {
             temperature: 0.65,
-            maxOutputTokens: 600,
+            maxTokens: 600,
           },
         })) {
           controller.enqueue(encoder.encode(chunk));
         }
       } catch (err) {
         const msg =
-          err instanceof GeminiError
+          err instanceof AnthropicError
             ? err.message
             : 'Koç şu anda yanıt veremiyor.';
         console.error('[/api/chat] stream hatası:', msg);

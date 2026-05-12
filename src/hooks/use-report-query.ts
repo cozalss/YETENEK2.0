@@ -16,7 +16,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { SessionSummary } from '@/lib/session/store';
 
-export type ReportSource = 'gemini' | 'fallback';
+export type ReportSource = 'claude' | 'fallback';
 
 export interface ReportData {
   report: string;

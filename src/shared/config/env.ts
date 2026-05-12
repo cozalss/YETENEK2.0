@@ -7,22 +7,22 @@
  *
  * KULLANIM:
  *   import { env } from '@/shared/config/env';
- *   if (env.GEMINI_API_KEY) { ... }
+ *   if (env.ANTHROPIC_API_KEY) { ... }
  */
 
 import 'server-only';
 import { z } from 'zod';
 
 const envSchema = z.object({
-  GEMINI_API_KEY: z
+  ANTHROPIC_API_KEY: z
     .string()
     .min(10)
     .optional()
-    .describe('Google Gemini API key (boşsa fallback rapor)'),
-  GEMINI_MODEL: z
+    .describe('Anthropic Claude API key (boşsa fallback rapor)'),
+  ANTHROPIC_MODEL: z
     .string()
-    .default('gemini-2.5-flash')
-    .describe('Default Gemini model adı'),
+    .default('claude-sonnet-4-6')
+    .describe('Default Claude model adı'),
   NEXT_PUBLIC_SITE_URL: z
     .string()
     .url()
@@ -49,7 +49,7 @@ export function getEnv(): Env {
         .join('; ')
     );
     cached = envSchema.parse({
-      GEMINI_MODEL: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash',
+      ANTHROPIC_MODEL: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-6',
       NODE_ENV: (process.env.NODE_ENV as Env['NODE_ENV']) ?? 'development',
     });
     return cached;

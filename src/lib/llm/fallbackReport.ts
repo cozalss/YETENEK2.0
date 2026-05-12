@@ -1,5 +1,5 @@
 /**
- * Gemini API erişilemezse devreye giren rule-based fallback rapor.
+ * Claude API erişilemezse devreye giren rule-based fallback rapor.
  *
  * - API key yoksa
  * - Anahtar geçersizse

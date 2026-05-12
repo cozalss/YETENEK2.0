@@ -1,5 +1,5 @@
 /**
- * AI Coach chat — Gemini ile veli takip diyaloğu için prompt yapısı.
+ * AI Coach chat — Claude ile veli takip diyaloğu için prompt yapısı.
  *
  * System prompt: rapor prompt'u ile aynı 7 boyutlu çerçeveyi paylaşır
  * + chat-spesifik tonu ekler. Cacheable (sabit içerik).

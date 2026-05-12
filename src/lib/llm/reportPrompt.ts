@@ -1,5 +1,5 @@
 /**
- * Gemini AI rapor üretimi için Türkçe sistem prompt'u + kullanıcı mesajı.
+ * Claude AI rapor üretimi için Türkçe sistem prompt'u + kullanıcı mesajı.
  *
  * Rapor, veli okuduğunda samimi, doğal ve anlaşılır bir Türkçe metin üretmeli.
  *
@@ -83,7 +83,7 @@ Klinik referans: limb asimetrisi >%10 (Croisier 2008 AJSM 36:1469) sakatlanma ri
 export function buildReportUserMessage(session: SessionSummary): string {
   const lines: string[] = [];
 
-  // KVKK: Çocuk ismi VE ham antropometrik veri (boy/kilo) Gemini'ye
+  // KVKK: Çocuk ismi VE ham antropometrik veri (boy/kilo) Claude'a
   // gönderilmiyor. Yaş + cinsiyet rapor üretimi için yeterli. Sport
   // matching anthro bonusu zaten önerilerde yansımış oluyor.
   lines.push(

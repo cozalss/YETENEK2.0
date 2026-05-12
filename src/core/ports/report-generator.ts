@@ -2,7 +2,7 @@
  * AI rapor üretici port arayüzü.
  *
  * Adapter'lar:
- *   - GeminiReportAdapter (varsayılan)
+ *   - ClaudeReportAdapter (varsayılan)
  *   - FallbackReportAdapter (rule-based, offline)
  *   - MockReportAdapter (testler için)
  *
@@ -12,7 +12,7 @@
 import type { Result } from '@/core/types/result';
 import type { SessionSummarySchema } from '@/core/schemas/session.schema';
 
-export type ReportSource = 'gemini' | 'fallback' | 'mock';
+export type ReportSource = 'claude' | 'fallback' | 'mock';
 
 export interface GeneratedReport {
   readonly text: string;

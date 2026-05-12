@@ -8,7 +8,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { isGeminiConfigured } from '@/lib/llm/gemini';
+import { isAnthropicConfigured } from '@/lib/llm/anthropic';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,7 +24,7 @@ interface HealthPayload {
   version: string;
   env: 'development' | 'production' | 'test';
   features: {
-    geminiConfigured: boolean;
+    anthropicConfigured: boolean;
     fallbackReportAvailable: true;
   };
 }
@@ -43,7 +43,7 @@ export function GET(): NextResponse<HealthPayload> {
     version: process.env.NEXT_PUBLIC_APP_VERSION ?? '2.0.0',
     env: narrowEnv(process.env.NODE_ENV),
     features: {
-      geminiConfigured: isGeminiConfigured(),
+      anthropicConfigured: isAnthropicConfigured(),
       fallbackReportAvailable: true,
     },
   };

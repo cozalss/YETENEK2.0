@@ -1,15 +1,20 @@
 /**
- * AI rapor üretimi — Google Gemini ile.
+ * AI rapor üretimi — Anthropic Claude ile.
  *
  * Server-only (API key process.env'den okunur, browser'a SIZMAMALI).
  * Hata durumunda fallback (rule-based) rapor üretilir → demo asla
- * boş ekran kalmaz. Model: gemini-2.0-flash (varsayılan, hızlı + ücretsiz tier).
+ * boş ekran kalmaz. Default model: claude-sonnet-4-6 (.env üzerinden
+ * değiştirilebilir).
  */
 
 import 'server-only';
 import type { SessionSummary } from '@/lib/session/store';
+import {
+  AnthropicError,
+  generateText,
+  isAnthropicConfigured,
+} from './anthropic';
 import { generateFallbackReport } from './fallbackReport';
-import { GeminiError, generateText, isGeminiConfigured } from './gemini';
 import {
   REPORT_SYSTEM_PROMPT,
   buildReportUserMessage,
@@ -18,8 +23,8 @@ import {
 export interface ReportResult {
   /** Türkçe rapor metni (her durumda dolu — fallback olsa bile) */
   text: string;
-  /** Hangi pipeline kullanıldı: gemini veya fallback */
-  source: 'gemini' | 'fallback';
+  /** Hangi pipeline kullanıldı: claude veya fallback */
+  source: 'claude' | 'fallback';
   /** Fallback kullanıldıysa sebebi (kullanıcı görmez, sadece log'da) */
   reason?: string;
 }
@@ -33,11 +38,11 @@ export async function generateReport(
 ): Promise<ReportResult> {
   const fallbackText = () => generateFallbackReport(session);
 
-  if (!isGeminiConfigured()) {
+  if (!isAnthropicConfigured()) {
     return {
       text: fallbackText(),
       source: 'fallback',
-      reason: 'GEMINI_API_KEY tanımlı değil.',
+      reason: 'ANTHROPIC_API_KEY tanımlı değil.',
     };
   }
 
@@ -49,20 +54,20 @@ export async function generateReport(
       userMessage,
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 1500,
+        maxTokens: 1500,
       },
     });
     if (!text) {
       return {
         text: fallbackText(),
         source: 'fallback',
-        reason: 'Gemini boş içerik döndü.',
+        reason: 'Claude boş içerik döndü.',
       };
     }
-    return { text, source: 'gemini' };
+    return { text, source: 'claude' };
   } catch (err) {
     const reason = describeError(err);
-    console.error('[geminiReport] Hata, fallback devreye giriyor:', reason);
+    console.error('[claudeReport] Hata, fallback devreye giriyor:', reason);
     return {
       text: fallbackText(),
       source: 'fallback',
@@ -72,12 +77,12 @@ export async function generateReport(
 }
 
 function describeError(err: unknown): string {
-  if (err instanceof GeminiError) {
+  if (err instanceof AnthropicError) {
     if (err.status === 0) return err.message;
     if (err.status === 401 || err.status === 403)
-      return 'Geçersiz veya yetkisiz Gemini API anahtarı.';
-    if (err.status === 429) return 'Gemini rate limit aşıldı.';
-    if (err.status >= 500) return `Gemini sunucu hatası (${err.status}).`;
+      return 'Geçersiz veya yetkisiz Anthropic API anahtarı.';
+    if (err.status === 429) return 'Anthropic rate limit aşıldı.';
+    if (err.status >= 500) return `Anthropic sunucu hatası (${err.status}).`;
     return err.message;
   }
   if (err instanceof Error) return err.message;

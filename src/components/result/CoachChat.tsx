@@ -178,7 +178,7 @@ export function CoachChat({ session }: Props) {
       <header className="flex items-center justify-between">
         <div>
           <p className="text-xs font-semibold tracking-[0.25em] text-[var(--color-signal)] uppercase">
-            AI Koç · Gemini
+            AI Koç · Claude
           </p>
           <h3 className="mt-1 text-xl font-bold">Sohbet</h3>
         </div>

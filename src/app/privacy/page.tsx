@@ -67,7 +67,7 @@ export default function PrivacyPage() {
           />
           <Pledge
             icon={Server}
-            title="Gemini'ye isim gitmez"
+            title="Claude'a isim gitmez"
             body="AI rapor için sadece test skorları + yaş + cinsiyet gönderilir. Çocuk ismi, boy, kilo gönderilmez."
           />
         </section>
@@ -94,8 +94,8 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong>Spor önerisi + AI rapor:</strong> Yetenek profilinizden
-                türetilen 3-5 spor önerisi ve Gemini tarafından üretilen
-                kişiselleştirilmiş Türkçe metin.
+                türetilen 3-5 spor önerisi ve Anthropic Claude tarafından
+                üretilen kişiselleştirilmiş Türkçe metin.
               </li>
               <li>
                 <strong>Rozetler ve süreklilik:</strong> Hangi rozetleri
@@ -127,7 +127,7 @@ export default function PrivacyPage() {
               indirilir.
             </p>
 
-            <h3>Google Gemini API (sadece AI rapor + AI koç chat için)</h3>
+            <h3>Anthropic Claude API (sadece AI rapor + AI koç chat için)</h3>
             <p>
               AI rapor ve AI koç chat isteğinde sunucuya yalnızca:
             </p>
@@ -141,15 +141,15 @@ export default function PrivacyPage() {
             <p>
               gönderilir. <strong>Çocuk ismi, boy, kilo gönderilmez.</strong>{' '}
               Bu, KVKK Madde 9 cross-border data transfer riskini en aza
-              indirme amacıyla bilinçli bir tasarım kararıdır. Google'ın
+              indirme amacıyla bilinçli bir tasarım kararıdır. Anthropic'in
               kendi gizlilik politikası için{' '}
               <a
-                href="https://ai.google.dev/gemini-api/terms"
+                href="https://www.anthropic.com/legal/privacy"
                 target="_blank"
                 rel="noreferrer"
                 className="underline decoration-[var(--color-signal)] underline-offset-4"
               >
-                Gemini API terms
+                Anthropic privacy policy
               </a>{' '}
               sayfasına bakabilirsiniz.
             </p>

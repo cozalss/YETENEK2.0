@@ -26,7 +26,7 @@
 - **Styling:** Tailwind CSS v4
 - **Pose Estimation:** `@mediapipe/tasks-vision` (browser, on-device, 33 keypoint)
 - **Database / Auth:** Supabase (postgres + cookie-based SSR auth) — env eksikse demo modu otomatik
-- **LLM:** Google Gemini (`gemini-2.5-flash`, `@google/generative-ai`) — env eksikse rule-based fallback rapor
+- **LLM:** Anthropic Claude (`claude-sonnet-4-6`, `@anthropic-ai/sdk`) — env eksikse rule-based fallback rapor; system prompt'ta prompt caching açık
 - **State (server):** TanStack Query (`useReportQuery`)
 - **Charts:** Recharts (radar grafik, ResizeObserver ile sabit-boyut render)
 - **PDF:** `@react-pdf/renderer` (rapor üretimi)
@@ -110,8 +110,8 @@ src/
 ├── infrastructure/          # Impure adapters
 │   ├── storage/             # localStorage / Supabase
 │   │   └── local-history-repository.ts
-│   └── llm/                 # Gemini / Anthropic / Mock
-│       └── gemini-report-adapter.ts
+│   └── llm/                 # Anthropic / Mock
+│       └── claude-report-adapter.ts
 │
 ├── shared/                  # Cross-cutting
 │   ├── config/env.ts        # Zod-validated env
@@ -153,7 +153,7 @@ src/
     ├── pose/{detector,extractKeypoints,framing,oneEuroFilter,quality}.ts
     ├── tests/{jump,balance,reaction,broadJump,lateralHops,coordination,enduranceJacks}.ts
     ├── matching/{recommend,sportProfiles}.ts
-    ├── llm/{gemini,geminiReport,coachPrompt,reportPrompt,fallbackReport}.ts
+    ├── llm/{anthropic,claudeReport,coachPrompt,reportPrompt,fallbackReport}.ts
     ├── session/store.ts, history/store.ts
     ├── gamification/{badges,store}.ts
     ├── training/programs.ts
@@ -232,7 +232,7 @@ src/
 
 Production polish tamam (2026-05-12 commit `1186833`):
 
-- [x] 7 testlik batarya + sport matching + AI rapor (Gemini) + rule-based fallback
+- [x] 7 testlik batarya + sport matching + AI rapor (Claude) + rule-based fallback
 - [x] Supabase auth + çocuk profilleri + sessions tablosu (dual-write: localStorage + DB)
 - [x] Kamera akışı: izin reddi → /demo fallback link + ARIA alert
 - [x] PWA shell + Service Worker (offline + MediaPipe model cache)
