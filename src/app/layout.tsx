@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Montserrat, Courier_Prime } from 'next/font/google';
+import { Montserrat, Courier_Prime, Manrope } from 'next/font/google';
 import './globals.css';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { ServiceWorkerRegistration } from '@/components/pwa/ServiceWorkerRegistration';
@@ -15,6 +15,13 @@ const courierPrime = Courier_Prime({
   variable: '--font-courier',
   subsets: ['latin'],
   weight: ['400', '700'],
+  display: 'swap',
+});
+
+const manrope = Manrope({
+  variable: '--font-manrope',
+  subsets: ['latin', 'latin-ext'],
+  weight: ['300', '400', '500', '600', '700', '800'],
   display: 'swap',
 });
 
@@ -107,7 +114,7 @@ export default function RootLayout({
     <html
       lang="tr"
       data-scroll-behavior="smooth"
-      className={`${montserrat.variable} ${courierPrime.variable} h-full antialiased`}
+      className={`${montserrat.variable} ${courierPrime.variable} ${manrope.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <div className="paper-texture" aria-hidden="true" />

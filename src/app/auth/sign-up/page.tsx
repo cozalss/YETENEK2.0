@@ -1,5 +1,10 @@
 /**
- * Kayıt sayfası — yeni veli hesabı oluşturma.
+ * Kayıt sayfası — sign-in ile aynı tasarım dili.
+ *
+ * Tasarım: Manrope tipografi, grid bg + karakter videoları,
+ * cam-effect form kartı, rainbow CTA. CSS sign-in ile paylaşılıyor
+ * (`../sign-in/sign-in.css`) — class isimleri `signin-*` prefix'inde
+ * kalıyor, kullanıcıya görünmüyor.
  *
  * Form: ad + e-posta + parola + parola tekrar. Email confirm açıksa
  * doğrulama linki gönderilir; kullanıcı linke tıklayınca /auth/callback'e
@@ -12,6 +17,8 @@ import {
   signUpWithEmailAction,
 } from '@/app/auth/actions';
 import { env } from '@/shared/config/env-public';
+import { SiteHeader } from '@/components/layout/SiteHeader';
+import '../sign-in/sign-in.css';
 
 interface PageProps {
   searchParams: Promise<{
@@ -25,248 +32,227 @@ export default async function SignUpPage({ searchParams }: PageProps) {
   const { next, error, info } = await searchParams;
 
   if (!env.isSupabaseConfigured) {
-    return (
-      <main
-        className="flex min-h-screen items-center justify-center px-6 py-12"
-        style={{ background: 'var(--whistle-cream)' }}
-      >
-        <section
-          className="w-full max-w-md rounded-3xl border-2 p-8 text-center"
-          style={{ background: '#fff', borderColor: 'var(--track-mustard)' }}
-        >
-          <h1
-            className="text-xl font-black"
-            style={{
-              color: 'var(--form-navy)',
-              fontFamily: 'var(--font-display)',
-            }}
-          >
-            Kayıt servisi yapılandırılmamış
-          </h1>
-          <p
-            className="mt-3 text-sm"
-            style={{ color: 'var(--form-navy)', opacity: 0.7 }}
-          >
-            <code>NEXT_PUBLIC_SUPABASE_*</code> eksik.
-          </p>
-        </section>
-      </main>
-    );
+    return <UnconfiguredCard />;
   }
 
+  const signInHref = `/auth/sign-in${next ? `?next=${encodeURIComponent(next)}` : ''}`;
+
+  return (
+    <div className="signin-scope">
+      <div className="signin-header-wrap">
+        <SiteHeader />
+      </div>
+
+      <div className="signin-grid-bg" aria-hidden="true">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/login/grid.svg" alt="" />
+      </div>
+
+      <main className="signin-screen">
+        <video
+          className="signin-character signin-character--1"
+          autoPlay
+          loop
+          muted
+          playsInline
+        >
+          <source src="/login/character1.mp4" type="video/mp4" />
+        </video>
+        <video
+          className="signin-character signin-character--2"
+          autoPlay
+          loop
+          muted
+          playsInline
+        >
+          <source src="/login/character2.mp4" type="video/mp4" />
+        </video>
+
+        <section className="signin-wrap">
+          <header className="signin-head">
+            <h1>
+              Create
+              <br />
+              <span className="signin-head-bold">
+                account
+                <span className="signin-sparkle" aria-hidden="true">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/login/star.svg" alt="" width={22} height={22} />
+                </span>
+              </span>
+            </h1>
+            <p className="signin-subtitle">
+              Start your journey of
+              <br />
+              discovering talent.
+            </p>
+          </header>
+
+          <div className="signin-form">
+            {error && (
+              <div className="signin-alert signin-alert--error" role="alert">
+                {error}
+              </div>
+            )}
+            {info && (
+              <div className="signin-alert signin-alert--info" role="status">
+                {info}
+              </div>
+            )}
+
+            <form
+              action={signUpWithEmailAction}
+              noValidate
+              className="signin-form-inner"
+            >
+              {next && <input type="hidden" name="next" value={next} />}
+
+              <label className="signin-field">
+                <span className="signin-field-label">Full name</span>
+                <input
+                  name="fullName"
+                  type="text"
+                  placeholder="Ayşe Yılmaz"
+                  autoComplete="name"
+                  required
+                />
+              </label>
+
+              <label className="signin-field">
+                <span className="signin-field-label">Email</span>
+                <input
+                  name="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  required
+                />
+              </label>
+
+              <label className="signin-field">
+                <span className="signin-field-label">Password</span>
+                <input
+                  name="password"
+                  type="password"
+                  placeholder="At least 8 chars, letter + number"
+                  autoComplete="new-password"
+                  required
+                />
+              </label>
+
+              <label className="signin-field">
+                <span className="signin-field-label">Confirm password</span>
+                <input
+                  name="confirmPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  required
+                />
+              </label>
+
+              <button type="submit" className="signin-cta">
+                <span className="signin-cta-icon">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/login/button.svg" alt="" width={20} height={20} />
+                </span>
+                Sign up
+              </button>
+            </form>
+
+            <div className="signin-divider">
+              <span>or</span>
+            </div>
+
+            <form action={signInWithGoogleAction}>
+              {next && <input type="hidden" name="next" value={next} />}
+              <button type="submit" className="signin-google">
+                <GoogleIcon />
+                Continue with Google
+              </button>
+            </form>
+
+            <p className="signin-signup-line">
+              Already have an account? <Link href={signInHref}>Sign in</Link>
+            </p>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+        fill="#4285F4"
+      />
+      <path
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+        fill="#34A853"
+      />
+      <path
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+        fill="#EA4335"
+      />
+    </svg>
+  );
+}
+
+function UnconfiguredCard() {
   return (
     <main
       className="flex min-h-screen items-center justify-center px-6 py-12"
       style={{ background: 'var(--whistle-cream)' }}
     >
       <section
-        className="w-full max-w-md rounded-3xl border-2 p-8 shadow-xl"
+        className="w-full max-w-md rounded-3xl border-2 p-8 text-center"
         style={{
           background: '#fff',
-          borderColor: 'var(--form-navy)',
-          boxShadow: '0 20px 60px rgba(44, 62, 107, 0.12)',
+          borderColor: 'var(--track-mustard)',
         }}
       >
-        <header className="mb-8 text-center">
-          <Link
-            href="/"
-            className="inline-block text-lg font-black tracking-[0.3em]"
-            style={{
-              color: 'var(--form-navy)',
-              fontFamily: 'var(--font-display)',
-            }}
-          >
-            YETENEK
-          </Link>
-          <div
-            className="mx-auto mt-4 h-[2px] w-12"
-            style={{ background: 'var(--track-mustard)' }}
-          />
-          <h1
-            className="mt-6 text-2xl font-black"
-            style={{
-              color: 'var(--form-navy)',
-              fontFamily: 'var(--font-display)',
-            }}
-          >
-            Hesap oluştur
-          </h1>
-          <p
-            className="mt-2 text-sm"
-            style={{
-              color: 'var(--form-navy)',
-              opacity: 0.7,
-              fontFamily: 'var(--font-body)',
-            }}
-          >
-            Veli olarak çocuklarını ekle, her birinin yetenek profilini
-            oluştur.
-          </p>
-        </header>
-
-        {error && (
-          <div
-            className="mb-4 rounded-xl border p-3 text-sm"
-            style={{
-              background: 'rgba(244, 182, 194, 0.2)',
-              borderColor: 'var(--mindar-pink)',
-              color: 'var(--deep-navy)',
-            }}
-            role="alert"
-          >
-            {error}
-          </div>
-        )}
-        {info && (
-          <div
-            className="mb-4 rounded-xl border p-3 text-sm"
-            style={{
-              background: 'rgba(168, 213, 186, 0.25)',
-              borderColor: 'var(--field-mint)',
-              color: 'var(--deep-navy)',
-            }}
-            role="status"
-          >
-            {info}
-          </div>
-        )}
-
-        <form action={signUpWithEmailAction} className="space-y-4">
-          {next && <input type="hidden" name="next" value={next} />}
-          <Field
-            label="Adın"
-            name="fullName"
-            type="text"
-            required
-            autoComplete="name"
-            placeholder="Ayşe Yılmaz"
-          />
-          <Field
-            label="E-posta"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            placeholder="veli@ornek.com"
-          />
-          <Field
-            label="Şifre"
-            name="password"
-            type="password"
-            required
-            autoComplete="new-password"
-            placeholder="En az 8 karakter, harf + rakam"
-          />
-          <Field
-            label="Şifre tekrar"
-            name="confirmPassword"
-            type="password"
-            required
-            autoComplete="new-password"
-          />
-          <Submit>Kayıt Ol</Submit>
-        </form>
-
-        <div
-          className="my-6 flex items-center gap-3 text-xs uppercase tracking-widest"
-          style={{ color: 'var(--form-navy)', opacity: 0.4 }}
-        >
-          <span className="h-[1px] flex-1" style={{ background: 'var(--form-navy)', opacity: 0.2 }} />
-          veya
-          <span className="h-[1px] flex-1" style={{ background: 'var(--form-navy)', opacity: 0.2 }} />
-        </div>
-
-        <form action={signInWithGoogleAction}>
-          {next && <input type="hidden" name="next" value={next} />}
-          <button
-            type="submit"
-            className="flex w-full items-center justify-center gap-3 rounded-full border-2 px-6 py-3 text-sm font-bold transition-colors hover:bg-neutral-50"
-            style={{
-              borderColor: 'var(--form-navy)',
-              color: 'var(--form-navy)',
-              fontFamily: 'var(--font-display)',
-            }}
-          >
-            Google ile kayıt ol
-          </button>
-        </form>
-
-        <p
-          className="mt-6 text-center text-sm"
+        <h1
+          className="text-xl font-black"
           style={{
             color: 'var(--form-navy)',
-            opacity: 0.7,
-            fontFamily: 'var(--font-body)',
+            fontFamily: 'var(--font-display)',
           }}
         >
-          Hesabın var mı?{' '}
-          <Link
-            href={`/auth/sign-in${next ? `?next=${encodeURIComponent(next)}` : ''}`}
-            className="font-bold underline"
-            style={{ color: 'var(--form-navy)' }}
-          >
-            Giriş yap
-          </Link>
+          Kayıt servisi yapılandırılmamış
+        </h1>
+        <p
+          className="mt-3 text-sm"
+          style={{ color: 'var(--form-navy)', opacity: 0.7 }}
+        >
+          Geliştirici: <code>.env.local</code>&apos;a{' '}
+          <code>NEXT_PUBLIC_SUPABASE_URL</code> ve{' '}
+          <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> ekleyin.
         </p>
+        <Link
+          href="/"
+          className="mt-6 inline-block rounded-full px-5 py-2 text-sm font-bold"
+          style={{
+            background: 'var(--track-mustard)',
+            color: 'var(--form-navy)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
+          Anasayfaya dön
+        </Link>
       </section>
     </main>
-  );
-}
-
-function Field({
-  label,
-  name,
-  type,
-  required,
-  autoComplete,
-  placeholder,
-}: {
-  label: string;
-  name: string;
-  type: string;
-  required?: boolean;
-  autoComplete?: string;
-  placeholder?: string;
-}) {
-  return (
-    <label className="block">
-      <span
-        className="mb-1.5 block text-xs font-bold uppercase tracking-widest"
-        style={{ color: 'var(--form-navy)' }}
-      >
-        {label}
-      </span>
-      <input
-        name={name}
-        type={type}
-        required={required}
-        autoComplete={autoComplete}
-        placeholder={placeholder}
-        className="w-full rounded-xl border-2 px-4 py-2.5 text-sm transition-colors focus:outline-none"
-        style={{
-          background: 'var(--whistle-cream)',
-          borderColor: 'rgba(44, 62, 107, 0.2)',
-          color: 'var(--form-navy)',
-          fontFamily: 'var(--font-body)',
-        }}
-      />
-    </label>
-  );
-}
-
-function Submit({ children }: { children: React.ReactNode }) {
-  return (
-    <button
-      type="submit"
-      className="w-full rounded-full px-6 py-3 text-sm font-bold uppercase tracking-widest transition-transform hover:scale-[1.02]"
-      style={{
-        background: 'var(--track-mustard)',
-        color: 'var(--form-navy)',
-        fontFamily: 'var(--font-display)',
-        boxShadow: '0 8px 20px rgba(242, 201, 76, 0.4)',
-      }}
-    >
-      {children}
-    </button>
   );
 }
