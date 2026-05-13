@@ -12,6 +12,7 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { headers } from 'next/headers';
 import { getServerClient } from '@/lib/supabase/server';
 import { env } from '@/shared/config/env-public';
 import {
@@ -22,8 +23,33 @@ import { logger } from '@/shared/logger/logger';
 
 const log = logger.child('auth-actions');
 
-function buildRedirectUrl(path: string, params?: Record<string, string>) {
-  const url = new URL(path, env.siteUrl);
+/**
+ * OAuth redirect URL'lerini gerçek request origin'inden türetir
+ * (Vercel preview / production / localhost hepsinde otomatik doğru çalışır).
+ *
+ * Öncelik:
+ *   1. x-forwarded-host header (Vercel proxy)
+ *   2. host header
+ *   3. env.siteUrl fallback (NEXT_PUBLIC_SITE_URL)
+ */
+async function currentOrigin(): Promise<string> {
+  try {
+    const hdrs = await headers();
+    const proto = hdrs.get('x-forwarded-proto') ?? 'https';
+    const host = hdrs.get('x-forwarded-host') ?? hdrs.get('host');
+    if (host) return `${proto}://${host}`;
+  } catch {
+    // header context dışında çağrıldıysa fallback'a düş
+  }
+  return env.siteUrl;
+}
+
+async function buildRedirectUrl(
+  path: string,
+  params?: Record<string, string>,
+): Promise<string> {
+  const origin = await currentOrigin();
+  const url = new URL(path, origin);
   if (params) {
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   }
@@ -84,7 +110,7 @@ export async function signUpWithEmailAction(formData: FormData) {
     password: parsed.data.password,
     options: {
       data: { full_name: parsed.data.fullName },
-      emailRedirectTo: buildRedirectUrl('/auth/callback'),
+      emailRedirectTo: await buildRedirectUrl('/auth/callback'),
     },
   });
 
@@ -120,7 +146,7 @@ export async function signInWithGoogleAction(formData: FormData) {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: buildRedirectUrl('/auth/callback', { next }),
+      redirectTo: await buildRedirectUrl('/auth/callback', { next }),
     },
   });
 
