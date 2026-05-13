@@ -77,6 +77,7 @@
   bottom: 0;
   height: 65vh;
   width: auto;
+  aspect-ratio: 9 / 16;
   z-index: 1;
   pointer-events: none;
   user-select: none;

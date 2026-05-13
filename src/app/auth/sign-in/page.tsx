@@ -53,6 +53,8 @@ export default async function SignInPage({ searchParams }: PageProps) {
           loop
           muted
           playsInline
+          preload="metadata"
+          poster="/login/character1-poster.webp"
         >
           <source src="/login/character1.mp4" type="video/mp4" />
         </video>
@@ -62,6 +64,8 @@ export default async function SignInPage({ searchParams }: PageProps) {
           loop
           muted
           playsInline
+          preload="metadata"
+          poster="/login/character2-poster.webp"
         >
           <source src="/login/character2.mp4" type="video/mp4" />
         </video>
