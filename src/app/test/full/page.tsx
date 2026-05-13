@@ -487,7 +487,11 @@ function FullFlowInner() {
 
         {phase === 'result' &&
           (finalSession ? (
-            <ResultStage session={finalSession} onRestart={restart} />
+            <ResultStage
+              session={finalSession}
+              onRestart={restart}
+              childId={childIdParam ?? undefined}
+            />
           ) : (
             <FinalizingStage />
           ))}
@@ -661,9 +665,11 @@ function FinalizingStage() {
 function ResultStage({
   session,
   onRestart,
+  childId,
 }: {
   session: SessionSummary;
   onRestart: () => void;
+  childId?: string;
 }) {
   const ageDescription = useMemo(
     () => `${session.child.name} · ${session.child.ageYears} yaş`,
@@ -692,7 +698,7 @@ function ResultStage({
           Yeni Test
         </button>
       </div>
-      <ResultScreen session={session} />
+      <ResultScreen session={session} childId={childId} />
     </div>
   );
 }

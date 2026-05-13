@@ -1,13 +1,9 @@
 /**
- * Supabase lesson enrollment + progress adapter.
+ * Supabase lesson enrollment + progress adapter — per-child.
  *
- * Per-user (auth.uid()) tek slot enrollment + ders ilerleme kaydı.
- * RLS politikası kullanıcıyı kendi satırlarına kilitler; adapter ayrıca
- * `user_id` filtresiyle defensive query yazar.
- *
- * Dual-write akışında bu repo API route'lardan çağrılır; client-side
- * `lib/lessons/store.ts` localStorage'a yazıp sonra API'yi fire-and-forget
- * tetikler.
+ * Bir veli her çocuğu için ayrı bir spor seçer (lesson_enrollment).
+ * Her ders tamamlama da o çocuğa bağlı (lesson_progress).
+ * RLS politikası `auth.uid() = user_id`.
  */
 
 import 'server-only';
@@ -26,12 +22,14 @@ export type Result<T, E> =
 
 export interface EnrollmentRecord {
   userId: string;
+  childId: string;
   sportSlug: string;
   enrolledAt: string;
 }
 
 export interface ProgressRecord {
   userId: string;
+  childId: string;
   lessonId: string;
   sportSlug: string;
   completedAt: string;
@@ -55,19 +53,25 @@ async function getUserOrFail(): Promise<
 }
 
 export const supabaseLessonRepository = {
-  async enroll(
-    sportSlug: string,
-  ): Promise<Result<EnrollmentRecord, LessonRepoError>> {
+  async enroll(input: {
+    childId: string;
+    sportSlug: string;
+  }): Promise<Result<EnrollmentRecord, LessonRepoError>> {
     const auth = await getUserOrFail();
     if (!auth.ok) return { ok: false, error: auth.error };
 
     const { data, error } = await auth.supabase
       .from('lesson_enrollment')
       .upsert(
-        { user_id: auth.userId, sport_slug: sportSlug, enrolled_at: new Date().toISOString() },
-        { onConflict: 'user_id' },
+        {
+          user_id: auth.userId,
+          child_id: input.childId,
+          sport_slug: input.sportSlug,
+          enrolled_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id,child_id' },
       )
-      .select('user_id, sport_slug, enrolled_at')
+      .select('user_id, child_id, sport_slug, enrolled_at')
       .single();
 
     if (error) {
@@ -78,20 +82,24 @@ export const supabaseLessonRepository = {
       ok: true,
       value: {
         userId: data.user_id,
+        childId: data.child_id,
         sportSlug: data.sport_slug,
         enrolledAt: data.enrolled_at,
       },
     };
   },
 
-  async getEnrollment(): Promise<Result<EnrollmentRecord | null, LessonRepoError>> {
+  async getEnrollment(
+    childId: string,
+  ): Promise<Result<EnrollmentRecord | null, LessonRepoError>> {
     const auth = await getUserOrFail();
     if (!auth.ok) return { ok: false, error: auth.error };
 
     const { data, error } = await auth.supabase
       .from('lesson_enrollment')
-      .select('user_id, sport_slug, enrolled_at')
+      .select('user_id, child_id, sport_slug, enrolled_at')
       .eq('user_id', auth.userId)
+      .eq('child_id', childId)
       .maybeSingle();
 
     if (error) {
@@ -103,13 +111,42 @@ export const supabaseLessonRepository = {
       ok: true,
       value: {
         userId: data.user_id,
+        childId: data.child_id,
         sportSlug: data.sport_slug,
         enrolledAt: data.enrolled_at,
       },
     };
   },
 
+  async listEnrollmentsForUser(): Promise<
+    Result<ReadonlyArray<EnrollmentRecord>, LessonRepoError>
+  > {
+    const auth = await getUserOrFail();
+    if (!auth.ok) return { ok: false, error: auth.error };
+
+    const { data, error } = await auth.supabase
+      .from('lesson_enrollment')
+      .select('user_id, child_id, sport_slug, enrolled_at')
+      .eq('user_id', auth.userId)
+      .order('enrolled_at', { ascending: false });
+
+    if (error) {
+      log.error('listEnrollmentsForUser başarısız', { cause: error.message });
+      return { ok: false, error: { kind: 'storage', message: error.message } };
+    }
+    return {
+      ok: true,
+      value: (data ?? []).map((row) => ({
+        userId: row.user_id,
+        childId: row.child_id,
+        sportSlug: row.sport_slug,
+        enrolledAt: row.enrolled_at,
+      })),
+    };
+  },
+
   async markCompleted(input: {
+    childId: string;
     lessonId: string;
     sportSlug: string;
     durationMs?: number;
@@ -123,15 +160,18 @@ export const supabaseLessonRepository = {
       .upsert(
         {
           user_id: auth.userId,
+          child_id: input.childId,
           lesson_id: input.lessonId,
           sport_slug: input.sportSlug,
           completed_at: new Date().toISOString(),
           duration_ms: input.durationMs ?? null,
           reps: input.reps ?? null,
         },
-        { onConflict: 'user_id,lesson_id' },
+        { onConflict: 'user_id,child_id,lesson_id' },
       )
-      .select('user_id, lesson_id, sport_slug, completed_at, duration_ms, reps')
+      .select(
+        'user_id, child_id, lesson_id, sport_slug, completed_at, duration_ms, reps',
+      )
       .single();
 
     if (error) {
@@ -142,6 +182,7 @@ export const supabaseLessonRepository = {
       ok: true,
       value: {
         userId: data.user_id,
+        childId: data.child_id,
         lessonId: data.lesson_id,
         sportSlug: data.sport_slug,
         completedAt: data.completed_at,
@@ -151,20 +192,24 @@ export const supabaseLessonRepository = {
     };
   },
 
-  async listCompleted(
-    sportSlug?: string,
-  ): Promise<Result<ReadonlyArray<ProgressRecord>, LessonRepoError>> {
+  async listCompleted(input: {
+    childId: string;
+    sportSlug?: string;
+  }): Promise<Result<ReadonlyArray<ProgressRecord>, LessonRepoError>> {
     const auth = await getUserOrFail();
     if (!auth.ok) return { ok: false, error: auth.error };
 
     let query = auth.supabase
       .from('lesson_progress')
-      .select('user_id, lesson_id, sport_slug, completed_at, duration_ms, reps')
+      .select(
+        'user_id, child_id, lesson_id, sport_slug, completed_at, duration_ms, reps',
+      )
       .eq('user_id', auth.userId)
+      .eq('child_id', input.childId)
       .order('completed_at', { ascending: false });
 
-    if (sportSlug) {
-      query = query.eq('sport_slug', sportSlug);
+    if (input.sportSlug) {
+      query = query.eq('sport_slug', input.sportSlug);
     }
 
     const { data, error } = await query;
@@ -177,6 +222,7 @@ export const supabaseLessonRepository = {
       ok: true,
       value: (data ?? []).map((row) => ({
         userId: row.user_id,
+        childId: row.child_id,
         lessonId: row.lesson_id,
         sportSlug: row.sport_slug,
         completedAt: row.completed_at,

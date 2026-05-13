@@ -9,16 +9,19 @@
  */
 
 import Link from 'next/link';
-import { Calendar, ChevronRight, Plus } from 'lucide-react';
+import { Calendar, ChevronRight, Plus, Sparkles } from 'lucide-react';
 import { addChildAction } from '@/app/children/actions';
 import type { ChildRecord } from '@/core/schemas/child.schema';
+import { getCurriculumBySlug } from '@/lib/lessons/curriculum';
 
 interface Props {
   /** Çocuk listesi — Server'dan geliyor. */
   items: ReadonlyArray<ChildRecord>;
+  /** child_id → seçili sport_slug — DB enrollments. */
+  enrollmentsByChild?: ReadonlyMap<string, string>;
 }
 
-export function ChildrenSection({ items }: Props) {
+export function ChildrenSection({ items, enrollmentsByChild }: Props) {
   return (
     <section className="mt-12">
       <header className="mb-6 flex items-end justify-between">
@@ -48,7 +51,11 @@ export function ChildrenSection({ items }: Props) {
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {items.map((c) => (
-            <ChildCard key={c.id} item={c} />
+            <ChildCard
+              key={c.id}
+              item={c}
+              enrolledSportSlug={enrollmentsByChild?.get(c.id)}
+            />
           ))}
         </div>
       )}
@@ -58,12 +65,21 @@ export function ChildrenSection({ items }: Props) {
   );
 }
 
-function ChildCard({ item }: { item: ChildRecord }) {
+function ChildCard({
+  item,
+  enrolledSportSlug,
+}: {
+  item: ChildRecord;
+  enrolledSportSlug?: string;
+}) {
   const lastTest = item.lastTestedAt
     ? new Date(item.lastTestedAt).toLocaleDateString('tr-TR', {
         day: 'numeric',
         month: 'short',
       })
+    : null;
+  const enrolledCurriculum = enrolledSportSlug
+    ? getCurriculumBySlug(enrolledSportSlug)
     : null;
 
   // Tüm kart `/children/[id]` linkidir; CTA'lar `event.stopPropagation`
@@ -132,6 +148,20 @@ function ChildCard({ item }: { item: ChildRecord }) {
             <dd className="font-bold">{lastTest ?? '—'}</dd>
           </div>
         </dl>
+
+        {enrolledCurriculum && (
+          <div
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold"
+            style={{
+              background: 'rgba(242, 201, 76, 0.25)',
+              color: 'var(--form-navy)',
+            }}
+          >
+            <Sparkles className="h-3 w-3" />
+            <span aria-hidden>{enrolledCurriculum.emoji}</span>
+            <span>{enrolledCurriculum.sportName} antrenmanı</span>
+          </div>
+        )}
       </Link>
 
       {/* CTA'lar kartın altında ayrı bloklar — kart linkinden bağımsız. */}

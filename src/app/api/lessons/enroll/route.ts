@@ -1,7 +1,7 @@
 /**
- * POST /api/lessons/enroll — kullanıcı bir branşa kayıt olur.
+ * POST /api/lessons/enroll — kullanıcı bir çocuk için bir branşa kayıt olur.
  *
- * Body: { sportSlug: string }
+ * Body: { childId: string, sportSlug: string }
  * Response: 200 { ok: true, enrollment } | 401 unauthorized | 400 invalid body
  *
  * Client tarafı `lib/lessons/enrollment.ts` localStorage'a yazıp bu route'u
@@ -16,6 +16,7 @@ import { logger } from '@/shared/logger/logger';
 const log = logger.child('api-lessons-enroll');
 
 const bodySchema = z.object({
+  childId: z.string().uuid(),
   sportSlug: z.string().min(1).max(40),
 });
 
@@ -41,7 +42,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = await supabaseLessonRepository.enroll(parsed.data.sportSlug);
+  const result = await supabaseLessonRepository.enroll({
+    childId: parsed.data.childId,
+    sportSlug: parsed.data.sportSlug,
+  });
   if (!result.ok) {
     if (result.error.kind === 'unauthorized') {
       return NextResponse.json(

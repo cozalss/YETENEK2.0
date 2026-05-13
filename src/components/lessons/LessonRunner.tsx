@@ -34,6 +34,8 @@ interface LessonRunnerProps {
   lesson: SportLesson;
   /** Aynı branştaki bir sonraki ders (varsa) — Tamamlandı ekranında link. */
   nextLessonId?: string;
+  /** Hangi çocuğun ilerlemesi — yoksa anonim/demo, persistence yok. */
+  childId?: string;
 }
 
 const DIFFICULTY_LABEL: Record<SportLesson['difficulty'], string> = {
@@ -42,7 +44,7 @@ const DIFFICULTY_LABEL: Record<SportLesson['difficulty'], string> = {
   advanced: 'İleri',
 };
 
-export function LessonRunner({ lesson, nextLessonId }: LessonRunnerProps) {
+export function LessonRunner({ lesson, nextLessonId, childId }: LessonRunnerProps) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [state, setState] = useState<ValidatorState>({
     status: 'pending',
@@ -71,9 +73,10 @@ export function LessonRunner({ lesson, nextLessonId }: LessonRunnerProps) {
     if (next.status === 'completed' && phaseRef.current === 'running') {
       setPhase('success');
       // Persist sadece bir kez (frame loop birkaç frame daha completed dönebilir).
-      if (!completionPersistedRef.current) {
+      // childId yoksa anonim/demo modu — sadece UI başarı animasyonu, kayıt yok.
+      if (!completionPersistedRef.current && childId) {
         completionPersistedRef.current = true;
-        markLessonCompleted({
+        markLessonCompleted(childId, {
           lessonId: lesson.id,
           sportSlug: lesson.sportSlug,
           completedAt: Date.now(),
@@ -82,7 +85,7 @@ export function LessonRunner({ lesson, nextLessonId }: LessonRunnerProps) {
         });
       }
     }
-  }, [lesson.id, lesson.sportSlug]);
+  }, [lesson.id, lesson.sportSlug, childId]);
 
   const start = () => {
     validatorRef.current = createValidator(lesson.validator);
@@ -127,6 +130,7 @@ export function LessonRunner({ lesson, nextLessonId }: LessonRunnerProps) {
           <SuccessPanel
             lesson={lesson}
             nextLessonId={nextLessonId}
+            childId={childId}
             onRetry={retry}
             reps={state.reps}
           />
@@ -150,7 +154,11 @@ export function LessonRunner({ lesson, nextLessonId }: LessonRunnerProps) {
             }
             footer={
               <Link
-                href={`/lessons/${lesson.sportSlug}`}
+                href={
+                  childId
+                    ? `/lessons/${lesson.sportSlug}?childId=${encodeURIComponent(childId)}`
+                    : `/lessons/${lesson.sportSlug}`
+                }
                 className="inline-flex items-center gap-1.5 text-sm font-bold underline-offset-4 hover:underline"
                 style={{ color: 'var(--color-ink-3)' }}
               >
@@ -288,14 +296,17 @@ function SuccessOverlay({ name }: { name: string }) {
 function SuccessPanel({
   lesson,
   nextLessonId,
+  childId,
   onRetry,
   reps,
 }: {
   lesson: SportLesson;
   nextLessonId?: string;
+  childId?: string;
   onRetry: () => void;
   reps: number;
 }) {
+  const childQuery = childId ? `?childId=${encodeURIComponent(childId)}` : '';
   return (
     <motion.section
       initial={{ opacity: 0, y: 12 }}
@@ -350,7 +361,7 @@ function SuccessPanel({
       <div className="flex flex-col gap-3">
         {nextLessonId ? (
           <Link
-            href={`/lessons/${lesson.sportSlug}/${nextLessonId}`}
+            href={`/lessons/${lesson.sportSlug}/${nextLessonId}${childQuery}`}
             className="inline-flex h-12 items-center justify-center gap-2 rounded-full text-base font-black"
             style={{
               background: 'var(--track-mustard)',
@@ -363,7 +374,7 @@ function SuccessPanel({
           </Link>
         ) : (
           <Link
-            href={`/lessons/${lesson.sportSlug}`}
+            href={`/lessons/${lesson.sportSlug}${childQuery}`}
             className="inline-flex h-12 items-center justify-center gap-2 rounded-full text-base font-black"
             style={{
               background: 'var(--track-mustard)',

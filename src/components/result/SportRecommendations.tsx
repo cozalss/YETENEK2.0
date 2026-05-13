@@ -12,6 +12,11 @@ import { SportSelectButton } from './SportSelectButton';
 
 interface Props {
   recommendations: SportMatch[];
+  /**
+   * Hangi çocuk için test yapıldı — enrollment per-child.
+   * Demo/anonim akışta yok; o zaman "Bu sporu seç" CTA gizlenir.
+   */
+  childId?: string;
 }
 
 /**
@@ -34,7 +39,7 @@ const SPORT_NAME_TO_SLUG: Record<string, string> = {
   Badminton: 'badminton',
 };
 
-export function SportRecommendations({ recommendations }: Props) {
+export function SportRecommendations({ recommendations, childId }: Props) {
   return (
     <div className="space-y-3">
       <h3
@@ -48,14 +53,27 @@ export function SportRecommendations({ recommendations }: Props) {
       </h3>
       <div className="space-y-3">
         {recommendations.map((match, idx) => (
-          <SportCard key={match.sport} match={match} rank={idx + 1} />
+          <SportCard
+            key={match.sport}
+            match={match}
+            rank={idx + 1}
+            childId={childId}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function SportCard({ match, rank }: { match: SportMatch; rank: number }) {
+function SportCard({
+  match,
+  rank,
+  childId,
+}: {
+  match: SportMatch;
+  rank: number;
+  childId?: string;
+}) {
   const isTop = rank === 1;
   const slug = SPORT_NAME_TO_SLUG[match.sport];
   const hasLessons = slug != null && getCurriculumBySlug(slug) != null;
@@ -136,8 +154,13 @@ function SportCard({ match, rank }: { match: SportMatch; rank: number }) {
         </div>
       </div>
 
-      {hasLessons && slug && (
-        <SportSelectButton slug={slug} sportName={match.sport} isTop={isTop} />
+      {hasLessons && slug && childId && (
+        <SportSelectButton
+          slug={slug}
+          sportName={match.sport}
+          childId={childId}
+          isTop={isTop}
+        />
       )}
     </div>
   );

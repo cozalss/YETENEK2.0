@@ -1,26 +1,29 @@
 /**
- * Ders ilerlemesi — localStorage tabanlı, client-side only.
+ * Ders ilerlemesi — localStorage tabanlı per-child, client-side only.
  *
  * Schema:
- *   yetenek:lessons → { completed: Record<lessonId, LessonAttempt> }
+ *   yetenek:lessons:{childId} → { completed: Record<lessonId, LessonAttempt> }
  *
- * Hackathon kapsamı: Supabase'e yazma yok. Profil sayfası ve ders kartları
- * "completed" rozetini bu store'dan okur. Demo'da localStorage temizlenmedikçe
- * progress kaybolmaz.
+ * Dual-write: localStorage anında, sonra POST /api/lessons/progress
+ * fire-and-forget (logged-in user için DB persistence).
  */
 
 import type { LessonAttempt } from './types';
 
-const STORAGE_KEY = 'yetenek:lessons';
+const STORAGE_PREFIX = 'yetenek:lessons:';
 
 interface LessonsState {
   completed: Record<string, LessonAttempt>;
 }
 
-function readState(): LessonsState {
+function storageKey(childId: string): string {
+  return `${STORAGE_PREFIX}${childId}`;
+}
+
+function readState(childId: string): LessonsState {
   if (typeof window === 'undefined') return { completed: {} };
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(storageKey(childId));
     if (!raw) return { completed: {} };
     const parsed = JSON.parse(raw) as Partial<LessonsState>;
     return { completed: parsed?.completed ?? {} };
@@ -29,32 +32,68 @@ function readState(): LessonsState {
   }
 }
 
-function writeState(state: LessonsState): void {
+function writeState(childId: string, state: LessonsState): void {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    window.localStorage.setItem(storageKey(childId), JSON.stringify(state));
   } catch {
-    // localStorage quota / private browsing — sessizce yut, ders sonuçları
-    // ephemeral kalsın, akış bozulmasın.
+    // localStorage quota / private browsing — sessizce yut
   }
 }
 
-export function markLessonCompleted(attempt: LessonAttempt): void {
-  const state = readState();
+export function markLessonCompleted(
+  childId: string,
+  attempt: LessonAttempt,
+): void {
+  const state = readState(childId);
   const next: LessonsState = {
     completed: { ...state.completed, [attempt.lessonId]: attempt },
   };
-  writeState(next);
-  void persistLessonToServer(attempt);
+  writeState(childId, next);
+  void persistLessonToServer(childId, attempt);
 }
 
-async function persistLessonToServer(attempt: LessonAttempt): Promise<void> {
+export function isLessonCompleted(childId: string, lessonId: string): boolean {
+  return readState(childId).completed[lessonId] != null;
+}
+
+export function getCompletedLessons(
+  childId: string,
+): readonly LessonAttempt[] {
+  return Object.values(readState(childId).completed).sort(
+    (a, b) => b.completedAt - a.completedAt,
+  );
+}
+
+export function getCompletedCountForSport(
+  childId: string,
+  sportSlug: string,
+): number {
+  return Object.values(readState(childId).completed).filter(
+    (a) => a.sportSlug === sportSlug,
+  ).length;
+}
+
+export function clearAllLessons(childId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(storageKey(childId));
+  } catch {
+    // ignored
+  }
+}
+
+async function persistLessonToServer(
+  childId: string,
+  attempt: LessonAttempt,
+): Promise<void> {
   if (typeof window === 'undefined') return;
   try {
     await fetch('/api/lessons/progress', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        childId,
         lessonId: attempt.lessonId,
         sportSlug: attempt.sportSlug,
         durationMs: Math.round(attempt.durationMs),
@@ -62,31 +101,6 @@ async function persistLessonToServer(attempt: LessonAttempt): Promise<void> {
       }),
     });
   } catch {
-    // Best-effort — localStorage zaten yazıldı.
-  }
-}
-
-export function isLessonCompleted(lessonId: string): boolean {
-  return readState().completed[lessonId] != null;
-}
-
-export function getCompletedLessons(): readonly LessonAttempt[] {
-  return Object.values(readState().completed).sort(
-    (a, b) => b.completedAt - a.completedAt,
-  );
-}
-
-export function getCompletedCountForSport(sportSlug: string): number {
-  return Object.values(readState().completed).filter(
-    (a) => a.sportSlug === sportSlug,
-  ).length;
-}
-
-export function clearAllLessons(): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // ignored
+    // Best-effort
   }
 }

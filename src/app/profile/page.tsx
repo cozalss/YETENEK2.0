@@ -14,7 +14,6 @@ import { supabaseLessonRepository } from '@/infrastructure/storage/supabase-less
 import { env } from '@/shared/config/env-public';
 import { signOutAction } from '@/app/auth/actions';
 import { ChildrenSection } from './ChildrenSection';
-import { EnrolledSportCard } from '@/components/profile/EnrolledSportCard';
 
 interface PageProps {
   searchParams: Promise<{ error?: string; info?: string }>;
@@ -41,12 +40,16 @@ export default async function ProfilePage({ searchParams }: PageProps) {
   const childrenResult = await supabaseChildRepository.list();
   const children = childrenResult.ok ? childrenResult.value : [];
 
-  // Antrenman programı: branş kaydı + tamamlanan dersler. Hata olursa
-  // boş/null ile devam — kart yine de "henüz seçmedin" varyantını gösterir.
-  const enrollmentResult = await supabaseLessonRepository.getEnrollment();
-  const enrollment = enrollmentResult.ok ? enrollmentResult.value : null;
-  const completedResult = await supabaseLessonRepository.listCompleted();
-  const completedLessons = completedResult.ok ? completedResult.value : [];
+  // Her çocuğun aktif spor kaydını çek; ChildrenSection bunları küçük rozet
+  // olarak gösterebilir. Kart detayında full progress var.
+  const enrollmentsResult =
+    await supabaseLessonRepository.listEnrollmentsForUser();
+  const enrollmentsByChild = new Map<string, string>();
+  if (enrollmentsResult.ok) {
+    for (const e of enrollmentsResult.value) {
+      enrollmentsByChild.set(e.childId, e.sportSlug);
+    }
+  }
 
   const displayName =
     (user.user_metadata?.full_name as string | undefined) ?? user.email ?? '';
@@ -115,12 +118,10 @@ export default async function ProfilePage({ searchParams }: PageProps) {
           </div>
         )}
 
-        <EnrolledSportCard
-          enrollment={enrollment}
-          completed={completedLessons}
+        <ChildrenSection
+          items={children}
+          enrollmentsByChild={enrollmentsByChild}
         />
-
-        <ChildrenSection items={children} />
 
         <section
           className="mt-12 rounded-2xl border-2 p-5 text-sm"

@@ -17,16 +17,19 @@ import type { EnrollmentRecord, ProgressRecord } from '@/infrastructure/storage/
 interface EnrolledSportCardProps {
   enrollment: EnrollmentRecord | null;
   completed: ReadonlyArray<ProgressRecord>;
+  /** Çocuk id — ders linklerinin per-child kalmasi icin query'e eklenir. */
+  childId: string;
 }
 
 export function EnrolledSportCard({
   enrollment,
   completed,
+  childId,
 }: EnrolledSportCardProps) {
-  if (!enrollment) return <NotEnrolledCard />;
+  if (!enrollment) return <NotEnrolledCard childId={childId} />;
 
   const curriculum = getCurriculumBySlug(enrollment.sportSlug);
-  if (!curriculum) return <NotEnrolledCard />;
+  if (!curriculum) return <NotEnrolledCard childId={childId} />;
 
   const completedForSport = completed.filter(
     (c) => c.sportSlug === enrollment.sportSlug,
@@ -82,7 +85,7 @@ export function EnrolledSportCard({
         </div>
 
         <Link
-          href={`/lessons/${curriculum.sportSlug}`}
+          href={`/lessons/${curriculum.sportSlug}?childId=${encodeURIComponent(childId)}`}
           className="group inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition-all hover:translate-x-0.5"
           style={{
             background: 'var(--form-navy)',
@@ -166,7 +169,7 @@ export function EnrolledSportCard({
                 </span>
               </div>
               <Link
-                href={`/lessons/${curriculum.sportSlug}/${lesson.id}`}
+                href={`/lessons/${curriculum.sportSlug}/${lesson.id}?childId=${encodeURIComponent(childId)}`}
                 className="text-xs font-bold transition-colors hover:underline"
                 style={{ color: 'var(--form-navy)' }}
               >
@@ -180,7 +183,7 @@ export function EnrolledSportCard({
   );
 }
 
-function NotEnrolledCard() {
+function NotEnrolledCard({ childId }: { childId: string }) {
   return (
     <section
       className="mt-10 rounded-3xl border-2 p-6 text-center md:p-10"
@@ -200,7 +203,7 @@ function NotEnrolledCard() {
           fontFamily: 'var(--font-display)',
         }}
       >
-        Henüz bir antrenman programın yok
+        Henüz bir antrenman programı seçilmedi
       </h2>
       <p
         className="mx-auto mt-3 max-w-md text-sm md:text-base"
@@ -210,7 +213,7 @@ function NotEnrolledCard() {
         başlat. Her ders 30 sn – 1 dk; basit hareketten zora doğru ilerle.
       </p>
       <Link
-        href="/test/full"
+        href={`/test/full?childId=${encodeURIComponent(childId)}`}
         className="mt-6 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold uppercase tracking-widest"
         style={{
           background: 'var(--track-mustard)',

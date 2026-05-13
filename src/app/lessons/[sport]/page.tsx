@@ -14,20 +14,22 @@ import { ArrowLeft } from 'lucide-react';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { SiteFooter } from '@/components/layout/SiteFooter';
 import { LessonCard } from '@/components/lessons/LessonCard';
-import { CURRICULUM, getCurriculumBySlug } from '@/lib/lessons/curriculum';
+import { getCurriculumBySlug } from '@/lib/lessons/curriculum';
 import { getSport } from '@/lib/content/sports';
 import {
   getLessonInstructions,
   getSportBySlug,
 } from '@/infrastructure/storage/supabase-content-repository';
+import { supabaseLessonRepository } from '@/infrastructure/storage/supabase-lesson-repository';
 import type { SportLesson } from '@/lib/lessons/types';
 
-export function generateStaticParams() {
-  return CURRICULUM.map((c) => ({ sport: c.sportSlug }));
-}
+// generateStaticParams kapatıldı — ?childId query param dinamik render gerektirir.
+// Sayfanın kendisi hızlı; ISR cache içerik tablolarını çoktan cache'liyor.
+export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: Promise<{ sport: string }>;
+  searchParams: Promise<{ childId?: string }>;
 }
 
 export async function generateMetadata({
@@ -42,8 +44,9 @@ export async function generateMetadata({
   };
 }
 
-export default async function LessonsListPage({ params }: PageProps) {
+export default async function LessonsListPage({ params, searchParams }: PageProps) {
   const { sport } = await params;
+  const { childId } = await searchParams;
   const curriculum = getCurriculumBySlug(sport);
   if (!curriculum) notFound();
 
@@ -62,6 +65,18 @@ export default async function LessonsListPage({ params }: PageProps) {
   });
 
   const sportInfo = (await getSportBySlug(sport)) ?? getSport(sport);
+
+  // childId verilmişse DB'den o çocuğun tamamlanan derslerini çek (SSR doğru göster).
+  let completedLessonIds = new Set<string>();
+  if (childId) {
+    const completedResult = await supabaseLessonRepository.listCompleted({
+      childId,
+      sportSlug: sport,
+    });
+    if (completedResult.ok) {
+      completedLessonIds = new Set(completedResult.value.map((c) => c.lessonId));
+    }
+  }
 
   return (
     <main className="min-h-screen bg-[var(--color-canvas)] text-[var(--color-ink-1)]">
@@ -97,7 +112,12 @@ export default async function LessonsListPage({ params }: PageProps) {
         {/* Lessons grid */}
         <section className="mt-12 grid grid-cols-1 gap-5 md:grid-cols-2">
           {lessons.map((lesson) => (
-            <LessonCard key={lesson.id} lesson={lesson} />
+            <LessonCard
+              key={lesson.id}
+              lesson={lesson}
+              childId={childId}
+              initialCompleted={completedLessonIds.has(lesson.id)}
+            />
           ))}
         </section>
 

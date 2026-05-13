@@ -56,6 +56,11 @@ const PdfExportButton = dynamic(
 interface Props {
   session: SessionSummary;
   /**
+   * Hangi çocuk için test yapıldı — sport enrollment per-child.
+   * Demo/anonim akışlarda atlanırsa "Bu sporu seç" CTA'sı gizlenir.
+   */
+  childId?: string;
+  /**
    * Önceden hazırlanmış rapor (mock/backup için). Verilirse API çağrısı
    * yapılmaz, doğrudan gösterilir.
    */
@@ -73,6 +78,7 @@ const TABS: Array<{ key: TabKey; label: string; eyebrow: string }> = [
 
 export function ResultScreen({
   session,
+  childId,
   precomputedReport,
   precomputedReportSource,
 }: Props) {
@@ -186,6 +192,7 @@ export function ResultScreen({
           <ProfileTab
             session={session}
             radarValues={radarValues}
+            childId={childId}
           />
         )}
         {tab === 'ai' && (
@@ -295,9 +302,11 @@ interface RadarValues {
 function ProfileTab({
   session,
   radarValues,
+  childId,
 }: {
   session: SessionSummary;
   radarValues: RadarValues;
+  childId?: string;
 }) {
   return (
     <div className="space-y-8">
@@ -325,7 +334,10 @@ function ProfileTab({
 
         <div>
           {session.recommendations && (
-            <SportRecommendations recommendations={session.recommendations} />
+            <SportRecommendations
+              recommendations={session.recommendations}
+              childId={childId}
+            />
           )}
         </div>
       </section>

@@ -1,10 +1,9 @@
 /**
- * POST /api/lessons/progress — bir dersin tamamlandığını işle.
- * GET  /api/lessons/progress?sport=...?optional — kullanıcının tamamladığı
- *      dersleri listele.
+ * POST /api/lessons/progress — bir dersin tamamlandığını işle (per-child).
+ * GET  /api/lessons/progress?childId=...&sport=... — tamamlanan dersleri listele.
  *
- * Dual-write akışı: LessonRunner success ekranında localStorage'a yazar
- * (anında UI), sonra bu route'u fire-and-forget POST'lar (DB persistence).
+ * Dual-write: LessonRunner success ekranında localStorage'a yazar, sonra
+ * bu route'u fire-and-forget POST'lar.
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
@@ -15,6 +14,7 @@ import { logger } from '@/shared/logger/logger';
 const log = logger.child('api-lessons-progress');
 
 const bodySchema = z.object({
+  childId: z.string().uuid(),
   lessonId: z.string().min(1).max(80),
   sportSlug: z.string().min(1).max(40),
   durationMs: z.number().int().nonnegative().optional(),
@@ -62,8 +62,18 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const childId = request.nextUrl.searchParams.get('childId');
+  if (!childId) {
+    return NextResponse.json(
+      { ok: false, error: 'childId gerekli.', completed: [] },
+      { status: 400 },
+    );
+  }
   const sport = request.nextUrl.searchParams.get('sport') ?? undefined;
-  const result = await supabaseLessonRepository.listCompleted(sport);
+  const result = await supabaseLessonRepository.listCompleted({
+    childId,
+    sportSlug: sport,
+  });
   if (!result.ok) {
     if (result.error.kind === 'unauthorized') {
       return NextResponse.json(

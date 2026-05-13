@@ -27,18 +27,27 @@ const DIFFICULTY_COLOR: Record<SportLesson['difficulty'], string> = {
 
 interface LessonCardProps {
   lesson: SportLesson;
+  /** Hangi çocuğun ilerlemesini göstereceğiz; verilmezse "anonim" mod. */
+  childId?: string;
+  /** Server-side bilinen tamamlanma (DB query); set'liyse SSR doğru gösterir. */
+  initialCompleted?: boolean;
 }
 
-export function LessonCard({ lesson }: LessonCardProps) {
+export function LessonCard({ lesson, childId, initialCompleted = false }: LessonCardProps) {
   // SSR sırasında bilinemez — mount sonrası read et.
-  const [completed, setCompleted] = useState(false);
+  const [completed, setCompleted] = useState(initialCompleted);
   useEffect(() => {
-    setCompleted(isLessonCompleted(lesson.id));
-  }, [lesson.id]);
+    if (!childId) return;
+    setCompleted(isLessonCompleted(childId, lesson.id));
+  }, [childId, lesson.id]);
+
+  const href = childId
+    ? `/lessons/${lesson.sportSlug}/${lesson.id}?childId=${encodeURIComponent(childId)}`
+    : `/lessons/${lesson.sportSlug}/${lesson.id}`;
 
   return (
     <Link
-      href={`/lessons/${lesson.sportSlug}/${lesson.id}`}
+      href={href}
       className="group relative flex flex-col gap-3 overflow-hidden rounded-2xl border bg-white p-6 transition-all hover:-translate-y-1 hover:shadow-xl"
       style={{
         borderColor: 'var(--color-line)',

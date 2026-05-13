@@ -11,18 +11,16 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { LessonRunner } from '@/components/lessons/LessonRunner';
-import { CURRICULUM, getLessonById } from '@/lib/lessons/curriculum';
+import { getLessonById } from '@/lib/lessons/curriculum';
 import { getLessonInstruction } from '@/infrastructure/storage/supabase-content-repository';
 import type { SportLesson } from '@/lib/lessons/types';
 
-export function generateStaticParams() {
-  return CURRICULUM.flatMap((c) =>
-    c.lessons.map((l) => ({ sport: c.sportSlug, lessonId: l.id })),
-  );
-}
+// ?childId query param ile dinamik — SSG kapatıldı.
+export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: Promise<{ sport: string; lessonId: string }>;
+  searchParams: Promise<{ childId?: string }>;
 }
 
 export async function generateMetadata({
@@ -37,8 +35,12 @@ export async function generateMetadata({
   };
 }
 
-export default async function LessonRunnerPage({ params }: PageProps) {
+export default async function LessonRunnerPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { sport, lessonId } = await params;
+  const { childId } = await searchParams;
   const data = getLessonById(sport, lessonId);
   if (!data) notFound();
 
@@ -66,14 +68,22 @@ export default async function LessonRunnerPage({ params }: PageProps) {
 
       <div className="mx-auto max-w-6xl px-4 pt-8 pb-16 md:px-8 md:pt-12">
         <Link
-          href={`/lessons/${curriculum.sportSlug}`}
+          href={
+            childId
+              ? `/lessons/${curriculum.sportSlug}?childId=${encodeURIComponent(childId)}`
+              : `/lessons/${curriculum.sportSlug}`
+          }
           className="mb-6 inline-flex items-center gap-2 text-sm text-[var(--color-ink-2)] transition-colors hover:text-[var(--color-ink-1)]"
         >
           <ArrowLeft className="h-4 w-4" />
           {curriculum.sportName} dersleri
         </Link>
 
-        <LessonRunner lesson={composedLesson} nextLessonId={next?.id} />
+        <LessonRunner
+          lesson={composedLesson}
+          nextLessonId={next?.id}
+          childId={childId}
+        />
       </div>
     </main>
   );

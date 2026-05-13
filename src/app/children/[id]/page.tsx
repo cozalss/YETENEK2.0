@@ -21,7 +21,9 @@ import { supabaseChildProgressRepository } from '@/infrastructure/storage/supaba
 import { removeChildAction } from '@/app/children/actions';
 import { BADGES } from '@/lib/gamification/badges';
 import { getBadgesMetadata } from '@/infrastructure/storage/supabase-content-repository';
+import { supabaseLessonRepository } from '@/infrastructure/storage/supabase-lesson-repository';
 import { makeChildId } from '@/core/types/branded';
+import { EnrolledSportCard } from '@/components/profile/EnrolledSportCard';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -45,13 +47,21 @@ export default async function ChildDetailPage({
   }
 
   const childId = makeChildId(id);
-  const [childResult, badgesResult, sessionsResult, summaryResult] =
-    await Promise.all([
-      supabaseChildRepository.get(childId),
-      supabaseChildProgressRepository.listBadges(childId),
-      supabaseChildProgressRepository.listSessions(childId, 5),
-      supabaseChildProgressRepository.getSummary(childId),
-    ]);
+  const [
+    childResult,
+    badgesResult,
+    sessionsResult,
+    summaryResult,
+    enrollmentResult,
+    completedLessonsResult,
+  ] = await Promise.all([
+    supabaseChildRepository.get(childId),
+    supabaseChildProgressRepository.listBadges(childId),
+    supabaseChildProgressRepository.listSessions(childId, 5),
+    supabaseChildProgressRepository.getSummary(childId),
+    supabaseLessonRepository.getEnrollment(id),
+    supabaseLessonRepository.listCompleted({ childId: id }),
+  ]);
 
   if (!childResult.ok) {
     if (childResult.error.kind === 'not-found') return notFound();
@@ -63,6 +73,10 @@ export default async function ChildDetailPage({
   const summary = summaryResult.ok
     ? summaryResult.value
     : { badgeCount: 0, sessionCount: 0, lastTestedAt: null, streakDays: 0, childId: id };
+  const enrollment = enrollmentResult.ok ? enrollmentResult.value : null;
+  const completedLessons = completedLessonsResult.ok
+    ? completedLessonsResult.value
+    : [];
 
   return (
     <main
@@ -81,6 +95,12 @@ export default async function ChildDetailPage({
         {info && <Banner kind="info" text={info} />}
 
         <NewTestCTA childId={child.id} />
+
+        <EnrolledSportCard
+          enrollment={enrollment}
+          completed={completedLessons}
+          childId={child.id}
+        />
 
         <BadgesWallet
           badgeIds={badges.map((b) => b.badgeId)}

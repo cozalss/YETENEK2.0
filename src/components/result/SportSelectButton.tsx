@@ -16,12 +16,15 @@ import { enrollInSport } from '@/lib/lessons/enrollment';
 interface SportSelectButtonProps {
   slug: string;
   sportName: string;
+  /** Hangi çocuk için kayıt — enrollment'in per-child olması zorunlu. */
+  childId: string;
   isTop?: boolean;
 }
 
 export function SportSelectButton({
   slug,
   sportName,
+  childId,
   isTop = false,
 }: SportSelectButtonProps) {
   const router = useRouter();
@@ -30,12 +33,12 @@ export function SportSelectButton({
   const onSelect = useCallback(() => {
     if (busy) return;
     setBusy(true);
-    enrollInSport(slug);
+    enrollInSport(childId, slug);
     // Kısa bir görsel onay için ufak gecikme; UI "Kaydedildi" hissini verir.
     setTimeout(() => {
-      router.push(`/lessons/${slug}`);
+      router.push(`/lessons/${slug}?childId=${encodeURIComponent(childId)}`);
     }, 220);
-  }, [busy, router, slug]);
+  }, [busy, router, slug, childId]);
 
   return (
     <button
