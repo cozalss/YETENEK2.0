@@ -1,13 +1,39 @@
 /**
  * Top 3 spor önerisini sıralı kart olarak gösterir.
  * En yüksek confidence olan en üstte ve daha büyük.
+ *
+ * Her kart ayrıca o branş için "Dersleri başla" CTA'sı taşır
+ * (→ /lessons/[slug]). Branş adı → slug map'i için SPORT_NAME_TO_SLUG.
  */
 
+import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 import type { SportMatch } from '@/lib/matching/recommend';
+import { getCurriculumBySlug } from '@/lib/lessons/curriculum';
 
 interface Props {
   recommendations: SportMatch[];
 }
+
+/**
+ * `SportMatch.sport` Türkçe görünür ad ("Voleybol", "Masa Tenisi" …).
+ * Curriculum / sport content dosyalarında slug ("voleybol", "masa-tenisi" …)
+ * kullanılıyor — bu map o köprüyü kurar.
+ */
+const SPORT_NAME_TO_SLUG: Record<string, string> = {
+  Voleybol: 'voleybol',
+  Basketbol: 'basketbol',
+  Tenis: 'tenis',
+  Yüzme: 'yuzme',
+  Futbol: 'futbol',
+  Atletizm: 'atletizm',
+  Cimnastik: 'cimnastik',
+  Judo: 'judo',
+  Taekwondo: 'taekwondo',
+  Boks: 'boks',
+  'Masa Tenisi': 'masa-tenisi',
+  Badminton: 'badminton',
+};
 
 export function SportRecommendations({ recommendations }: Props) {
   return (
@@ -32,9 +58,12 @@ export function SportRecommendations({ recommendations }: Props) {
 
 function SportCard({ match, rank }: { match: SportMatch; rank: number }) {
   const isTop = rank === 1;
+  const slug = SPORT_NAME_TO_SLUG[match.sport];
+  const hasLessons = slug != null && getCurriculumBySlug(slug) != null;
+
   return (
     <div
-      className="flex items-start gap-4 rounded-2xl border-2 p-4"
+      className="flex flex-col gap-3 rounded-2xl border-2 p-4"
       style={
         isTop
           ? {
@@ -47,64 +76,89 @@ function SportCard({ match, rank }: { match: SportMatch; rank: number }) {
             }
       }
     >
-      <div
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-base font-black"
-        style={
-          isTop
-            ? {
-                background: 'var(--track-mustard)',
+      <div className="flex items-start gap-4">
+        <div
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-base font-black"
+          style={
+            isTop
+              ? {
+                  background: 'var(--track-mustard)',
+                  color: 'var(--form-navy)',
+                  fontFamily: 'var(--font-display)',
+                  boxShadow: '0 4px 12px -2px rgba(242, 201, 76, 0.55)',
+                }
+              : {
+                  background: 'var(--color-canvas)',
+                  color: 'var(--form-navy)',
+                  fontFamily: 'var(--font-display)',
+                  border: '1px solid var(--color-line-strong)',
+                }
+          }
+        >
+          {rank}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-3">
+            <h4
+              className="font-black"
+              style={{
                 color: 'var(--form-navy)',
+                fontSize: isTop ? '1.5rem' : '1.25rem',
                 fontFamily: 'var(--font-display)',
-                boxShadow: '0 4px 12px -2px rgba(242, 201, 76, 0.55)',
+              }}
+            >
+              {match.sport}
+            </h4>
+            <span
+              className="shrink-0 rounded-full px-2.5 py-0.5 font-mono text-xs font-bold"
+              style={
+                isTop
+                  ? {
+                      background: 'var(--form-navy)',
+                      color: 'var(--whistle-cream)',
+                    }
+                  : {
+                      background: 'var(--color-canvas)',
+                      color: 'var(--form-navy)',
+                      border: '1px solid var(--color-line-strong)',
+                    }
               }
-            : {
-                background: 'var(--color-canvas)',
-                color: 'var(--form-navy)',
-                fontFamily: 'var(--font-display)',
-                border: '1px solid var(--color-line-strong)',
-              }
-        }
-      >
-        {rank}
+            >
+              %{match.confidencePercent}
+            </span>
+          </div>
+          <p
+            className="mt-1 text-sm leading-relaxed"
+            style={{ color: 'var(--color-ink-2)' }}
+          >
+            {match.reason}
+          </p>
+        </div>
       </div>
 
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline justify-between gap-3">
-          <h4
-            className="font-black"
-            style={{
-              color: 'var(--form-navy)',
-              fontSize: isTop ? '1.5rem' : '1.25rem',
-              fontFamily: 'var(--font-display)',
-            }}
-          >
-            {match.sport}
-          </h4>
-          <span
-            className="shrink-0 rounded-full px-2.5 py-0.5 font-mono text-xs font-bold"
-            style={
-              isTop
-                ? {
-                    background: 'var(--form-navy)',
-                    color: 'var(--whistle-cream)',
-                  }
-                : {
-                    background: 'var(--color-canvas)',
-                    color: 'var(--form-navy)',
-                    border: '1px solid var(--color-line-strong)',
-                  }
-            }
-          >
-            %{match.confidencePercent}
-          </span>
-        </div>
-        <p
-          className="mt-1 text-sm leading-relaxed"
-          style={{ color: 'var(--color-ink-2)' }}
+      {hasLessons && slug && (
+        <Link
+          href={`/lessons/${slug}`}
+          className="group inline-flex items-center justify-between gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold transition-all hover:translate-x-0.5"
+          style={
+            isTop
+              ? {
+                  background: 'var(--form-navy)',
+                  color: 'var(--whistle-cream)',
+                  borderColor: 'var(--form-navy)',
+                }
+              : {
+                  background: 'var(--color-canvas)',
+                  color: 'var(--form-navy)',
+                  borderColor: 'var(--color-line-strong)',
+                }
+          }
         >
-          {match.reason}
-        </p>
-      </div>
+          <span>Dersleri başlat</span>
+          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+        </Link>
+      )}
     </div>
   );
 }
