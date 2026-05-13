@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { MenuIcon, XIcon } from '@/components/icons';
 
 const NAV_ITEMS = [
-  { label: 'TESTLER', href: '#tests' },
-  { label: 'ANALİZ', href: '#analysis' },
-  { label: 'BRANŞLAR', href: '#branches' },
-  { label: 'ROZETLER', href: '#badges' },
+  { label: 'TESTLER', href: '/test' },
+  { label: 'ANTRENMAN', href: '/training' },
+  { label: 'SPOR REHBERİ', href: '/sports' },
+  { label: 'HAKKINDA', href: '/about' },
+  { label: 'CÜZDANIM', href: '/profile' },
 ];
 
 export function LandingNavigation() {
@@ -32,11 +33,7 @@ export function LandingNavigation() {
     };
   }, []);
 
-  const scrollTo = (href: string) => {
-    const el = document.querySelector(href);
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-    setMobileOpen(false);
-  };
+  const closeMobile = () => setMobileOpen(false);
 
   return (
     <nav
@@ -61,10 +58,9 @@ export function LandingNavigation() {
 
         <div className="hidden items-center gap-8 md:flex">
           {NAV_ITEMS.map((item) => (
-            <button
+            <Link
               key={item.href}
-              type="button"
-              onClick={() => scrollTo(item.href)}
+              href={item.href}
               className="relative text-xs font-bold tracking-[0.2em] transition-colors duration-300 hover:opacity-70"
               style={{
                 color: scrolled ? '#2C3E6B' : '#FFF5E1',
@@ -72,7 +68,7 @@ export function LandingNavigation() {
               }}
             >
               {item.label}
-            </button>
+            </Link>
           ))}
           <Link
             href="/auth/sign-in?next=/profile"
@@ -121,10 +117,10 @@ export function LandingNavigation() {
           }}
         >
           {NAV_ITEMS.map((item) => (
-            <button
+            <Link
               key={item.href}
-              type="button"
-              onClick={() => scrollTo(item.href)}
+              href={item.href}
+              onClick={closeMobile}
               className="py-2 text-left text-sm font-bold tracking-[0.2em]"
               style={{
                 color: '#2C3E6B',
@@ -132,7 +128,7 @@ export function LandingNavigation() {
               }}
             >
               {item.label}
-            </button>
+            </Link>
           ))}
           <Link
             href="/auth/sign-in?next=/profile"
