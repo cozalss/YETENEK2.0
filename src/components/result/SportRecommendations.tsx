@@ -6,10 +6,9 @@
  * (→ /lessons/[slug]). Branş adı → slug map'i için SPORT_NAME_TO_SLUG.
  */
 
-import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
 import type { SportMatch } from '@/lib/matching/recommend';
 import { getCurriculumBySlug } from '@/lib/lessons/curriculum';
+import { SportSelectButton } from './SportSelectButton';
 
 interface Props {
   recommendations: SportMatch[];
@@ -138,26 +137,7 @@ function SportCard({ match, rank }: { match: SportMatch; rank: number }) {
       </div>
 
       {hasLessons && slug && (
-        <Link
-          href={`/lessons/${slug}`}
-          className="group inline-flex items-center justify-between gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold transition-all hover:translate-x-0.5"
-          style={
-            isTop
-              ? {
-                  background: 'var(--form-navy)',
-                  color: 'var(--whistle-cream)',
-                  borderColor: 'var(--form-navy)',
-                }
-              : {
-                  background: 'var(--color-canvas)',
-                  color: 'var(--form-navy)',
-                  borderColor: 'var(--color-line-strong)',
-                }
-          }
-        >
-          <span>Dersleri başlat</span>
-          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-        </Link>
+        <SportSelectButton slug={slug} sportName={match.sport} isTop={isTop} />
       )}
     </div>
   );

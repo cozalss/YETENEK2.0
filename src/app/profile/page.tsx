@@ -10,9 +10,11 @@ import Link from 'next/link';
 import { ArrowLeft, LogOut } from 'lucide-react';
 import { getServerClient } from '@/lib/supabase/server';
 import { supabaseChildRepository } from '@/infrastructure/storage/supabase-child-repository';
+import { supabaseLessonRepository } from '@/infrastructure/storage/supabase-lesson-repository';
 import { env } from '@/shared/config/env-public';
 import { signOutAction } from '@/app/auth/actions';
 import { ChildrenSection } from './ChildrenSection';
+import { EnrolledSportCard } from '@/components/profile/EnrolledSportCard';
 
 interface PageProps {
   searchParams: Promise<{ error?: string; info?: string }>;
@@ -38,6 +40,14 @@ export default async function ProfilePage({ searchParams }: PageProps) {
 
   const childrenResult = await supabaseChildRepository.list();
   const children = childrenResult.ok ? childrenResult.value : [];
+
+  // Antrenman programı: branş kaydı + tamamlanan dersler. Hata olursa
+  // boş/null ile devam — kart yine de "henüz seçmedin" varyantını gösterir.
+  const enrollmentResult = await supabaseLessonRepository.getEnrollment();
+  const enrollment = enrollmentResult.ok ? enrollmentResult.value : null;
+  const completedResult = await supabaseLessonRepository.listCompleted();
+  const completedLessons = completedResult.ok ? completedResult.value : [];
+
   const displayName =
     (user.user_metadata?.full_name as string | undefined) ?? user.email ?? '';
 
@@ -104,6 +114,11 @@ export default async function ProfilePage({ searchParams }: PageProps) {
             {info}
           </div>
         )}
+
+        <EnrolledSportCard
+          enrollment={enrollment}
+          completed={completedLessons}
+        />
 
         <ChildrenSection items={children} />
 

@@ -45,6 +45,25 @@ export function markLessonCompleted(attempt: LessonAttempt): void {
     completed: { ...state.completed, [attempt.lessonId]: attempt },
   };
   writeState(next);
+  void persistLessonToServer(attempt);
+}
+
+async function persistLessonToServer(attempt: LessonAttempt): Promise<void> {
+  if (typeof window === 'undefined') return;
+  try {
+    await fetch('/api/lessons/progress', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        lessonId: attempt.lessonId,
+        sportSlug: attempt.sportSlug,
+        durationMs: Math.round(attempt.durationMs),
+        reps: attempt.reps,
+      }),
+    });
+  } catch {
+    // Best-effort — localStorage zaten yazıldı.
+  }
 }
 
 export function isLessonCompleted(lessonId: string): boolean {
