@@ -20,6 +20,7 @@ import { supabaseChildRepository } from '@/infrastructure/storage/supabase-child
 import { supabaseChildProgressRepository } from '@/infrastructure/storage/supabase-child-progress-repository';
 import { removeChildAction } from '@/app/children/actions';
 import { BADGES } from '@/lib/gamification/badges';
+import { getBadgesMetadata } from '@/infrastructure/storage/supabase-content-repository';
 import { makeChildId } from '@/core/types/branded';
 
 interface PageProps {
@@ -81,7 +82,10 @@ export default async function ChildDetailPage({
 
         <NewTestCTA childId={child.id} />
 
-        <BadgesWallet badgeIds={badges.map((b) => b.badgeId)} />
+        <BadgesWallet
+          badgeIds={badges.map((b) => b.badgeId)}
+          metadata={await getBadgesMetadata()}
+        />
 
         <SessionHistory sessions={sessions} childId={child.id} />
 
@@ -256,8 +260,17 @@ function NewTestCTA({ childId }: { childId: string }) {
   );
 }
 
-function BadgesWallet({ badgeIds }: { badgeIds: ReadonlyArray<string> }) {
-  const earned = badgeIds.map((id) => BADGES[id]).filter(Boolean);
+function BadgesWallet({
+  badgeIds,
+  metadata,
+}: {
+  badgeIds: ReadonlyArray<string>;
+  metadata: ReadonlyMap<string, (typeof BADGES)[keyof typeof BADGES]>;
+}) {
+  // DB metadata önceliği; eksikse static BADGES fallback.
+  const earned = badgeIds
+    .map((id) => metadata.get(id) ?? BADGES[id])
+    .filter(Boolean);
 
   return (
     <section className="mt-12">

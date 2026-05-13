@@ -16,6 +16,7 @@ import {
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { SiteFooter } from '@/components/layout/SiteFooter';
 import { REFERENCES } from '@/lib/content/bibliography';
+import { getAllReferences } from '@/infrastructure/storage/supabase-content-repository';
 
 export const metadata: Metadata = {
   title: 'Hakkında',
@@ -23,7 +24,10 @@ export const metadata: Metadata = {
     'Yetenek 2.0 metodolojisi, ekibi ve bilim arkasında 24+ peer-reviewed kaynağın özeti.',
 };
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  // DB önceliği; eksikse static fallback
+  const dbRefs = await getAllReferences();
+  const references = dbRefs.length > 0 ? dbRefs : REFERENCES;
   return (
     <main className="min-h-screen bg-[var(--color-canvas)] text-[var(--color-ink-1)]">
       <SiteHeader />
@@ -167,7 +171,7 @@ export default function AboutPage() {
             Bilim Referansları
           </p>
           <h2 className="mt-3 text-4xl leading-tight font-bold md:text-5xl">
-            {REFERENCES.length} kaynak — hepsi peer-reviewed.
+            {references.length} kaynak — hepsi peer-reviewed.
           </h2>
           <p className="mt-5 max-w-3xl text-base leading-relaxed text-[var(--color-ink-2)]">
             Norm tabloları ve sport profile vektörleri için kullanılan
@@ -177,7 +181,7 @@ export default function AboutPage() {
           </p>
 
           <ol className="mt-12 space-y-4">
-            {REFERENCES.map((ref, idx) => (
+            {references.map((ref, idx) => (
               <li
                 key={ref.id}
                 className="flex gap-4 rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5"
