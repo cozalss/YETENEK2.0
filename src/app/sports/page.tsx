@@ -8,6 +8,7 @@ import { ArrowLeft, ArrowRight, MapPin } from 'lucide-react';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { SiteFooter } from '@/components/layout/SiteFooter';
 import { SPORTS } from '@/lib/content/sports';
+import { getAllSports } from '@/infrastructure/storage/supabase-content-repository';
 
 export const metadata: Metadata = {
   title: 'Spor Rehberi',
@@ -15,7 +16,10 @@ export const metadata: Metadata = {
     '12 spor branşı için başlama yaşı, donanım, federasyon, Türkiye altyapısı ve ortalama ücret bilgisi.',
 };
 
-export default function SportsIndexPage() {
+export default async function SportsIndexPage() {
+  // DB önceliği; boşsa static fallback (yeni proje / offline)
+  const dbSports = await getAllSports();
+  const sports = dbSports.length > 0 ? dbSports : SPORTS;
   return (
     <main className="min-h-screen bg-[var(--color-canvas)] text-[var(--color-ink-1)]">
       <SiteHeader />
@@ -48,7 +52,7 @@ export default function SportsIndexPage() {
         </header>
 
         <section className="mt-16 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {SPORTS.map((sport) => (
+          {sports.map((sport) => (
             <Link
               key={sport.slug}
               href={`/sports/${sport.slug}`}

@@ -12,6 +12,8 @@ import { ArrowLeft } from 'lucide-react';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { LessonRunner } from '@/components/lessons/LessonRunner';
 import { CURRICULUM, getLessonById } from '@/lib/lessons/curriculum';
+import { getLessonInstruction } from '@/infrastructure/storage/supabase-content-repository';
+import type { SportLesson } from '@/lib/lessons/types';
 
 export function generateStaticParams() {
   return CURRICULUM.flatMap((c) =>
@@ -42,6 +44,18 @@ export default async function LessonRunnerPage({ params }: PageProps) {
 
   const { curriculum, lesson } = data;
 
+  // DB'de güncellenmiş talimat metni varsa kullan — validator config kod'da kalır.
+  const dbInstr = await getLessonInstruction(lesson.id);
+  const composedLesson: SportLesson = dbInstr
+    ? {
+        ...lesson,
+        name: dbInstr.name,
+        description: dbInstr.description,
+        difficulty: dbInstr.difficulty,
+        instructions: dbInstr.instructions,
+      }
+    : lesson;
+
   // Aynı branş içinde bir sonraki ders — başarı ekranında "Sonraki" link için.
   const currentIdx = curriculum.lessons.findIndex((l) => l.id === lesson.id);
   const next = curriculum.lessons[currentIdx + 1];
@@ -59,7 +73,7 @@ export default async function LessonRunnerPage({ params }: PageProps) {
           {curriculum.sportName} dersleri
         </Link>
 
-        <LessonRunner lesson={lesson} nextLessonId={next?.id} />
+        <LessonRunner lesson={composedLesson} nextLessonId={next?.id} />
       </div>
     </main>
   );

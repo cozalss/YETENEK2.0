@@ -16,6 +16,7 @@ import {
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { SiteFooter } from '@/components/layout/SiteFooter';
 import { SPORTS, getSport } from '@/lib/content/sports';
+import { getAllSports, getSportBySlug } from '@/infrastructure/storage/supabase-content-repository';
 
 export function generateStaticParams() {
   return SPORTS.map((s) => ({ slug: s.slug }));
@@ -25,11 +26,16 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
+async function loadSport(slug: string) {
+  // DB önceliği; eksikse static fallback (anonim user / DB down).
+  return (await getSportBySlug(slug)) ?? getSport(slug);
+}
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const sport = getSport(slug);
+  const sport = await loadSport(slug);
   if (!sport) return { title: 'Spor bulunamadı' };
   return {
     title: `${sport.name} · Spor Rehberi`,
@@ -39,7 +45,9 @@ export async function generateMetadata({
 
 export default async function SportDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const sport = getSport(slug);
+  // Tüm spor listesini önbelleğe al (statik fallback için)
+  void getAllSports();
+  const sport = await loadSport(slug);
   if (!sport) notFound();
 
   return (

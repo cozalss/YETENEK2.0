@@ -16,6 +16,11 @@ import { SiteFooter } from '@/components/layout/SiteFooter';
 import { LessonCard } from '@/components/lessons/LessonCard';
 import { CURRICULUM, getCurriculumBySlug } from '@/lib/lessons/curriculum';
 import { getSport } from '@/lib/content/sports';
+import {
+  getLessonInstructions,
+  getSportBySlug,
+} from '@/infrastructure/storage/supabase-content-repository';
+import type { SportLesson } from '@/lib/lessons/types';
 
 export function generateStaticParams() {
   return CURRICULUM.map((c) => ({ sport: c.sportSlug }));
@@ -42,7 +47,21 @@ export default async function LessonsListPage({ params }: PageProps) {
   const curriculum = getCurriculumBySlug(sport);
   if (!curriculum) notFound();
 
-  const sportInfo = getSport(sport);
+  // Talimatları DB'den enrich et (varsa); validator config curriculum'da kalır.
+  const dbInstr = await getLessonInstructions();
+  const lessons: SportLesson[] = curriculum.lessons.map((l) => {
+    const override = dbInstr.get(l.id);
+    if (!override) return l;
+    return {
+      ...l,
+      name: override.name,
+      description: override.description,
+      difficulty: override.difficulty,
+      instructions: override.instructions,
+    };
+  });
+
+  const sportInfo = (await getSportBySlug(sport)) ?? getSport(sport);
 
   return (
     <main className="min-h-screen bg-[var(--color-canvas)] text-[var(--color-ink-1)]">
@@ -77,7 +96,7 @@ export default async function LessonsListPage({ params }: PageProps) {
 
         {/* Lessons grid */}
         <section className="mt-12 grid grid-cols-1 gap-5 md:grid-cols-2">
-          {curriculum.lessons.map((lesson) => (
+          {lessons.map((lesson) => (
             <LessonCard key={lesson.id} lesson={lesson} />
           ))}
         </section>

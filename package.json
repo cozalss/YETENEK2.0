@@ -15,7 +15,12 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:chromium": "playwright test --project=chromium",
-    "test:all": "vitest run && playwright test"
+    "test:all": "vitest run && playwright test",
+    "db:sql": "node scripts/db.mjs sql",
+    "db:exec": "node scripts/db.mjs exec",
+    "db:tables": "node scripts/db.mjs tables",
+    "db:migrate": "node scripts/db.mjs migrate",
+    "db:rows": "node scripts/db.mjs rows"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.2",

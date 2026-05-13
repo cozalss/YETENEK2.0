@@ -8,6 +8,7 @@ import { ArrowLeft, ArrowRight, Dumbbell } from 'lucide-react';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { SiteFooter } from '@/components/layout/SiteFooter';
 import { PROGRAM_LIST } from '@/lib/training/programs';
+import { getAllTrainingPrograms } from '@/infrastructure/storage/supabase-content-repository';
 
 export const metadata: Metadata = {
   title: 'Antrenman Programları',
@@ -15,7 +16,10 @@ export const metadata: Metadata = {
     '7 bio-motor boyut için bilim destekli pediatrik antrenman programları. Bompa, ACSM Youth, GSB referansları.',
 };
 
-export default function TrainingIndexPage() {
+export default async function TrainingIndexPage() {
+  // DB önceliği; eksikse static fallback
+  const dbPrograms = await getAllTrainingPrograms();
+  const programs = dbPrograms.size > 0 ? Array.from(dbPrograms.values()) : PROGRAM_LIST;
   return (
     <main className="min-h-screen bg-[var(--color-canvas)] text-[var(--color-ink-1)]">
       <SiteHeader />
@@ -46,7 +50,7 @@ export default function TrainingIndexPage() {
         </header>
 
         <section className="mt-16 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {PROGRAM_LIST.map((p) => (
+          {programs.map((p) => (
             <Link
               key={p.dimension}
               href={`/training/${p.dimension}`}

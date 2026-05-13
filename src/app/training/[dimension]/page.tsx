@@ -11,6 +11,7 @@ import { SiteHeader } from '@/components/layout/SiteHeader';
 import { SiteFooter } from '@/components/layout/SiteFooter';
 import { TRAINING_PROGRAMS, PROGRAM_LIST } from '@/lib/training/programs';
 import type { DimensionKey } from '@/lib/matching/sportProfiles';
+import { getTrainingProgram } from '@/infrastructure/storage/supabase-content-repository';
 
 export function generateStaticParams() {
   return PROGRAM_LIST.map((p) => ({ dimension: p.dimension }));
@@ -20,11 +21,17 @@ interface PageProps {
   params: Promise<{ dimension: string }>;
 }
 
+async function loadProgram(dimension: string) {
+  const dim = dimension as DimensionKey;
+  // DB önceliği; eksikse static fallback
+  return (await getTrainingProgram(dim)) ?? TRAINING_PROGRAMS[dim] ?? null;
+}
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { dimension } = await params;
-  const program = TRAINING_PROGRAMS[dimension as DimensionKey];
+  const program = await loadProgram(dimension);
   if (!program) return { title: 'Program bulunamadı' };
   return {
     title: `${program.title} · Antrenman`,
@@ -34,7 +41,7 @@ export async function generateMetadata({
 
 export default async function TrainingDimensionPage({ params }: PageProps) {
   const { dimension } = await params;
-  const program = TRAINING_PROGRAMS[dimension as DimensionKey];
+  const program = await loadProgram(dimension);
   if (!program) notFound();
 
   return (
