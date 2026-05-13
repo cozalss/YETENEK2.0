@@ -17,12 +17,36 @@ test.describe('Health endpoint', () => {
     expect(json.service).toBe('yetenek-2.0');
     expect(typeof json.uptimeSec).toBe('number');
     expect(json.features).toBeTruthy();
-    expect(typeof json.features.geminiConfigured).toBe('boolean');
+    expect(typeof json.features.anthropicConfigured).toBe('boolean');
   });
 
   test('/api/health Cache-Control no-store header', async ({ request }) => {
     const response = await request.get('/api/health');
     expect(response.headers()['cache-control']).toContain('no-store');
+  });
+
+  test('/api/health features.fallbackReportAvailable true', async ({
+    request,
+  }) => {
+    const response = await request.get('/api/health');
+    const json = await response.json();
+    // Rule-based fallback her zaman aktif olmalı — Claude env eksik olsa bile
+    // rapor üretebilmeli.
+    expect(json.features.fallbackReportAvailable).toBe(true);
+  });
+
+  test('/api/health version string döner', async ({ request }) => {
+    const response = await request.get('/api/health');
+    const json = await response.json();
+    expect(typeof json.version).toBe('string');
+    expect(json.version.length).toBeGreaterThan(0);
+  });
+
+  test('/api/health timestamp ISO formatında', async ({ request }) => {
+    const response = await request.get('/api/health');
+    const json = await response.json();
+    // ISO 8601 parse edilebilmeli
+    expect(Number.isNaN(Date.parse(json.timestamp))).toBe(false);
   });
 });
 

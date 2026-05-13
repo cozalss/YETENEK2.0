@@ -47,6 +47,59 @@ test.describe('Result tabs — interaction & a11y', () => {
   });
 });
 
+test.describe('Result — ana paneller', () => {
+  test('Önerilen sporlar bölümü render olur', async ({ page }) => {
+    await page.goto('/result/demo');
+    await expect(
+      page.getByRole('heading', { name: /En Uygun \d+ Spor/ }),
+    ).toBeVisible();
+  });
+
+  test('BioMotor radar grafiği SVG olarak render olur', async ({ page }) => {
+    await page.goto('/result/demo');
+    // Recharts SVG render eder — en az 1 SVG sayfada bulunmalı
+    await expect(page.locator('svg').first()).toBeVisible();
+  });
+
+  test('Paylaş tab\'inde PDF indir butonu görünür', async ({ page }) => {
+    await page.goto('/result/demo');
+    await page.getByRole('tab', { name: /Paylaş/ }).click();
+    await expect(
+      page.getByRole('heading', { name: /Raporu İndir/i }).first(),
+    ).toBeVisible();
+  });
+
+  test('Paylaş tab\'inde ShareButton kontrolleri görünür', async ({ page }) => {
+    await page.goto('/result/demo');
+    await page.getByRole('tab', { name: /Paylaş/ }).click();
+    // ShareButton "ismimle paylaş" checkbox veya bağlantı butonları render eder
+    await expect(page.getByText(/Sonraki Adımlar/i).first()).toBeVisible();
+  });
+
+  test('AI Asistan tab\'inde CoachChat CTA görünür (kapalı state)', async ({
+    page,
+  }) => {
+    await page.goto('/result/demo');
+    await page.getByRole('tab', { name: /AI Asistan/ }).click();
+    // CoachChat default kapalı — "Soru sor, somut tavsiye al" CTA görünür
+    await expect(
+      page.getByRole('heading', { name: /Soru sor/i }),
+    ).toBeVisible();
+  });
+
+  test('AI Asistan tab\'inde CoachChat açıldığında input belirir', async ({
+    page,
+  }) => {
+    await page.goto('/result/demo');
+    await page.getByRole('tab', { name: /AI Asistan/ }).click();
+    // Kapalı state'teki CTA butonuna tıkla → chat panelı açılır
+    await page
+      .getByRole('button', { name: /Soru sor.*somut tavsiye/i })
+      .click();
+    await expect(page.getByPlaceholder(/Koça sor/i)).toBeVisible();
+  });
+});
+
 test.describe('Result hero — meta bilgiler', () => {
   test('child name + age hero başlıkta', async ({ page }) => {
     await page.goto('/result/demo');

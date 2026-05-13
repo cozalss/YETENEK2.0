@@ -1,5 +1,13 @@
 import { test, expect } from '@playwright/test';
 
+test.describe('Demo persona sayfası — quick smoke', () => {
+  test('/demo sayfası 200 + h1 ile yüklenir', async ({ page }) => {
+    const response = await page.goto('/demo');
+    expect(response?.status()).toBe(200);
+    await expect(page.locator('h1').first()).toBeVisible();
+  });
+});
+
 /**
  * Statik sayfa E2E testleri — about, privacy, terms, sports, training.
  *
