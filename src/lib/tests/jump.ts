@@ -98,7 +98,12 @@ const MIN_FLIGHT_TIME_MS = 100; // 0.1s = ~12cm fiziksel limit
 const MAX_FLIGHT_TIME_MS = 1200; // 1.2s = ~177cm — kimse bu kadar zıplamaz, glitch
 const MIN_FLIGHT_HEIGHT_CM = 5; // Daha azı yanlış-pozitif
 
-const HEIGHT_AGREEMENT_TOLERANCE = 0.3; // 30% — iki yöntem arası kabul edilen fark
+// Cross-method tolerance — iki yöntem (flight-time + hip-displacement) %20'den
+// fazla farklıysa kullanıcı kalibrasyon hatası ya da kamera açısı yaşıyor;
+// `consistent: false` flag'lenir ve flight-time'a güvenilir. Eşik Donaldson
+// & Edge 2014'ten (J Sci Med Sport 17:670) uyarlandı: motion capture vs
+// flight-time CMJ ölçüm farkı tipik %5-15; %20 üstü = method drift.
+const HEIGHT_AGREEMENT_TOLERANCE = 0.2;
 
 /**
  * Bosco protokolü: uçuş süresinden sıçrama yüksekliği.

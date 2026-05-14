@@ -233,6 +233,7 @@ export function CoordinationTest({ onComplete, onSkip }: Props) {
         trackingEvents: 0,
         avgErrorPx: 0,
         bestErrorPx: 0,
+        avgErrorPctOfDiagonal: 0,
         avgGapMs: 0,
         coordScore: 0,
         valid: false,

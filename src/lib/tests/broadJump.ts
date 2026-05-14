@@ -139,13 +139,18 @@ export function calibrateBroadJump(
 /**
  * Yaş × cinsiyet × cm normları (mean + standart sapma).
  *
- * Kaynaklar:
- *   - Thomas et al. 2020 (Eur J Transl Myol 30:9050) — 11-18 yaş
- *   - Tomkinson et al. 2018 (Br J Sports Med 52:1445) — Eurofit
- *   - Castro-Piñero et al. 2010 (J Strength Cond Res) — 6-17 yaş
- *   - Ramírez-Vélez et al. 2017 (Nutrients 9:1167) — FUPRECOL Kolombiya
+ * Norm aggregate metodu:
+ *   8-10 yaş   → Castro-Piñero 2010 (J Strength Cond Res 24:1810; N≈2700,
+ *                 İspanya). Genç yaş için en güçlü pediatrik dataset.
+ *   11-13 yaş  → Tomkinson 2018 (Br J Sports Med 52:1445; meta-analiz
+ *                 N>1.3M, pan-Avrupa). Bu aralıkta gold standard.
+ *   14-15 yaş  → Thomas 2020 (Eur J Transl Myol 30:9050) ve Ramírez-Vélez
+ *                 2017 (Nutrients 9:1167; FUPRECOL, N≈8200 Kolombiya)
+ *                 ağırlıklı ortalama.
  *
  * SD'ler tipik olarak ortalamanın ~%14-18'i (literatürde rapor edilen aralık).
+ * Etnik popülasyonlar arası ortalama farkı tipik ±5-8 cm; tüm tablomuz
+ * pan-popülasyon ortalama → her etnik için fine-tuning post-hackathon roadmap'te.
  */
 interface BroadJumpNorm {
   mean: number; // cm

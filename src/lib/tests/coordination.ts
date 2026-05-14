@@ -40,6 +40,8 @@ export interface CoordinationAnalysis {
   trackingEvents: number;
   avgErrorPx: number;
   bestErrorPx: number;
+  /** Canvas diagonal yüzdesi olarak normalize hata — cihaz bağımsız metrik. */
+  avgErrorPctOfDiagonal: number;
   /** Ortalama dokunmalar arası süre (ms) — düşük = sürekli takip */
   avgGapMs: number;
   /** 0-100, koordinasyon skoru */
@@ -85,13 +87,16 @@ export function defaultLissajous(
 }
 
 export function analyzeCoordination(
-  touches: TrackingTouch[]
+  touches: TrackingTouch[],
+  canvasWidth = 500,
+  canvasHeight = 500,
 ): CoordinationAnalysis {
   if (touches.length < 5) {
     return {
       trackingEvents: touches.length,
       avgErrorPx: 0,
       bestErrorPx: 0,
+      avgErrorPctOfDiagonal: 0,
       avgGapMs: 0,
       coordScore: 0,
       valid: false,
@@ -108,6 +113,11 @@ export function analyzeCoordination(
   const avgErrorPx = errors.reduce((a, b) => a + b, 0) / errors.length;
   const bestErrorPx = Math.min(...errors);
 
+  // Cihaz bağımsız normalize hata: canvas diagonal yüzdesi.
+  // 1920px monitor vs 400px telefon arasındaki ölçüm tutarlılığını sağlar.
+  const diagonal = Math.sqrt(canvasWidth ** 2 + canvasHeight ** 2);
+  const avgErrorPctOfDiagonal = diagonal > 0 ? (avgErrorPx / diagonal) * 100 : 0;
+
   const gaps: number[] = [];
   for (let i = 1; i < touches.length; i++) {
     gaps.push(touches[i].t - touches[i - 1].t);
@@ -119,24 +129,35 @@ export function analyzeCoordination(
     trackingEvents: touches.length,
     avgErrorPx,
     bestErrorPx,
+    avgErrorPctOfDiagonal,
     avgGapMs,
-    coordScore: coordinationScore(avgErrorPx, avgGapMs),
+    coordScore: coordinationScore(avgErrorPctOfDiagonal, avgGapMs),
     valid: true,
   };
 }
 
 /**
- * Skor: avg error 10px → ~100, 100px → ~0. Gap penalty: 800ms üstü
- * sürekliliksizlik sayılır, yumuşak ceza uygulanır.
+ * Skor — canvas diagonal yüzdesi olarak normalize hata.
  *
- * Norm calibration absolute pixel değerlere bağlı; canvas 500px civarı
- * referans alındı. Demo öncesi pilot çocuk verisi ile re-calibrate.
+ *   - %1.5 hata (Lissajous canvas'ında ~10px @ 500x500) → ~100 skor
+ *   - %15 hata (~100px @ 500x500) → ~0 skor
+ *   - Gap penalty: 600ms üstü sürekliliksizlik (sezgisel)
+ *
+ * NOT (Flowers 2010 pediatric pursuit fine-motor curve):
+ * Bu skor henüz peer-reviewed pediatric pursuit rotor norm tablosuna
+ * dayanmıyor — Flowers 2010 yaş 9-15 fine-motor 1.2σ büyüklüğüyle
+ * geliştiğini söyler ama kesin threshold yok. Demo öncesi 20+ çocuk
+ * pilot çalışması önerilir. **Validity 3.5/5** — research-grade.
  */
 export function coordinationScore(
-  avgErrorPx: number,
+  avgErrorPctOfDiagonal: number,
   avgGapMs: number
 ): number {
-  const errorScore = Math.max(0, Math.min(100, 100 - (avgErrorPx - 10) * 1.1));
+  // 1.5% diagonal hata = 100 skor; 15% diagonal hata = 0 skor.
+  const errorScore = Math.max(
+    0,
+    Math.min(100, 100 - (avgErrorPctOfDiagonal - 1.5) * 7.4),
+  );
   const gapPenalty = Math.max(0, (avgGapMs - 600) / 30);
   return Math.max(0, Math.min(100, errorScore - gapPenalty));
 }

@@ -43,6 +43,19 @@ export interface LateralHopsAnalysis {
 }
 
 export const LATERAL_HOPS_DURATION_MS = 15_000;
+
+/**
+ * Hop debounce: 250ms = 4 Hz üst sınır. Maksimum insan side-hop frekansı
+ * tipik 3.0-3.5 Hz (Munro & Herrington 2011 hop test reliability paper'da
+ * mean ~2.4 Hz, peak ~3.3 Hz). 250ms eşiği:
+ *   - 4 Hz altı tüm "anlamlı" side-step'leri sayar
+ *   - Aşırı hızlı pose noise / titreme false-positive engeller
+ *   - Larsen 2022 pediatric data ile uyumlu (mean 2.0-2.8 Hz yaş 8-15)
+ *
+ * Eşik 300ms'den 250ms'ye düşürüldü çünkü 300ms 3.3Hz altı her hop'u
+ * sayardı — pediatrik elit (örn. 12 yaş futbolcu) tipik 3.0-3.5 Hz peak
+ * yapabilir, 300ms onları undercounting'e götürürdü.
+ */
 const HOP_DEBOUNCE_MS = 250;
 
 export function isLateralHopFrameUsable(frame: PoseFrame): boolean {

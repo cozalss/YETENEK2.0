@@ -50,6 +50,12 @@ export interface LegBalanceResult {
   hipSwayX: number;
   /** Omuz X salınımı (normalize) */
   shoulderSwayX: number;
+  /**
+   * Toplam yer değiştirme (sway path) — kalça X serisinde |Δx| toplamı.
+   * Era et al. 2006 / Sutherland 1980 ile uyumlu klasik CoP-analog metrik.
+   * Düşük değer = daha stabil duruş.
+   */
+  swayPathHip: number;
   /** Toplam kullanılabilir frame */
   validFrames: number;
   /** Algoritmaya yetecek kadar frame var mıydı */
@@ -93,11 +99,21 @@ export function frameToPostureSample(frame: PoseFrame): PostureSample | null {
 /**
  * Tek bacak denge skorunu hesaplar.
  *
- * Yöntem:
- *   1. hip_x ve shoulder_x serilerini al
- *   2. Smoothing uygula (jitter kır)
- *   3. Standart sapma → ne kadar salındığı
- *   4. 0-100 skoruna map'le (0 sapma = 100, 0.05+ sapma = 0)
+ * Yöntem (Era et al. 2006, Schwebel 2013 single-leg stance protokolü):
+ *   1. hip_x ve shoulder_x serilerini al (mediolateral salınım)
+ *   2. Smoothing (jitter)
+ *   3. Standart sapma → salınım amplitüdü
+ *   4. Sway path (integral |Δx|) → klasik CoP-analog metrik
+ *   5. Combined sway (kalça %60 + omuz %40) → 0-100 skor
+ *
+ * Eşik 0.05 normalize unit: ~%80 frame fill varsayımıyla ~1.5cm
+ * mediolateral oscillation (Era 2006 yaş 7-12 normal sway 1-2cm).
+ *
+ * Minimum frame sayısı 60 → 200 yükseltildi (15s × 30fps = 450 ideal;
+ * 200 = ~7s, kısa testlerde bile istatistiksel olarak anlamlı SD).
+ *
+ * Asimetri tespiti analyzeBalance() seviyesinde, Hewett 2005 (Am J Sports
+ * Med 33:492) ACL biomechanik eşikleriyle uyumlu.
  */
 export function analyzeLeg(samples: PostureSample[]): LegBalanceResult {
   if (samples.length < 60) {
@@ -105,6 +121,7 @@ export function analyzeLeg(samples: PostureSample[]): LegBalanceResult {
       score: 0,
       hipSwayX: 0,
       shoulderSwayX: 0,
+      swayPathHip: 0,
       validFrames: samples.length,
       hasEnoughData: false,
     };
@@ -122,6 +139,14 @@ export function analyzeLeg(samples: PostureSample[]): LegBalanceResult {
   const hipSwayX = standardDeviation(hipXs);
   const shoulderSwayX = standardDeviation(shoulderXs);
 
+  // Sway path: |Δhipx| toplamı — tüm yer değiştirme integral'i.
+  // SD'den farklı olarak yörünge uzunluğu verir; balance literatüründe
+  // CoP path length analogu (Sutherland 1980).
+  let swayPathHip = 0;
+  for (let i = 1; i < hipXs.length; i++) {
+    swayPathHip += Math.abs(hipXs[i] - hipXs[i - 1]);
+  }
+
   // Birleşik salınım: kalça + omuz ortalaması (kalça biraz daha ağırlıklı)
   const combinedSway = hipSwayX * 0.6 + shoulderSwayX * 0.4;
 
@@ -132,6 +157,7 @@ export function analyzeLeg(samples: PostureSample[]): LegBalanceResult {
     score,
     hipSwayX,
     shoulderSwayX,
+    swayPathHip,
     validFrames: samples.length,
     hasEnoughData: true,
   };

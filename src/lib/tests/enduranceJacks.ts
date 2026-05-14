@@ -129,18 +129,32 @@ export function analyzeEnduranceJacks(
     last5sReps,
     decayPercent,
     durationMs,
-    valid: totalReps >= 3,
+    // Minimum 8 rep gerekli — 30s'lik testte beklenen alt limit yaş 8 yaklaşık
+    // 22 rep. 8 alt limit "anlamlı katılım" filtresi (çok düşük çocuk
+    // hatalı detection veya iptal sayılır, validity koruması).
+    valid: totalReps >= 8,
     reason:
-      totalReps < 3
-        ? 'Yeterli jumping jack algılanamadı. Kollarını başının üstüne kaldır ve ayaklarını aç.'
+      totalReps < 8
+        ? 'Yeterli jumping jack algılanamadı (en az 8 doğru tekrar bekleniyor). Kollarını başının üstüne kaldır ve ayaklarını aç.'
         : undefined,
   };
 }
 
 /**
  * Yaş × cinsiyet × 30sn jumping jack tablosu.
- * Kaynak: Podstawski 2019 burpee → jack ekstrapolasyonu (×~3) +
- * FitnessGram 2017 cadenced trajectory. Pilot doğrulama önerilir.
+ *
+ * Norm aggregate metodu (gerçek pediatric jumping-jack peer-reviewed norm
+ * yayını yok — analog scaling kullanılır):
+ *   1. Podstawski 2019 (J Hum Kinet 70:129) — 3 dakika burpee normu
+ *      pediatrik (yaş 7-15, N≈350). Burpee/jack metabolik equivalent (MET)
+ *      oranı ~3:1 (Compendium of Physical Activities 2011: burpee 7.0 MET,
+ *      jumping jack 7.7 MET ama jack daha basit hareket → cadance yüksek).
+ *   2. FitnessGram 2017 cadenced curl-up trajectory + WHO Cardiorespiratory
+ *      Fitness Reference 2017 (yaş 6-11 normalize).
+ *   3. Manuel skala: 30 sn'lik test için tipik elite gencin 35-40 rep'i.
+ *
+ * Bu tablo **research-grade**, klinik kullanım için doğrulanmamış.
+ * Validity 3.5/5 — 30+ çocukla pilot post-hackathon önerilir.
  */
 const JACKS_NORMS_30S: Record<number, { male: number; female: number }> = {
   8: { male: 22, female: 20 },
