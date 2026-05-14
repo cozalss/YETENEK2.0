@@ -74,6 +74,46 @@ export function getCompletedCountForSport(
   ).length;
 }
 
+/**
+ * Bir sporun tamamlanmış ders id'lerinin set'i — sıralı kilit kontrolü için.
+ */
+export function getCompletedLessonIdsForSport(
+  childId: string,
+  sportSlug: string,
+): ReadonlySet<string> {
+  return new Set(
+    Object.values(readState(childId).completed)
+      .filter((a) => a.sportSlug === sportSlug)
+      .map((a) => a.lessonId),
+  );
+}
+
+interface LessonOrderRef {
+  readonly id: string;
+  readonly order: number;
+}
+
+/**
+ * Bir dersin kullanıcı tarafından oynanabilir (kilitsiz) olup olmadığı.
+ *
+ * Duolingo-stili sıralı progresyon:
+ *   - order === 1 → her zaman kilitsiz
+ *   - order > 1   → ÖNCEKİ ders tamamlanmış olmalı
+ *
+ * Çocuk seçilmemişse (childId yok) tamamlama bilinemez → sadece order=1
+ * kilitsiz, gerisi kilitli görünür. Kullanıcı önce profil → çocuk seçer.
+ */
+export function isLessonUnlocked(
+  lesson: LessonOrderRef,
+  allLessonsForSport: readonly LessonOrderRef[],
+  completedIds: ReadonlySet<string>,
+): boolean {
+  if (lesson.order <= 1) return true;
+  const previous = allLessonsForSport.find((l) => l.order === lesson.order - 1);
+  if (!previous) return true; // numerik boşluk varsa kilitsiz say
+  return completedIds.has(previous.id);
+}
+
 export function clearAllLessons(childId: string): void {
   if (typeof window === 'undefined') return;
   try {

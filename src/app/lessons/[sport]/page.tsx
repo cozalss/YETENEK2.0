@@ -115,8 +115,10 @@ export default async function LessonsListPage({ params, searchParams }: PageProp
             <LessonCard
               key={lesson.id}
               lesson={lesson}
+              allLessons={lessons.map((l) => ({ id: l.id, order: l.order }))}
               childId={childId}
               initialCompleted={completedLessonIds.has(lesson.id)}
+              initialCompletedIds={Array.from(completedLessonIds)}
             />
           ))}
         </section>
