@@ -310,20 +310,24 @@ export const CURRICULUM: readonly SportCurriculum[] = [
         id: 'futbol-2',
         sportSlug: 'futbol',
         order: 2,
-        name: 'Şut Hareketi',
-        description: 'Sağ bacak yukarı çekilir, ileri savrulur — şut simülasyonu, 3 tekrar.',
+        // Şut için knee drive (back swing prep) — futbol biomekanik: bacak
+        // önce dizden yukarı çekilir (~0.13 normalize Y delta), sonra ayak
+        // ileri savrulur. Diz kaldırma reach validator için robust trigger;
+        // ankle UP yanlış sinyaller verir (şutta ankle önce GERİ gider).
+        name: 'Şut Hareketi (Diz Çek)',
+        description: 'Sağ dizini bele doğru kaldır, ardından ayağı öne savur — şut simülasyonu, 3 tekrar.',
         difficulty: 'intermediate',
         instructions: [
           'Sol ayak yere basılı, sağ ayak hazır.',
-          'Sağ bacağı geriye/yukarı çek.',
-          'Düz öne savur (şut).',
+          'Sağ dizini bel hizasına yukarı çek (back swing).',
+          'Düz öne savur (şut), dizini indir.',
           'Toplam 3 şut.',
         ],
         validator: {
           type: 'reach',
-          landmark: 'rightAnkle',
+          landmark: 'rightKnee',
           direction: 'up',
-          threshold: 0.15,
+          threshold: 0.13,
           reps: 3,
         },
       },

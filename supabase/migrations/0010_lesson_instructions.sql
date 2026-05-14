@@ -79,9 +79,9 @@ insert into public.lesson_instructions (id, sport_slug, display_order, name, des
   ('futbol-1', 'futbol', 1, 'Hazır Bekleme',
     'Topa hızlı tepki için merkezde dengeli duruş.', 'beginner',
     '["Ayaklar omuz genişliğinde.","Dizler hafif bükülü, ağırlık parmak uçlarında.","Sırt dik, eller yanlarda hareketli.","3 saniye sabit dur."]'::jsonb),
-  ('futbol-2', 'futbol', 2, 'Şut Hareketi',
-    'Sağ bacak yukarı çekilir, ileri savrulur — şut simülasyonu, 3 tekrar.', 'intermediate',
-    '["Sol ayak yere basılı, sağ ayak hazır.","Sağ bacağı geriye/yukarı çek.","Düz öne savur (şut).","Toplam 3 şut."]'::jsonb),
+  ('futbol-2', 'futbol', 2, 'Şut Hareketi (Diz Çek)',
+    'Sağ dizini bele doğru kaldır, ardından ayağı öne savur — şut simülasyonu, 3 tekrar.', 'intermediate',
+    '["Sol ayak yere basılı, sağ ayak hazır.","Sağ dizini bel hizasına yukarı çek (back swing).","Düz öne savur (şut), dizini indir.","Toplam 3 şut."]'::jsonb),
 
   ('atletizm-1', 'atletizm', 1, 'Start Pozisyonu',
     'Sprint başlangıç duruşu — patlayıcı çıkış için temel.', 'beginner',
