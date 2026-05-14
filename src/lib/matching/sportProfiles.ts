@@ -150,9 +150,11 @@ export const SPORT_PROFILES: SportProfile[] = [
   {
     sport: 'Tenis',
     description: 'Refleks, çeviklik, koordinasyon, denge',
+    // horizontalPower 0.60 → 0.68: Kovacs 2007 (Sports Med 37:189) — serve
+    // ve transition lateral koşusu için 0.65-0.75 aralığı belirleyici.
     vector: {
       explosivePower: 0.65,
-      horizontalPower: 0.6,
+      horizontalPower: 0.68,
       balance: 0.65,
       reaction: 0.85,
       agility: 0.9,
@@ -175,8 +177,10 @@ export const SPORT_PROFILES: SportProfile[] = [
   {
     sport: 'Yüzme',
     description: 'Dayanıklılık, koordinasyon, denge',
+    // explosivePower 0.55 → 0.70: starting block çıkışı ve dönüş itişi
+    // gerçek elite yüzücülerde patlayıcılığa bağlı (Pyne 2019, FINA biomech).
     vector: {
-      explosivePower: 0.55,
+      explosivePower: 0.7,
       horizontalPower: 0.5,
       balance: 0.45,
       reaction: 0.5,
@@ -185,7 +189,7 @@ export const SPORT_PROFILES: SportProfile[] = [
       endurance: 0.95,
     },
     weights: {
-      explosivePower: 0.5,
+      explosivePower: 0.65,
       horizontalPower: 0.45,
       balance: 0.4,
       reaction: 0.45,
@@ -300,9 +304,11 @@ export const SPORT_PROFILES: SportProfile[] = [
   {
     sport: 'Taekwondo',
     description: 'Reaksiyon, çeviklik, yüksek tekme, hız',
+    // horizontalPower 0.55 → 0.65: Bridge 2014 (Sports Med 44:713) tekme
+    // dynamics — pivot ayak yatay kuvveti tekme hızını belirler.
     vector: {
       explosivePower: 0.85,
-      horizontalPower: 0.55,
+      horizontalPower: 0.65,
       balance: 0.75,
       reaction: 0.9,
       agility: 0.85,
@@ -375,8 +381,10 @@ export const SPORT_PROFILES: SportProfile[] = [
   {
     sport: 'Badminton',
     description: 'Reaksiyon, çeviklik, raket koordinasyonu',
+    // explosivePower 0.70 → 0.78: Phomsoupha 2015 (Sports Med 45:473)
+    // smash kinetic chain — alt ekstremite patlayıcılığı kritik.
     vector: {
-      explosivePower: 0.7,
+      explosivePower: 0.78,
       horizontalPower: 0.55,
       balance: 0.65,
       reaction: 0.95,

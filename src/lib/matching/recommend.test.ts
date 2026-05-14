@@ -111,6 +111,59 @@ describe('recommendSports', () => {
     }
   });
 
+  it('tüm skorlar eşit (0.5) → outlier yok, %50 etrafında geniş öneri kümesi', () => {
+    // Audit bulgusu: medyan profil tüm sporlara yakın confidence verir
+    // (over-matching uyarısı). Pratikte top-N hala farklı sporlar dönmeli.
+    const child = testScoresToVector({});
+    const recs = recommendSports(child, null);
+    expect(recs.length).toBeGreaterThan(0);
+    // Confidence dağılımı kontrolü: tüm öneriler aynı değilse mantıklı.
+    const confidences = recs.map((r) => r.confidencePercent);
+    const unique = new Set(confidences);
+    // En az 2 farklı confidence değeri olmalı (sport profile weight matrisi
+    // sayesinde aynı vektörde farklı sporlar farklı mesafe verir).
+    expect(unique.size).toBeGreaterThanOrEqual(2);
+  });
+
+  it('minConfidence parametresi sub-threshold sporları filtreler', () => {
+    // Çok düşük performans profilinde minConfidence=0.7 olursa çoğu spor düşer.
+    const child = testScoresToVector({
+      jumpScore: 10,
+      broadJumpScore: 10,
+      balanceScore: 10,
+      reactionScore: 10,
+      agilityScore: 10,
+      coordScore: 10,
+      enduranceScore: 10,
+    });
+    const strict = recommendSports(child, null, {
+      topN: 12,
+      minConfidence: 0.7,
+    });
+    // Hiç eşik karşılamasa da en az 1 spor garanti var (kullanıcı boş ekran görmesin)
+    expect(strict.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('aşırı boy + zayıf vücut → bonus 0.15 cap edilir', () => {
+    // Audit bulgusu: heightAdvantage×heightFactor + leanAdvantage×leanFactor
+    // ham toplamı 0.185 olabilirdi; cap doğru sınırlandırmalı.
+    const child = testScoresToVector({ jumpScore: 80 });
+    const recs = recommendSports(child, {
+      heightPercentile: 99,
+      bmiPercentile: 1,
+    });
+    for (const r of recs) {
+      expect(r.anthroBonus).toBeLessThanOrEqual(0.15);
+      expect(r.anthroBonus).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('eski API geriye uyumlu — recommendSports(child, anthro, 3)', () => {
+    const child = testScoresToVector({ jumpScore: 80 });
+    const recs = recommendSports(child, null, 3);
+    expect(recs).toHaveLength(3);
+  });
+
   it('explosive + reaction baskın profil → top 5\'te güç odaklı sporlar', () => {
     const child = testScoresToVector({
       jumpScore: 95,

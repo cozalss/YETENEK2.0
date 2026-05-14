@@ -97,11 +97,31 @@ function computeAnthroBonus(
   return Math.min(0.15, Math.max(0, bonus));
 }
 
+/**
+ * Default min confidence — bu eşiğin altındaki spor önerileri filtrelenir.
+ * 0.50 = popülasyon ortalamasına yakın "yorum-değer" alt sınırı; düşük
+ * tutmak demo'da "her çocuk için 3-5 spor" garantisi verir, ama gerçekten
+ * uyumsuz sporları (örn. cimnastik için boy=99 percentile) tasfiye eder.
+ */
+export const DEFAULT_MIN_CONFIDENCE = 0.5;
+
+export interface RecommendOptions {
+  /** Üst kaç spor döndürülsün. */
+  topN?: number;
+  /** Bu skorun altındakileri filtrele (0-1). Default 0.5. */
+  minConfidence?: number;
+}
+
 export function recommendSports(
   child: SportVector,
   anthro: AnthroContext | null,
-  topN = 5
+  options: number | RecommendOptions = {},
 ): SportMatch[] {
+  // Geriye uyumluluk: eski API `recommendSports(child, anthro, 5)` çağrıları
+  // için ikinci argümanın number olmasına izin ver.
+  const { topN = 5, minConfidence = DEFAULT_MIN_CONFIDENCE } =
+    typeof options === 'number' ? { topN: options } : options;
+
   const scored: SportMatch[] = SPORT_PROFILES.map((profile) => {
     const similarity = vectorSimilarity(child, profile);
     const anthroBonus = computeAnthroBonus(profile, anthro);
@@ -117,7 +137,12 @@ export function recommendSports(
     };
   });
 
-  return scored.sort((a, b) => b.finalScore - a.finalScore).slice(0, topN);
+  const sorted = scored.sort((a, b) => b.finalScore - a.finalScore);
+  // Önce eşiği geçenleri al; en az 1 spor garanti et (sıralı listede ilk).
+  // Bu sayede "tüm sporlar düşük skor" durumunda kullanıcı yine bir öneri görür.
+  const filtered = sorted.filter((m) => m.finalScore >= minConfidence);
+  const finalList = filtered.length > 0 ? filtered : sorted.slice(0, 1);
+  return finalList.slice(0, topN);
 }
 
 /**
