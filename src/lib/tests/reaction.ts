@@ -75,8 +75,9 @@ export const MIN_VALID_TRIALS = 6;
 /**
  * Hardware bias düzeltmesi uygulanmış reaksiyon süresi.
  * Negatif olursa (latency offset > raw RT) minimum 50ms biological floor'a clamp.
+ * UI'da ResultPanel her trial için bu değeri gösterir; "ortalama" ile tutarlılık.
  */
-function correctReactionMs(rawMs: number): number {
+export function correctReactionMs(rawMs: number): number {
   return Math.max(50, rawMs - TOUCH_LATENCY_OFFSET_MS);
 }
 

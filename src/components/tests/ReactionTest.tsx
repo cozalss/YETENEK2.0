@@ -15,6 +15,7 @@ import {
   type ReactionAnalysis,
   type ReactionTrial,
   analyzeReaction,
+  correctReactionMs,
   pickWaitDelayMs,
 } from '@/lib/tests/reaction';
 
@@ -25,7 +26,9 @@ interface Props {
   onComplete?: (analysis: ReactionAnalysis) => void;
 }
 
-const TOTAL_TRIALS = 5;
+// MIN_VALID_TRIALS=6 ile uyumlu (Dykiert 2012 pediatric önerisi).
+// 5 trial demek = analyzeReaction → 0 skor (her zaman). 6 zorunlu.
+const TOTAL_TRIALS = 6;
 const FEEDBACK_MS = 1200;
 
 export function ReactionTest({
@@ -98,11 +101,13 @@ export function ReactionTest({
 
     if (p === 'go' && goTimestampRef.current != null) {
       const reaction = performance.now() - goTimestampRef.current;
-      setLastReactionMs(reaction);
+      // UI feedback: corrected RT (hardware latency çıkarılmış) — Sonuç
+      // panelindeki ortalama ile tutarlı, kullanıcı kafası karışmasın.
+      setLastReactionMs(correctReactionMs(reaction));
 
       const newTrial: ReactionTrial = {
         index: currentIndex,
-        reactionMs: reaction,
+        reactionMs: reaction, // raw — analyzeReaction içinde corrected
         falseStart: false,
       };
 
@@ -176,7 +181,7 @@ function Instructions({ onStart }: { onStart: () => void }) {
         className="list-inside list-decimal space-y-2 text-sm leading-relaxed"
         style={{ color: 'var(--color-ink-2)' }}
       >
-        <li>5 deneme yapılacak.</li>
+        <li>6 deneme yapılacak.</li>
         <li>
           Ekran{' '}
           <span
@@ -363,19 +368,21 @@ function ResultPanel({
           Tüm Denemeler
         </div>
         <div className="flex flex-wrap gap-2">
-          {analysis.trials.map((t) => (
-            <span
-              key={t.index}
-              className="rounded-full px-3 py-1 text-xs font-bold"
-              style={{
-                background: 'var(--color-canvas)',
-                color: 'var(--form-navy)',
-                border: '1px solid var(--color-line)',
-              }}
-            >
-              {t.reactionMs.toFixed(0)} ms
-            </span>
-          ))}
+          {analysis.trials
+            .filter((t) => !t.falseStart)
+            .map((t) => (
+              <span
+                key={t.index}
+                className="rounded-full px-3 py-1 text-xs font-bold"
+                style={{
+                  background: 'var(--color-canvas)',
+                  color: 'var(--form-navy)',
+                  border: '1px solid var(--color-line)',
+                }}
+              >
+                {correctReactionMs(t.reactionMs).toFixed(0)} ms
+              </span>
+            ))}
         </div>
       </div>
 
