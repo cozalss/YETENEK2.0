@@ -75,10 +75,10 @@ export default async function SignUpPage({ searchParams }: PageProps) {
         <section className="signin-wrap">
           <header className="signin-head">
             <h1>
-              Create
+              Hesap
               <br />
               <span className="signin-head-bold">
-                account
+                oluştur
                 <span className="signin-sparkle" aria-hidden="true">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/login/star.svg" alt="" width={22} height={22} />
@@ -86,9 +86,9 @@ export default async function SignUpPage({ searchParams }: PageProps) {
               </span>
             </h1>
             <p className="signin-subtitle">
-              Start your journey of
+              Yetenek keşif
               <br />
-              discovering talent.
+              yolculuğuna başla.
             </p>
           </header>
 
@@ -112,7 +112,7 @@ export default async function SignUpPage({ searchParams }: PageProps) {
               {next && <input type="hidden" name="next" value={next} />}
 
               <label className="signin-field">
-                <span className="signin-field-label">Full name</span>
+                <span className="signin-field-label">Adın Soyadın</span>
                 <input
                   name="fullName"
                   type="text"
@@ -123,29 +123,29 @@ export default async function SignUpPage({ searchParams }: PageProps) {
               </label>
 
               <label className="signin-field">
-                <span className="signin-field-label">Email</span>
+                <span className="signin-field-label">E-posta</span>
                 <input
                   name="email"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="ornek@email.com"
                   autoComplete="email"
                   required
                 />
               </label>
 
               <label className="signin-field">
-                <span className="signin-field-label">Password</span>
+                <span className="signin-field-label">Şifre</span>
                 <input
                   name="password"
                   type="password"
-                  placeholder="At least 8 chars, letter + number"
+                  placeholder="En az 8 karakter, harf + sayı"
                   autoComplete="new-password"
                   required
                 />
               </label>
 
               <label className="signin-field">
-                <span className="signin-field-label">Confirm password</span>
+                <span className="signin-field-label">Şifre Tekrar</span>
                 <input
                   name="confirmPassword"
                   type="password"
@@ -160,24 +160,24 @@ export default async function SignUpPage({ searchParams }: PageProps) {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/login/button.svg" alt="" width={20} height={20} />
                 </span>
-                Sign up
+                Kayıt Ol
               </button>
             </form>
 
             <div className="signin-divider">
-              <span>or</span>
+              <span>veya</span>
             </div>
 
             <form action={signInWithGoogleAction}>
               {next && <input type="hidden" name="next" value={next} />}
               <button type="submit" className="signin-google">
                 <GoogleIcon />
-                Continue with Google
+                Google ile Devam Et
               </button>
             </form>
 
             <p className="signin-signup-line">
-              Already have an account? <Link href={signInHref}>Sign in</Link>
+              Zaten hesabın var mı? <Link href={signInHref}>Giriş yap</Link>
             </p>
           </div>
         </section>

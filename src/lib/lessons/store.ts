@@ -9,6 +9,7 @@
  */
 
 import type { LessonAttempt } from './types';
+import { recordLessonActivity } from './streak';
 
 const STORAGE_PREFIX = 'yetenek:lessons:';
 
@@ -50,6 +51,8 @@ export function markLessonCompleted(
     completed: { ...state.completed, [attempt.lessonId]: attempt },
   };
   writeState(childId, next);
+  // Streak: her ders tamamlama günlük seriyi günceller (aynı gün no-op).
+  recordLessonActivity(childId, new Date(attempt.completedAt));
   void persistLessonToServer(childId, attempt);
 }
 

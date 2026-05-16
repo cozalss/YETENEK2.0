@@ -110,18 +110,18 @@ export default async function SignInPage({ searchParams }: PageProps) {
               {next && <input type="hidden" name="next" value={next} />}
 
               <label className="signin-field">
-                <span className="signin-field-label">Email</span>
+                <span className="signin-field-label">E-posta</span>
                 <input
                   name="email"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="ornek@email.com"
                   autoComplete="email"
                   required
                 />
               </label>
 
               <label className="signin-field">
-                <span className="signin-field-label">Password</span>
+                <span className="signin-field-label">Şifre</span>
                 <input
                   name="password"
                   type="password"
@@ -136,25 +136,25 @@ export default async function SignInPage({ searchParams }: PageProps) {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/login/button.svg" alt="" width={20} height={20} />
                 </span>
-                Log in
+                Giriş Yap
               </button>
             </form>
 
             <div className="signin-divider">
-              <span>or</span>
+              <span>veya</span>
             </div>
 
             <form action={signInWithGoogleAction}>
               {next && <input type="hidden" name="next" value={next} />}
               <button type="submit" className="signin-google">
                 <GoogleIcon />
-                Continue with Google
+                Google ile Devam Et
               </button>
             </form>
 
             <p className="signin-signup-line">
-              New to YETENEK 2.0?{' '}
-              <Link href={signUpHref}>Create an account</Link>
+              YETENEK 2.0&apos;da yeni misin?{' '}
+              <Link href={signUpHref}>Hesap oluştur</Link>
             </p>
           </div>
         </section>
