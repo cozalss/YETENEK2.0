@@ -15,6 +15,7 @@ import type { BroadJumpAnalysis } from '@/lib/tests/broadJump';
 import type { LateralHopsAnalysis } from '@/lib/tests/lateralHops';
 import type { CoordinationAnalysis } from '@/lib/tests/coordination';
 import type { EnduranceJacksAnalysis } from '@/lib/tests/enduranceJacks';
+import type { CharacterAnalysis } from '@/lib/character/score';
 
 import {
   type Session,
@@ -144,4 +145,23 @@ export function recordEndurance(
     },
   };
   return withCompletedTest(next, 'endurance');
+}
+
+export function recordCharacter(
+  session: Session,
+  analysis: CharacterAnalysis
+): Session {
+  // Anket eksik kalmışsa kaydetme — nötr (3) varsayımı zaten skor'da var
+  // ama "complete" gates "submit" butonunu; defansif olarak burada da bakıyoruz.
+  if (!analysis.complete) return session;
+  const next: Session = {
+    ...session,
+    character: {
+      teamAffinity: analysis.teamAffinity,
+      averageScore: analysis.averageScore,
+      band: analysis.band,
+      summary: analysis.summary,
+    },
+  };
+  return withCompletedTest(next, 'character');
 }

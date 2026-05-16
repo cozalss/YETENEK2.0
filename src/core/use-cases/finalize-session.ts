@@ -41,11 +41,10 @@ export function finalizeSession(session: Session): Session {
   });
 
   const anthro = computeAnthroContext(session);
-  const recommendations = recommendSports(
-    vector,
-    anthro,
-    TOP_N_RECOMMENDATIONS
-  );
+  const recommendations = recommendSports(vector, anthro, {
+    topN: TOP_N_RECOMMENDATIONS,
+    teamAffinity: session.character?.teamAffinity,
+  });
 
   return withCompletedAt(
     withRecommendations(session, recommendations),

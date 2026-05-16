@@ -110,6 +110,28 @@ export interface RecommendOptions {
   topN?: number;
   /** Bu skorun altındakileri filtrele (0-1). Default 0.5. */
   minConfidence?: number;
+  /**
+   * 0-100 takım uyumu skoru (Karakter testi). Yüksek değer takım sporlarını
+   * yükseltir, düşük değer bireysel/dövüş sporlarını öne çıkarır.
+   */
+  teamAffinity?: number;
+}
+
+/**
+ * Takım uyumu boost'u — Likert anket skorunu (0-100) sporun `teamType`
+ * etiketine göre lineer bir bonus/cezaya çevirir. max ±0.10.
+ *   teamAffinity=50 nötr; team→+, individual→-, partner→ yarı şiddet.
+ */
+function computeTeamAffinityBoost(
+  profile: SportProfile,
+  teamAffinity: number | undefined,
+): number {
+  if (teamAffinity == null) return 0;
+  const centered = (teamAffinity - 50) / 50;
+  const magnitude = 0.1;
+  if (profile.teamType === 'team') return centered * magnitude;
+  if (profile.teamType === 'individual') return -centered * magnitude;
+  return centered * magnitude * 0.5;
 }
 
 export function recommendSports(
@@ -119,13 +141,22 @@ export function recommendSports(
 ): SportMatch[] {
   // Geriye uyumluluk: eski API `recommendSports(child, anthro, 5)` çağrıları
   // için ikinci argümanın number olmasına izin ver.
-  const { topN = 5, minConfidence = DEFAULT_MIN_CONFIDENCE } =
+  const opts: RecommendOptions =
     typeof options === 'number' ? { topN: options } : options;
+  const {
+    topN = 5,
+    minConfidence = DEFAULT_MIN_CONFIDENCE,
+    teamAffinity,
+  } = opts;
 
   const scored: SportMatch[] = SPORT_PROFILES.map((profile) => {
     const similarity = vectorSimilarity(child, profile);
     const anthroBonus = computeAnthroBonus(profile, anthro);
-    const finalScore = Math.min(1, Math.max(0, similarity + anthroBonus));
+    const teamBoost = computeTeamAffinityBoost(profile, teamAffinity);
+    const finalScore = Math.min(
+      1,
+      Math.max(0, similarity + anthroBonus + teamBoost),
+    );
     return {
       sport: profile.sport,
       description: profile.description,

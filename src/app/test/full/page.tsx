@@ -28,6 +28,7 @@ import { LateralHopsTest } from '@/components/tests/LateralHopsTest';
 import { ReactionTest } from '@/components/tests/ReactionTest';
 import { CoordinationTest } from '@/components/tests/CoordinationTest';
 import { EnduranceJacksTest } from '@/components/tests/EnduranceJacksTest';
+import { CharacterTest } from '@/components/tests/CharacterTest';
 import { ProfileForm } from '@/components/flow/ProfileForm';
 import {
   PhaseHeader,
@@ -51,6 +52,7 @@ import type { LateralHopsAnalysis } from '@/lib/tests/lateralHops';
 import type { ReactionAnalysis } from '@/lib/tests/reaction';
 import type { CoordinationAnalysis } from '@/lib/tests/coordination';
 import type { EnduranceJacksAnalysis } from '@/lib/tests/enduranceJacks';
+import type { CharacterAnalysis } from '@/lib/character/score';
 
 type Phase =
   | 'profile'
@@ -61,6 +63,7 @@ type Phase =
   | 'reaction'
   | 'coordination'
   | 'endurance'
+  | 'character'
   | 'result';
 
 type Mode = 'full' | 'quick';
@@ -73,9 +76,10 @@ const FULL_PHASE_ORDER: Phase[] = [
   'reaction',
   'coordination',
   'endurance',
+  'character',
 ];
 
-const QUICK_PHASE_ORDER: Phase[] = ['cmj', 'balance', 'reaction'];
+const QUICK_PHASE_ORDER: Phase[] = ['cmj', 'balance', 'reaction', 'character'];
 
 interface DoneFlags {
   cmj: boolean;
@@ -85,6 +89,7 @@ interface DoneFlags {
   reaction: boolean;
   coordination: boolean;
   endurance: boolean;
+  character: boolean;
 }
 
 const EMPTY_DONE: DoneFlags = {
@@ -95,6 +100,7 @@ const EMPTY_DONE: DoneFlags = {
   reaction: false,
   coordination: false,
   endurance: false,
+  character: false,
 };
 
 export default function FullFlowPage() {
@@ -469,7 +475,6 @@ function FullFlowInner() {
             stepNumber={stepNumber}
             stepLabels={stepLabels}
             onSkip={skipCurrent}
-            advanceLabel="Sonuçları Gör"
           >
             <EnduranceJacksTest
               childAgeYears={child.ageYears}
@@ -480,6 +485,25 @@ function FullFlowInner() {
                   analysis as EnduranceJacksAnalysis & { score: number }
                 );
                 setDone((d) => ({ ...d, endurance: true }));
+              }}
+            />
+          </PhaseShell>
+        )}
+
+        {phase === 'character' && child && (
+          <PhaseShell
+            childName={child.name}
+            done={done.character}
+            onAdvance={() => advanceFrom('character')}
+            stepNumber={stepNumber}
+            stepLabels={stepLabels}
+            onSkip={skipCurrent}
+            advanceLabel="Sonuçları Gör"
+          >
+            <CharacterTest
+              onComplete={(analysis: CharacterAnalysis) => {
+                sessionStore.recordCharacter(analysis);
+                setDone((d) => ({ ...d, character: true }));
               }}
             />
           </PhaseShell>

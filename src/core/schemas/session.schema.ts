@@ -89,6 +89,17 @@ export const enduranceSummarySchema = z.object({
   score: scoreSchema,
 });
 
+export const characterSummarySchema = z.object({
+  /** 0-100 normalize takım uyumu skoru (Karakter Likert anketi). */
+  teamAffinity: scoreSchema,
+  /** Ham ortalama (1-5 Likert ölçeği). */
+  averageScore: finiteNumber.min(1).max(5),
+  /** Kategori bandı — bireysel/dengeli/takım. */
+  band: z.enum(['individual', 'balanced', 'team']),
+  /** Kullanıcıya gösterilen özet metin. */
+  summary: z.string().max(400),
+});
+
 /* ───────── Recommendations ───────── */
 
 export const sportMatchSchema = z.object({
@@ -113,6 +124,7 @@ export const testKeySchema = z.enum([
   'lateralHops',
   'coordination',
   'endurance',
+  'character',
 ]);
 export type TestKeySchema = z.infer<typeof testKeySchema>;
 
@@ -125,6 +137,7 @@ export const sessionSummarySchema = z.object({
   lateralHops: lateralHopsSummarySchema.optional(),
   coordination: coordinationSummarySchema.optional(),
   endurance: enduranceSummarySchema.optional(),
+  character: characterSummarySchema.optional(),
   recommendations: z.array(sportMatchSchema).max(20).optional(),
   injuryWarnings: z.array(z.string().max(300)).max(10),
   // .default([]) sayesinde tip required Array<TestKey> olur — UI'da

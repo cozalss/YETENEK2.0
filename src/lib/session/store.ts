@@ -21,6 +21,7 @@ import type { BroadJumpAnalysis } from '@/lib/tests/broadJump';
 import type { LateralHopsAnalysis } from '@/lib/tests/lateralHops';
 import type { CoordinationAnalysis } from '@/lib/tests/coordination';
 import type { EnduranceJacksAnalysis } from '@/lib/tests/enduranceJacks';
+import type { CharacterAnalysis } from '@/lib/character/score';
 
 import type { SessionSummarySchema } from '@/core/schemas/session.schema';
 import type { Session, ChildIdentity, TestKey } from '@/core/domain/session';
@@ -41,6 +42,7 @@ export type BroadJumpSummary = NonNullable<Session['broadJump']>;
 export type LateralHopsSummary = NonNullable<Session['lateralHops']>;
 export type CoordinationSummary = NonNullable<Session['coordination']>;
 export type EnduranceSummary = NonNullable<Session['endurance']>;
+export type CharacterSummary = NonNullable<Session['character']>;
 
 const log = logger.child('session-store');
 
@@ -98,6 +100,10 @@ class SessionStoreFacade {
     analysis: EnduranceJacksAnalysis & { score: number }
   ): void {
     this.applyTransform((s) => recordUseCase.recordEndurance(s, analysis));
+  }
+
+  recordCharacter(analysis: CharacterAnalysis): void {
+    this.applyTransform((s) => recordUseCase.recordCharacter(s, analysis));
   }
 
   finalize(): SessionSummary | null {
