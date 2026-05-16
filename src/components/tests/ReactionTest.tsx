@@ -31,10 +31,7 @@ interface Props {
 const TOTAL_TRIALS = 6;
 const FEEDBACK_MS = 1200;
 
-export function ReactionTest({
-  childAgeYears = 12,
-  onComplete,
-}: Props) {
+export function ReactionTest({ childAgeYears = 12, onComplete }: Props) {
   const [phase, setPhase] = useState<Phase>('idle');
   // Trials state'i yalnızca setTrials ile mutate edilir; read tarafı
   // analysis.trials (analyze sonrası) üzerinden DOM'a düşer.
@@ -46,10 +43,13 @@ export function ReactionTest({
 
   const goTimestampRef = useRef<number | null>(null);
   const waitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // FEEDBACK_MS setTimeout'larını da tracked tut — trial bittikten sonra
-  // phase 'result' iken bu zincir setPhase('wait')→setPhase('go') tetiklemesin
-  // (yeşil ekran sonuç ekranı arkasında yanıp sönmesin diye).
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Trial listesini ref'te tut — handleTap içinde senkron append yaparız,
+  // setTrials yalnız re-render için. Aksi takdirde side-effect'leri
+  // (setAnalysis/setPhase/onComplete) setTrials updater'ına koyduğumuzda
+  // React "Cannot update component while rendering different component"
+  // hatası verir (updater render fazında çalışır).
+  const trialsRef = useRef<ReactionTrial[]>([]);
   const phaseRef = useRef<Phase>('idle');
 
   // onComplete'i ref'te sabitle — parent inline arrow ile callback re-create
@@ -99,6 +99,7 @@ export function ReactionTest({
   }, []);
 
   const start = () => {
+    trialsRef.current = [];
     setTrials([]);
     setCurrentIndex(0);
     setLastReactionMs(null);
@@ -134,30 +135,33 @@ export function ReactionTest({
         falseStart: false,
       };
 
-      setTrials((prev) => {
-        const updatedTrials = [...prev, newTrial];
-        if (updatedTrials.length >= TOTAL_TRIALS) {
-          const result = analyzeReaction(updatedTrials, childAgeYears);
-          // Test bitti — pending tüm timer'ları ve TTS'i iptal et ki sonuç
-          // ekranı arkasından "Dokun" sesi gelmesin / yeşil yanıp sönmesin.
-          clearWaitTimer();
-          clearFeedbackTimer();
-          cancelSpeech();
-          setAnalysis(result);
-          setPhase('result');
-          onCompleteRef.current?.(result);
-        } else {
-          setCurrentIndex((idx) => idx + 1);
-          setPhase('between');
-          clearFeedbackTimer();
-          feedbackTimerRef.current = setTimeout(() => {
-            feedbackTimerRef.current = null;
-            if (phaseRef.current === 'result') return;
-            startTrial();
-          }, FEEDBACK_MS);
-        }
-        return updatedTrials;
-      });
+      // SENKRON: ref'e append, sayım buradan okunur. Updater render-fazında
+      // çalıştığı için onComplete (parent setState) updater içinde
+      // çağrılamaz — side-effect'leri burada doğrudan event handler'da
+      // yapıyoruz.
+      const updatedTrials = [...trialsRef.current, newTrial];
+      trialsRef.current = updatedTrials;
+      setTrials(updatedTrials);
+
+      if (updatedTrials.length >= TOTAL_TRIALS) {
+        const result = analyzeReaction(updatedTrials, childAgeYears);
+        // Test bitti — pending tüm timer'ları ve TTS'i iptal et.
+        clearWaitTimer();
+        clearFeedbackTimer();
+        cancelSpeech();
+        setAnalysis(result);
+        setPhase('result');
+        onCompleteRef.current?.(result);
+      } else {
+        setCurrentIndex((idx) => idx + 1);
+        setPhase('between');
+        clearFeedbackTimer();
+        feedbackTimerRef.current = setTimeout(() => {
+          feedbackTimerRef.current = null;
+          if (phaseRef.current === 'result') return;
+          startTrial();
+        }, FEEDBACK_MS);
+      }
       return;
     }
   }, [currentIndex, childAgeYears, startTrial]);
@@ -215,20 +219,14 @@ function Instructions({ onStart }: { onStart: () => void }) {
         <li>6 deneme yapılacak.</li>
         <li>
           Ekran{' '}
-          <span
-            className="font-bold"
-            style={{ color: 'var(--deep-navy)' }}
-          >
+          <span className="font-bold" style={{ color: 'var(--deep-navy)' }}>
             LACIVERT
           </span>{' '}
           olduğunda BEKLE.
         </li>
         <li>
           Ekran{' '}
-          <span
-            className="font-bold"
-            style={{ color: '#0e7a4d' }}
-          >
+          <span className="font-bold" style={{ color: '#0e7a4d' }}>
             YEŞIL
           </span>{' '}
           olduğunda HEMEN dokun.
@@ -238,7 +236,7 @@ function Instructions({ onStart }: { onStart: () => void }) {
       <button
         type="button"
         onClick={onStart}
-        className="h-12 w-full rounded-full text-base font-black tracking-wide transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        className="h-12 w-full rounded-full text-base font-black tracking-wide transition-transform hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         style={{
           background: 'var(--track-mustard)',
           color: 'var(--form-navy)',
@@ -320,14 +318,16 @@ function ActiveTrialPanel({
     <button
       type="button"
       onClick={onTap}
-      className={`flex h-96 w-full select-none items-center justify-center rounded-2xl text-3xl font-bold text-white transition-colors duration-100 focus-visible:ring-4 focus-visible:ring-amber-300 focus-visible:ring-offset-4 focus-visible:ring-offset-neutral-950 focus-visible:outline-none md:h-[28rem] ${bgColor}`}
+      className={`flex h-96 w-full items-center justify-center rounded-2xl text-3xl font-bold text-white transition-colors duration-100 select-none focus-visible:ring-4 focus-visible:ring-amber-300 focus-visible:ring-offset-4 focus-visible:ring-offset-neutral-950 focus-visible:outline-none md:h-[28rem] ${bgColor}`}
       aria-label={`Reaksiyon test alanı. Deneme ${currentIndex + 1} bölü ${totalTrials}.`}
     >
       <div className="flex flex-col items-center gap-3" aria-hidden="true">
-        <div className="text-sm font-medium uppercase tracking-widest opacity-70">
+        <div className="text-sm font-medium tracking-widest uppercase opacity-70">
           Deneme {currentIndex + 1} / {totalTrials}
         </div>
-        {phaseIcon && <span className="text-6xl leading-none">{phaseIcon}</span>}
+        {phaseIcon && (
+          <span className="text-6xl leading-none">{phaseIcon}</span>
+        )}
         <div>{message}</div>
       </div>
       <span
@@ -401,7 +401,7 @@ function ResultPanel({
         }}
       >
         <div
-          className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em]"
+          className="mb-2 text-[10px] font-bold tracking-[0.2em] uppercase"
           style={{
             color: 'var(--color-ink-3)',
             fontFamily: 'var(--font-display)',
@@ -431,7 +431,7 @@ function ResultPanel({
       <button
         type="button"
         onClick={onRetry}
-        className="h-11 rounded-full px-5 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        className="h-11 rounded-full px-5 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         style={{
           background: 'var(--track-mustard)',
           color: 'var(--form-navy)',
@@ -463,7 +463,7 @@ function Metric({
       }}
     >
       <div
-        className="text-[10px] font-bold uppercase tracking-[0.18em]"
+        className="text-[10px] font-bold tracking-[0.18em] uppercase"
         style={{
           color: 'var(--color-ink-3)',
           fontFamily: 'var(--font-display)',
