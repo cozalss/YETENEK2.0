@@ -43,6 +43,9 @@ export function finalizeSession(session: Session): Session {
   const anthro = computeAnthroContext(session);
   const recommendations = recommendSports(vector, anthro, {
     topN: TOP_N_RECOMMENDATIONS,
+    // v2: 4-faktörlü vektör tercih edilen yol; yoksa legacy tek-boyutlu
+    // teamAffinity fallback'i recommend.ts içinde devreye girer.
+    characterFactors: session.character?.factors,
     teamAffinity: session.character?.teamAffinity,
   });
 
@@ -55,11 +58,7 @@ export function finalizeSession(session: Session): Session {
 function computeAnthroContext(session: Session): AnthroContext | null {
   const { heightCm, weightKg, ageYears, sex } = session.child;
   if (heightCm == null) return null;
-  const heightPercentile = estimateHeightPercentile(
-    heightCm,
-    ageYears,
-    sex
-  );
+  const heightPercentile = estimateHeightPercentile(heightCm, ageYears, sex);
   const bmiPercentile =
     weightKg != null
       ? estimateBmiPercentile(heightCm, weightKg, ageYears, sex)

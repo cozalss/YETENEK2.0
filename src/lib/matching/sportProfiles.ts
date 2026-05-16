@@ -87,6 +87,25 @@ export interface AnthroFavor {
 }
 
 /**
+ * Karakter favor — sporun ideal psikolojik profil vektörü (0-1).
+ * 14-soruluk Karakter testinden çıkan 4 alt faktörle weighted Euclidean
+ * benzerliği üzerinden, recommend.ts'de sporun karakter uyumu boost'u
+ * hesaplanır (max ±0.10). Her faktör 0-1 ölçeğinde sporun "şu özelliği
+ * ne kadar değerli kılar" göstergesi — anthroFavor mantığıyla aynı.
+ *
+ *   cooperation   → takım iletişimi, sorumluluk paylaşımı
+ *   encouragement → düşük performansı destekleme, dahil etme
+ *   persistence   → vazgeçmeme, çaba sürdürme (grit)
+ *   fairPlay      → saygı, kibarlık, dürüstlük
+ */
+export interface CharacterFavor {
+  cooperation: number;
+  encouragement: number;
+  persistence: number;
+  fairPlay: number;
+}
+
+/**
  * Takım yapısı sınıflandırması — `teamAffinity` Likert skoru
  * recommend.ts'de bu etikete bakıp boost/penalty uygular.
  *   'team'       → 5-11 oyuncu zorunlu (futbol, basketbol, voleybol)
@@ -103,6 +122,8 @@ export interface SportProfile {
   weights: SportVector;
   anthroFavor: AnthroFavor;
   teamType: TeamType;
+  /** Karakter profilinden gelen boost'a temel — undefined ise nötr. */
+  characterFavor?: CharacterFavor;
   reasonTemplate: string;
 }
 
@@ -130,6 +151,12 @@ export const SPORT_PROFILES: SportProfile[] = [
     },
     anthroFavor: { heightAdvantage: 0.85, leanAdvantage: 0.3 },
     teamType: 'team',
+    characterFavor: {
+      cooperation: 0.9,
+      encouragement: 0.85,
+      persistence: 0.7,
+      fairPlay: 0.7,
+    },
     reasonTemplate:
       'Dikey patlayıcı gücün ve koordinasyonun voleybolun blok ve smaç gereksinimleri için ideal.',
   },
@@ -156,6 +183,12 @@ export const SPORT_PROFILES: SportProfile[] = [
     },
     anthroFavor: { heightAdvantage: 0.9, leanAdvantage: 0.3 },
     teamType: 'team',
+    characterFavor: {
+      cooperation: 0.9,
+      encouragement: 0.8,
+      persistence: 0.75,
+      fairPlay: 0.65,
+    },
     reasonTemplate:
       'Dikey gücün, çevikliğin ve dayanıklılığın basketbolun pota altı ve hızlı transition oyunu için güçlü.',
   },
@@ -184,6 +217,12 @@ export const SPORT_PROFILES: SportProfile[] = [
     },
     anthroFavor: { heightAdvantage: 0.2, leanAdvantage: 0.4 },
     teamType: 'partner',
+    characterFavor: {
+      cooperation: 0.4,
+      encouragement: 0.3,
+      persistence: 0.85,
+      fairPlay: 0.85,
+    },
     reasonTemplate:
       'Reaksiyonun, çevikliğin ve göz-el koordinasyonun tenisin anlık vuruş ve baseline oyununa ideal.',
   },
@@ -212,6 +251,12 @@ export const SPORT_PROFILES: SportProfile[] = [
     },
     anthroFavor: { heightAdvantage: 0.5, leanAdvantage: 0.5 },
     teamType: 'individual',
+    characterFavor: {
+      cooperation: 0.3,
+      encouragement: 0.4,
+      persistence: 0.95,
+      fairPlay: 0.7,
+    },
     reasonTemplate:
       'Aerobik dayanıklılığın ve koordinasyonun yüzmenin ritimli stroke yapısına çok uygun.',
   },
@@ -238,6 +283,12 @@ export const SPORT_PROFILES: SportProfile[] = [
     },
     anthroFavor: { heightAdvantage: 0.1, leanAdvantage: 0.4 },
     teamType: 'team',
+    characterFavor: {
+      cooperation: 0.85,
+      encouragement: 0.8,
+      persistence: 0.8,
+      fairPlay: 0.65,
+    },
     reasonTemplate:
       'Çevikliğin ve dayanıklılığın futbolun değişken yön becerileri ve süreklilik gereksinimi için ideal.',
   },
@@ -264,6 +315,12 @@ export const SPORT_PROFILES: SportProfile[] = [
     },
     anthroFavor: { heightAdvantage: 0.3, leanAdvantage: 0.7 },
     teamType: 'individual',
+    characterFavor: {
+      cooperation: 0.3,
+      encouragement: 0.4,
+      persistence: 0.95,
+      fairPlay: 0.75,
+    },
     reasonTemplate:
       'Yatay patlayıcı gücün ve reaksiyonun sprint ve atlama branşları için kritik düzeyde güçlü.',
   },
@@ -290,6 +347,12 @@ export const SPORT_PROFILES: SportProfile[] = [
     },
     anthroFavor: { heightAdvantage: 0.0, leanAdvantage: 0.9 },
     teamType: 'individual',
+    characterFavor: {
+      cooperation: 0.3,
+      encouragement: 0.5,
+      persistence: 0.95,
+      fairPlay: 0.85,
+    },
     reasonTemplate:
       'Dengenin, koordinasyonun ve patlayıcı gücünün cimnastik için olağanüstü uygun bir kombinasyon.',
   },
@@ -316,6 +379,12 @@ export const SPORT_PROFILES: SportProfile[] = [
     },
     anthroFavor: { heightAdvantage: 0.3, leanAdvantage: 0.0 },
     teamType: 'individual',
+    characterFavor: {
+      cooperation: 0.4,
+      encouragement: 0.4,
+      persistence: 0.85,
+      fairPlay: 0.95,
+    },
     reasonTemplate:
       'Dengen ve patlayıcı gücün judo için ideal; kavrama mücadelesinde reaksiyon ve dayanıklılık önemli.',
   },
@@ -344,6 +413,12 @@ export const SPORT_PROFILES: SportProfile[] = [
     },
     anthroFavor: { heightAdvantage: 0.4, leanAdvantage: 0.5 },
     teamType: 'individual',
+    characterFavor: {
+      cooperation: 0.4,
+      encouragement: 0.4,
+      persistence: 0.85,
+      fairPlay: 0.95,
+    },
     reasonTemplate:
       'Reaksiyonun ve çevikliğin taekwondonun anlık tekme ve geri çekilme oyununa ideal.',
   },
@@ -370,6 +445,12 @@ export const SPORT_PROFILES: SportProfile[] = [
     },
     anthroFavor: { heightAdvantage: 0.2, leanAdvantage: 0.4 },
     teamType: 'individual',
+    characterFavor: {
+      cooperation: 0.4,
+      encouragement: 0.4,
+      persistence: 0.9,
+      fairPlay: 0.85,
+    },
     reasonTemplate:
       'Reaksiyonun ve dayanıklılığın boksun yumruk-savunma rotasyonuna çok uygun.',
   },
@@ -396,6 +477,12 @@ export const SPORT_PROFILES: SportProfile[] = [
     },
     anthroFavor: { heightAdvantage: 0.0, leanAdvantage: 0.2 },
     teamType: 'partner',
+    characterFavor: {
+      cooperation: 0.35,
+      encouragement: 0.3,
+      persistence: 0.8,
+      fairPlay: 0.8,
+    },
     reasonTemplate:
       'Reaksiyonun ve koordinasyonun masa tenisinin saliseyle ölçülen vuruşları için olağanüstü.',
   },
@@ -424,6 +511,12 @@ export const SPORT_PROFILES: SportProfile[] = [
     },
     anthroFavor: { heightAdvantage: 0.2, leanAdvantage: 0.5 },
     teamType: 'partner',
+    characterFavor: {
+      cooperation: 0.4,
+      encouragement: 0.3,
+      persistence: 0.85,
+      fairPlay: 0.8,
+    },
     reasonTemplate:
       'Reaksiyonun, çevikliğin ve koordinasyonun birleşimi badmintonun smaç-defans rotasyonu için ideal.',
   },

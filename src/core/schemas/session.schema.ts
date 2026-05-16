@@ -89,15 +89,34 @@ export const enduranceSummarySchema = z.object({
   score: scoreSchema,
 });
 
+export const characterFactorsSchema = z.object({
+  cooperation: scoreSchema,
+  encouragement: scoreSchema,
+  persistence: scoreSchema,
+  fairPlay: scoreSchema,
+});
+
+export const characterFactorKeySchema = z.enum([
+  'cooperation',
+  'encouragement',
+  'persistence',
+  'fairPlay',
+]);
+
 export const characterSummarySchema = z.object({
-  /** 0-100 normalize takım uyumu skoru (Karakter Likert anketi). */
+  /** 0-100 ağırlıklı genel takım uyumu skoru (Karakter Likert anketi). */
   teamAffinity: scoreSchema,
+  /** Faktör başına 0-100 alt skorlar — v2 ile eklendi. */
+  factors: characterFactorsSchema.optional(),
   /** Ham ortalama (1-5 Likert ölçeği). */
   averageScore: finiteNumber.min(1).max(5),
   /** Kategori bandı — bireysel/dengeli/takım. */
   band: z.enum(['individual', 'balanced', 'team']),
   /** Kullanıcıya gösterilen özet metin. */
   summary: z.string().max(400),
+  /** En güçlü / en zayıf faktör — özet için. */
+  topFactor: characterFactorKeySchema.optional(),
+  bottomFactor: characterFactorKeySchema.optional(),
 });
 
 /* ───────── Recommendations ───────── */

@@ -19,9 +19,22 @@
 import {
   SPORT_PROFILES,
   DIMENSION_KEYS,
+  type CharacterFavor,
   type SportProfile,
   type SportVector,
 } from './sportProfiles';
+
+/**
+ * Karakter 4 alt faktörü — `src/lib/character/score.ts`'in ürettiği
+ * `factors` objesinin runtime tipi. Burada bağımsız tanımlanır ki matching
+ * modülü character/* paketine doğrudan import etmek zorunda kalmasın.
+ */
+export interface CharacterFactors {
+  cooperation: number; // 0-100
+  encouragement: number;
+  persistence: number;
+  fairPlay: number;
+}
 
 export type { SportVector } from './sportProfiles';
 
@@ -72,10 +85,7 @@ function weightedEuclidean(
  * Mesafe → similarity. Distance ∈ [0, 1] aralığında olduğu için
  * lineer 1-distance kullanıyoruz; UX'te %1 mesafe = %1 düşüş.
  */
-function vectorSimilarity(
-  child: SportVector,
-  profile: SportProfile
-): number {
+function vectorSimilarity(child: SportVector, profile: SportProfile): number {
   const distance = weightedEuclidean(child, profile.vector, profile.weights);
   return Math.max(0, 1 - distance);
 }
@@ -111,20 +121,64 @@ export interface RecommendOptions {
   /** Bu skorun altındakileri filtrele (0-1). Default 0.5. */
   minConfidence?: number;
   /**
-   * 0-100 takım uyumu skoru (Karakter testi). Yüksek değer takım sporlarını
-   * yükseltir, düşük değer bireysel/dövüş sporlarını öne çıkarır.
+   * 4-faktörlü karakter vektörü (Karakter testi v2). Verilirse her sporun
+   * `characterFavor`'u ile weighted similarity hesaplanır (±0.10 boost).
+   * Eski tek-boyutlu `teamAffinity`'den daha hassas ayrıştırma.
+   */
+  characterFactors?: CharacterFactors;
+  /**
+   * Geriye uyumluluk — 0-100 tek-boyutlu takım uyumu skoru. Yalnız
+   * `characterFactors` verilmemişse fallback olarak çalışır.
    */
   teamAffinity?: number;
 }
 
+const CHARACTER_FACTOR_KEYS = [
+  'cooperation',
+  'encouragement',
+  'persistence',
+  'fairPlay',
+] as const;
+
 /**
- * Takım uyumu boost'u — Likert anket skorunu (0-100) sporun `teamType`
- * etiketine göre lineer bir bonus/cezaya çevirir. max ±0.10.
+ * Karakter benzerlik boost'u — biomotor matching ile aynı mantık:
+ * çocuğun 4-faktörlü karakter vektörü ile sporun ideal `characterFavor`
+ * arasında weighted Euclidean benzerlik. Sporun `characterFavor` değerleri
+ * AYRICA per-faktör ağırlık olarak kullanılır — sporun önemsemediği
+ * faktörde uyumsuzluk cezalandırılmaz.
+ *
+ *   similarity = 1 - sqrt( Σ favor[f] · (child[f]/100 - favor[f])² / Σ favor[f] )
+ *   boost = (similarity - 0.5) × 0.20   →  ±0.10 aralığı
+ */
+function computeCharacterBoost(
+  profile: SportProfile,
+  factors: CharacterFactors | undefined
+): number {
+  if (!factors) return 0;
+  const favor = profile.characterFavor;
+  if (!favor) return 0;
+  let sumSq = 0;
+  let weightSum = 0;
+  for (const key of CHARACTER_FACTOR_KEYS) {
+    const weight = favor[key];
+    const childUnit = factors[key] / 100;
+    const diff = childUnit - favor[key];
+    sumSq += weight * diff * diff;
+    weightSum += weight;
+  }
+  if (weightSum === 0) return 0;
+  const distance = Math.sqrt(sumSq / weightSum);
+  const similarity = Math.max(0, 1 - distance);
+  return (similarity - 0.5) * 0.2;
+}
+
+/**
+ * Legacy: tek-boyutlu teamAffinity boost'u. Yalnız characterFactors yokken.
  *   teamAffinity=50 nötr; team→+, individual→-, partner→ yarı şiddet.
  */
 function computeTeamAffinityBoost(
   profile: SportProfile,
-  teamAffinity: number | undefined,
+  teamAffinity: number | undefined
 ): number {
   if (teamAffinity == null) return 0;
   const centered = (teamAffinity - 50) / 50;
@@ -137,7 +191,7 @@ function computeTeamAffinityBoost(
 export function recommendSports(
   child: SportVector,
   anthro: AnthroContext | null,
-  options: number | RecommendOptions = {},
+  options: number | RecommendOptions = {}
 ): SportMatch[] {
   // Geriye uyumluluk: eski API `recommendSports(child, anthro, 5)` çağrıları
   // için ikinci argümanın number olmasına izin ver.
@@ -146,16 +200,21 @@ export function recommendSports(
   const {
     topN = 5,
     minConfidence = DEFAULT_MIN_CONFIDENCE,
+    characterFactors,
     teamAffinity,
   } = opts;
 
   const scored: SportMatch[] = SPORT_PROFILES.map((profile) => {
     const similarity = vectorSimilarity(child, profile);
     const anthroBonus = computeAnthroBonus(profile, anthro);
-    const teamBoost = computeTeamAffinityBoost(profile, teamAffinity);
+    // characterFactors verildiyse 4-faktör similarity (tercih),
+    // yoksa legacy tek-boyutlu teamAffinity fallback'i.
+    const charBoost = characterFactors
+      ? computeCharacterBoost(profile, characterFactors)
+      : computeTeamAffinityBoost(profile, teamAffinity);
     const finalScore = Math.min(
       1,
-      Math.max(0, similarity + anthroBonus + teamBoost),
+      Math.max(0, similarity + anthroBonus + charBoost)
     );
     return {
       sport: profile.sport,
@@ -282,8 +341,7 @@ function normalCdf(z: number): number {
   const t = 1.0 / (1.0 + 0.3275911 * erfArg);
   const erf =
     1 -
-    (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t -
-      0.284496736) *
+    ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) *
       t +
       0.254829592) *
       t *

@@ -13,9 +13,12 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  CHARACTER_FACTOR_KEYS,
+  CHARACTER_FACTOR_LABELS_TR,
   CHARACTER_QUESTIONS,
   LIKERT_LABELS,
   type CharacterAnswers,
+  type CharacterFactor,
   type LikertValue,
 } from '@/lib/character/questions';
 import { scoreCharacter, type CharacterAnalysis } from '@/lib/character/score';
@@ -57,7 +60,7 @@ export function CharacterTest({ onComplete }: Props) {
         }}
       >
         <p
-          className="text-[10px] font-bold uppercase tracking-[0.25em]"
+          className="text-[10px] font-bold tracking-[0.25em] uppercase"
           style={{
             color: 'var(--color-ink-3, rgba(44, 62, 107, 0.6))',
             fontFamily: 'var(--font-display)',
@@ -228,7 +231,7 @@ function QuestionCard({ number, text, value, onChange }: QuestionCardProps) {
                 {opt.value}
               </span>
               <span
-                className="text-[10px] font-bold leading-tight tracking-wider uppercase"
+                className="text-[10px] leading-tight font-bold tracking-wider uppercase"
                 style={{ fontFamily: 'var(--font-display)' }}
               >
                 {opt.label}
@@ -261,7 +264,7 @@ function SubmitConfirmation({ analysis }: { analysis: CharacterAnalysis }) {
       style={{ background: bandColor, borderColor }}
     >
       <p
-        className="text-[10px] font-bold uppercase tracking-[0.25em]"
+        className="text-[10px] font-bold tracking-[0.25em] uppercase"
         style={{
           color: 'rgba(44, 62, 107, 0.6)',
           fontFamily: 'var(--font-display)',
@@ -284,6 +287,77 @@ function SubmitConfirmation({ analysis }: { analysis: CharacterAnalysis }) {
       >
         {analysis.summary}
       </p>
+
+      <div className="mt-5 space-y-3">
+        <p
+          className="text-[10px] font-bold tracking-[0.25em] uppercase"
+          style={{
+            color: 'rgba(44, 62, 107, 0.6)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
+          Alt Faktörler
+        </p>
+        {CHARACTER_FACTOR_KEYS.map((f) => (
+          <FactorBar
+            key={f}
+            label={CHARACTER_FACTOR_LABELS_TR[f]}
+            value={analysis.factors[f]}
+            highlight={
+              f === analysis.topFactor
+                ? 'top'
+                : f === analysis.bottomFactor
+                  ? 'bottom'
+                  : 'none'
+            }
+          />
+        ))}
+      </div>
     </div>
   );
 }
+
+function FactorBar({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: number;
+  highlight: 'top' | 'bottom' | 'none';
+}) {
+  const barColor =
+    highlight === 'top'
+      ? 'var(--field-mint)'
+      : highlight === 'bottom'
+        ? 'var(--mindar-pink)'
+        : 'var(--track-mustard)';
+  return (
+    <div>
+      <div
+        className="flex items-baseline justify-between text-xs"
+        style={{ color: 'var(--form-navy)' }}
+      >
+        <span
+          className="font-bold tracking-wider uppercase"
+          style={{ fontFamily: 'var(--font-display)' }}
+        >
+          {label}
+        </span>
+        <span className="font-mono font-bold">{value}/100</span>
+      </div>
+      <div
+        className="mt-1 h-1.5 w-full overflow-hidden rounded-full"
+        style={{ background: 'rgba(44, 62, 107, 0.12)' }}
+      >
+        <div
+          className="h-full transition-[width] duration-500"
+          style={{ width: `${value}%`, background: barColor }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Reserved for future radar viz */
+type _ReservedFactor = CharacterFactor;

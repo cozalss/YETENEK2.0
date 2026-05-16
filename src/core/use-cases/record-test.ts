@@ -158,9 +158,12 @@ export function recordCharacter(
     ...session,
     character: {
       teamAffinity: analysis.teamAffinity,
+      factors: analysis.factors,
       averageScore: analysis.averageScore,
       band: analysis.band,
       summary: analysis.summary,
+      topFactor: analysis.topFactor,
+      bottomFactor: analysis.bottomFactor,
     },
   };
   return withCompletedTest(next, 'character');
