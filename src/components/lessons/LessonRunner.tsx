@@ -23,8 +23,10 @@ import { CameraStream } from '@/components/camera/CameraStream';
 import { TestStage } from '@/components/tests/shared/TestStage';
 import { InstructionsPanel } from '@/components/tests/shared/InstructionsPanel';
 import { StartCTA } from '@/components/tests/shared/StartCTA';
+import { GuideVideo } from '@/components/tests/shared/GuideVideo';
 import { createValidator } from '@/lib/lessons/validators';
 import { markLessonCompleted } from '@/lib/lessons/store';
+import { getLessonVideoUrl } from '@/lib/lessons/videos';
 import type { SportLesson, ValidatorState, ValidatorRuntime } from '@/lib/lessons/types';
 import type { PoseFrame } from '@/types';
 
@@ -109,6 +111,7 @@ export function LessonRunner({ lesson, nextLessonId, childId }: LessonRunnerProp
   };
 
   const meta = `${DIFFICULTY_LABEL[lesson.difficulty]} · ${validatorMeta(lesson)}`;
+  const videoUrl = getLessonVideoUrl(lesson.id);
 
   return (
     <TestStage
@@ -124,6 +127,15 @@ export function LessonRunner({ lesson, nextLessonId, childId }: LessonRunnerProp
           {phase === 'running' && <RunningOverlay state={state} />}
           {phase === 'success' && <SuccessOverlay name={lesson.name} />}
         </div>
+      }
+      belowCameraSlot={
+        videoUrl ? (
+          <GuideVideo
+            src={videoUrl}
+            label={`${lesson.name} — örnek hareket`}
+            caption="Hareket akışını izle, kameraya geçince aynı sırayla uygula. Video sessiz ve sürekli oynar."
+          />
+        ) : undefined
       }
       sidebar={
         phase === 'success' ? (
