@@ -16,6 +16,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CameraStream } from '@/components/camera/CameraStream';
+import { GuideVideo } from '@/components/tests/shared/GuideVideo';
 import { checkBalanceFraming, type FramingStatus } from '@/lib/pose/framing';
 import {
   type BalanceAnalysis,
@@ -216,65 +217,77 @@ export function BalanceTest({ onComplete, childAgeYears }: Props) {
   }, [childAgeYears, phase]);
 
   return (
-    <div className="space-y-6">
-      <div className="relative">
-        <CameraStream onFrame={handleFrame} width={640} height={480} />
+    <div className="grid gap-6 lg:grid-cols-5">
+      <div className="space-y-4 lg:col-span-3">
+        <div className="relative">
+          <CameraStream onFrame={handleFrame} width={640} height={480} />
 
-        {(phase === 'rightCountdown' || phase === 'leftCountdown') && (
-          <CountdownOverlay
-            countdown={countdown}
-            label={phase === 'rightCountdown' ? 'Sağ Bacak' : 'Sol Bacak'}
-          />
-        )}
+          {(phase === 'rightCountdown' || phase === 'leftCountdown') && (
+            <CountdownOverlay
+              countdown={countdown}
+              label={phase === 'rightCountdown' ? 'Sağ Bacak' : 'Sol Bacak'}
+            />
+          )}
 
-        {phase === 'rightCapture' && (
-          <CaptureBadge
-            label="SAĞ BACAK"
-            remaining={captureRemaining}
-            color="emerald"
-          />
-        )}
+          {phase === 'rightCapture' && (
+            <CaptureBadge
+              label="SAĞ BACAK"
+              remaining={captureRemaining}
+              color="emerald"
+            />
+          )}
 
-        {phase === 'leftCapture' && (
-          <CaptureBadge
-            label="SOL BACAK"
-            remaining={captureRemaining}
-            color="sky"
-          />
-        )}
+          {phase === 'leftCapture' && (
+            <CaptureBadge
+              label="SOL BACAK"
+              remaining={captureRemaining}
+              color="sky"
+            />
+          )}
 
-        {phase === 'switch' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-black/70 text-white">
-            <div className="text-2xl">Sol bacağa geç</div>
-            <div className="mt-3 text-6xl font-bold text-amber-400">
-              {switchRemaining}
+          {phase === 'switch' && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-black/70 text-white">
+              <div className="text-2xl">Sol bacağa geç</div>
+              <div className="mt-3 text-6xl font-bold text-amber-400">
+                {switchRemaining}
+              </div>
             </div>
-          </div>
+          )}
+
+          {phase === 'analyze' && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/60">
+              <div className="text-2xl text-white">Analiz ediliyor…</div>
+            </div>
+          )}
+
+          {(phase === 'idle' ||
+            phase === 'rightCountdown' ||
+            phase === 'leftCountdown' ||
+            phase === 'switch') && <FramingBadge framing={framing} />}
+        </div>
+
+        {phase === 'idle' && (
+          <Instructions
+            onStart={start}
+            canStart={framing.ready}
+            framing={framing}
+          />
         )}
 
-        {phase === 'analyze' && (
-          <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/60">
-            <div className="text-2xl text-white">Analiz ediliyor…</div>
-          </div>
+        {phase === 'result' && result && (
+          <ResultPanel result={result} onRetry={start} />
         )}
-
-        {(phase === 'idle' ||
-          phase === 'rightCountdown' ||
-          phase === 'leftCountdown' ||
-          phase === 'switch') && <FramingBadge framing={framing} />}
       </div>
 
-      {phase === 'idle' && (
-        <Instructions
-          onStart={start}
-          canStart={framing.ready}
-          framing={framing}
-        />
-      )}
-
-      {phase === 'result' && result && (
-        <ResultPanel result={result} onRetry={start} />
-      )}
+      <aside className="lg:col-span-2">
+        <div className="lg:sticky lg:top-6">
+          <GuideVideo
+            src="/videos/tek-bacak-denge-rehber.mp4"
+            label="Tek Bacak Denge — örnek pozisyon"
+            caption="Bir bacak yerden 10 cm yukarda, kollar yanda veya kalçada. Sırt dik, bakış ileride. Videodaki duruşa benzet."
+          />
+        </div>
+      </aside>
     </div>
   );
 }
@@ -282,7 +295,7 @@ export function BalanceTest({ onComplete, childAgeYears }: Props) {
 function FramingBadge({ framing }: { framing: FramingStatus }) {
   return (
     <div
-      className={`absolute left-4 top-4 max-w-xs rounded-full px-4 py-2 text-sm font-medium shadow-lg ${
+      className={`absolute top-4 left-4 max-w-xs rounded-full px-4 py-2 text-sm font-medium shadow-lg ${
         framing.ready
           ? 'bg-emerald-500/90 text-white'
           : 'bg-amber-500/90 text-neutral-950'
@@ -322,7 +335,7 @@ function CaptureBadge({
   const bg = color === 'emerald' ? 'bg-emerald-500/90' : 'bg-sky-500/90';
   return (
     <div
-      className={`absolute right-4 top-4 flex items-center gap-2 rounded-full ${bg} px-4 py-2 text-sm font-semibold text-white shadow-lg`}
+      className={`absolute top-4 right-4 flex items-center gap-2 rounded-full ${bg} px-4 py-2 text-sm font-semibold text-white shadow-lg`}
     >
       <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
       {label} · {remaining}s
@@ -361,7 +374,9 @@ function Instructions({
         style={{ color: 'var(--color-ink-2)' }}
       >
         <li>Kamerayı 1.5m yüksekliğe koy, baştan ayağa görünmelisin.</li>
-        <li>İlk olarak SAĞ bacakta 15 saniye dur, sol ayak yerden 10cm yukarda.</li>
+        <li>
+          İlk olarak SAĞ bacakta 15 saniye dur, sol ayak yerden 10cm yukarda.
+        </li>
         <li>3 saniye dinlenme, sonra SOL bacakta 15 saniye.</li>
         <li>Kollar yanda veya kalçada olabilir, başını öne eğme.</li>
       </ol>
@@ -381,7 +396,7 @@ function Instructions({
         type="button"
         onClick={onStart}
         disabled={!canStart}
-        className="h-12 w-full rounded-full text-base font-black tracking-wide transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        className="h-12 w-full rounded-full text-base font-black tracking-wide transition-transform focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         style={
           canStart
             ? {
@@ -472,7 +487,7 @@ function ResultPanel({
       <button
         type="button"
         onClick={onRetry}
-        className="h-11 rounded-full px-5 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        className="h-11 rounded-full px-5 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         style={{
           background: 'var(--track-mustard)',
           color: 'var(--form-navy)',
@@ -504,7 +519,7 @@ function Metric({
       }}
     >
       <div
-        className="text-[10px] font-bold uppercase tracking-[0.18em]"
+        className="text-[10px] font-bold tracking-[0.18em] uppercase"
         style={{
           color: 'var(--color-ink-3)',
           fontFamily: 'var(--font-display)',

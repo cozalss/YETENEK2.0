@@ -24,6 +24,7 @@ import { TestStage } from '@/components/tests/shared/TestStage';
 import { FramingBadge } from '@/components/tests/shared/FramingBadge';
 import { InstructionsPanel } from '@/components/tests/shared/InstructionsPanel';
 import { StartCTA } from '@/components/tests/shared/StartCTA';
+import { GuideVideo } from '@/components/tests/shared/GuideVideo';
 import {
   type HipSample,
   type JumpAnalysis,
@@ -226,6 +227,13 @@ export function JumpTest({
           )}
         </>
       }
+      belowCameraSlot={
+        <GuideVideo
+          src="/videos/cmj-sicrama-rehber.mp4"
+          label="CMJ Sıçrama — örnek hareket"
+          caption="Dik dur, hızlıca çömel, patlayıcı şekilde zıpla. Videoyu izlerken kendi denemeni yapabilirsin."
+        />
+      }
       sidebar={
         phase === 'result' && result ? (
           <ResultCard
@@ -274,9 +282,7 @@ function CountdownOverlay({
     <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/45 backdrop-blur-[2px]">
       <motion.div
         key={value}
-        initial={
-          reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.6 }
-        }
+        initial={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
         animate={reducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
         transition={{ duration: reducedMotion ? 0.15 : 0.3, ease: 'easeOut' }}
         className="font-display text-[10rem] leading-none font-black text-amber-400 drop-shadow-[0_8px_30px_rgba(251,191,36,0.4)]"
@@ -295,7 +301,7 @@ function CapturePill({
   reducedMotion: boolean;
 }) {
   return (
-    <div className="absolute right-4 top-4 flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-2xl ring-1 ring-red-400/50">
+    <div className="absolute top-4 right-4 flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-2xl ring-1 ring-red-400/50">
       <span
         className={`h-2 w-2 rounded-full bg-white ${reducedMotion ? '' : 'animate-pulse'}`}
       />
@@ -319,7 +325,10 @@ function AnalyzeOverlay() {
 // Sidebar parçaları
 
 function PhaseStatusCard({ phase }: { phase: Phase }) {
-  const messages: Record<Phase, { eyebrow: string; title: string; body: string }> = {
+  const messages: Record<
+    Phase,
+    { eyebrow: string; title: string; body: string }
+  > = {
     idle: { eyebrow: '', title: '', body: '' },
     countdown: {
       eyebrow: 'Sırada',
@@ -418,7 +427,7 @@ function ResultCard({
         <button
           type="button"
           onClick={onRetry}
-          className="mt-5 h-11 rounded-full px-6 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          className="mt-5 h-11 rounded-full px-6 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           style={{
             background: 'var(--track-mustard)',
             color: 'var(--form-navy)',
@@ -498,7 +507,7 @@ function ResultCard({
       <button
         type="button"
         onClick={onRetry}
-        className="mt-6 h-11 w-full rounded-full text-base font-black tracking-wide transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        className="mt-6 h-11 w-full rounded-full text-base font-black tracking-wide transition-transform hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         style={{
           background: 'var(--track-mustard)',
           color: 'var(--form-navy)',
@@ -528,7 +537,7 @@ function Stat({
       style={{ borderColor: 'rgba(44, 62, 107, 0.18)' }}
     >
       <dt
-        className="text-[10px] font-bold uppercase tracking-[0.2em]"
+        className="text-[10px] font-bold tracking-[0.2em] uppercase"
         style={{
           color: 'var(--color-ink-3)',
           fontFamily: 'var(--font-display)',
