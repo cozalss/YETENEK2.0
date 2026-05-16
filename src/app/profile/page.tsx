@@ -71,8 +71,13 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     }
   }
 
-  const displayName =
-    (user.user_metadata?.full_name as string | undefined) ?? user.email ?? '';
+  // Asla ham e-posta gösterme — full_name → displayName → email-localpart sırası.
+  // Demo hesabı için metadata.displayName = 'Demo Veli' set edilmişti; gerçek
+  // sign-up'tan gelen veliler için metadata.full_name dolu olur.
+  const displayName = deriveProfileDisplayName(
+    user.user_metadata,
+    user.email
+  );
 
   return (
     <main
@@ -87,7 +92,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
       <div className="mx-auto max-w-6xl px-6 pt-10 pb-16 md:px-12 md:pt-16">
         <header className="space-y-3">
           <p
-            className="text-xs font-bold uppercase tracking-[0.3em]"
+            className="text-xs font-bold tracking-[0.3em] uppercase"
             style={{ color: 'var(--track-mustard)' }}
           >
             Veli paneli
@@ -105,9 +110,8 @@ export default async function ProfilePage({ searchParams }: PageProps) {
             className="max-w-2xl text-base md:text-lg"
             style={{ color: 'var(--form-navy)', opacity: 0.75 }}
           >
-            Çocuklarını ekle, her birinin yetenek profilini ayrı ayrı
-            oluştur. Her test çocuğa özel kaydedilir, geçmişi takip
-            edebilirsin.
+            Çocuklarını ekle, her birinin yetenek profilini ayrı ayrı oluştur.
+            Her test çocuğa özel kaydedilir, geçmişi takip edebilirsin.
           </p>
         </header>
 
@@ -205,7 +209,7 @@ function ProfileHeader({
           <form action={signOutAction}>
             <button
               type="submit"
-              className="inline-flex items-center gap-2 rounded-full border-2 px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors hover:bg-neutral-50"
+              className="inline-flex items-center gap-2 rounded-full border-2 px-4 py-2 text-xs font-bold tracking-widest uppercase transition-colors hover:bg-neutral-50"
               style={{
                 borderColor: 'var(--form-navy)',
                 color: 'var(--form-navy)',
@@ -287,13 +291,13 @@ function UnauthView() {
           className="mt-3 text-sm"
           style={{ color: 'var(--form-navy)', opacity: 0.7 }}
         >
-          Çocuğunun yetenek profilini oluşturmak için ücretsiz veli hesabı
-          aç. 30 saniye, e-posta yeterli.
+          Çocuğunun yetenek profilini oluşturmak için ücretsiz veli hesabı aç.
+          30 saniye, e-posta yeterli.
         </p>
         <div className="mt-6 flex flex-col gap-2">
           <Link
             href="/auth/sign-up?next=/profile"
-            className="rounded-full px-5 py-2.5 text-sm font-bold uppercase tracking-widest"
+            className="rounded-full px-5 py-2.5 text-sm font-bold tracking-widest uppercase"
             style={{
               background: 'var(--track-mustard)',
               color: 'var(--form-navy)',
@@ -304,7 +308,7 @@ function UnauthView() {
           </Link>
           <Link
             href="/auth/sign-in?next=/profile"
-            className="rounded-full border-2 px-5 py-2 text-xs font-bold uppercase tracking-widest"
+            className="rounded-full border-2 px-5 py-2 text-xs font-bold tracking-widest uppercase"
             style={{
               borderColor: 'var(--form-navy)',
               color: 'var(--form-navy)',
