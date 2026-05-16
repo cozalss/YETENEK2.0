@@ -19,6 +19,26 @@ interface PageProps {
   searchParams: Promise<{ error?: string; info?: string }>;
 }
 
+function deriveProfileDisplayName(
+  metadata: Record<string, unknown> | null | undefined,
+  email: string | null | undefined
+): string {
+  if (metadata) {
+    const fullName = metadata['full_name'];
+    if (typeof fullName === 'string' && fullName.trim().length > 0) {
+      return fullName.trim();
+    }
+    const displayName = metadata['displayName'];
+    if (typeof displayName === 'string' && displayName.trim().length > 0) {
+      return displayName.trim();
+    }
+  }
+  if (email && email.includes('@')) {
+    return email.split('@')[0];
+  }
+  return 'veli';
+}
+
 export default async function ProfilePage({ searchParams }: PageProps) {
   const { error, info } = await searchParams;
 
