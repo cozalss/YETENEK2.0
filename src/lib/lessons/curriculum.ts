@@ -41,7 +41,7 @@ export const CURRICULUM: readonly SportCurriculum[] = [
         sportSlug: 'taekwondo',
         order: 2,
         name: 'Ön Tekme (Ap Chagi)',
-        description: 'Diz yukarı, ayak ileri — 3 tekrarlı ön tekme dizisi.',
+        description: 'Diz yukarı çek, ayağı öne savur — 3 tekrarlı ön tekme dizisi.',
         difficulty: 'intermediate',
         instructions: [
           'Hazır duruşta başla.',
@@ -49,11 +49,14 @@ export const CURRICULUM: readonly SportCurriculum[] = [
           'Ayağı düz öne uzat ve indir.',
           'Toplam 3 tekme yap.',
         ],
+        // Ankle UP yerine knee UP — 2D pose'da ön tekme bileği önce ÖNE
+        // (z-axis, görünmez) savurur; dikey trigger için diz kaldırma
+        // daha güvenilir (futbol-2 ile aynı pattern).
         validator: {
           type: 'reach',
-          landmark: 'rightAnkle',
+          landmark: 'rightKnee',
           direction: 'up',
-          threshold: 0.18,
+          threshold: 0.15,
           reps: 3,
         },
       },
@@ -88,19 +91,22 @@ export const CURRICULUM: readonly SportCurriculum[] = [
         sportSlug: 'boks',
         order: 2,
         name: 'Direkt Yumruk (Jab)',
-        description: 'Sol elden hızlı, düz yumruk — 3 tekrar.',
+        description: 'Sol bileği öne ve hafif yukarı uzat — 3 tekrarlı jab.',
         difficulty: 'intermediate',
         instructions: [
           'Guard pozisyonunda başla.',
-          'Sol yumruğu öne hızla uzat.',
+          'Sol yumruğu öne ve hafif yukarı doğru hızla uzat.',
           'Yumruğu geri çek, guard\'a dön.',
           'Toplam 3 jab at.',
         ],
+        // 2D pose'da "öne uzanma" z-axis (görünmez); jab atılırken bilek
+        // hafif yukarı bileşen üretir. Threshold düşük tutulur (0.10) ki
+        // demo'da kameraya yandan duran çocuğun da sayımı tutsun.
         validator: {
           type: 'reach',
           landmark: 'leftWrist',
           direction: 'up',
-          threshold: 0.15,
+          threshold: 0.1,
           reps: 3,
         },
       },
@@ -373,14 +379,16 @@ export const CURRICULUM: readonly SportCurriculum[] = [
         sportSlug: 'atletizm',
         order: 2,
         name: 'Diz Çekme',
-        description: 'Sprint diz çekme drili — dizini bele kadar yukarı çek, 3 tekrar.',
+        description: 'Sprint diz çekme drili — sağ dizi bel hizasına 3 kez çek.',
         difficulty: 'intermediate',
         instructions: [
           'Dik dur.',
           'Sağ dizini bel hizasına yukarı çek.',
-          'İndir, sol dize geç.',
-          'Toplam 3 diz çekme.',
+          'İndir, başlangıca dön.',
+          'Toplam 3 sağ diz çekme.',
         ],
+        // Validator tek bacaklı (rightKnee); "sol dize geç" talimatı
+        // çift sayım/kafa karışıklığı yaratır — sağ tarafa kilitlendi.
         validator: {
           type: 'reach',
           landmark: 'rightKnee',
