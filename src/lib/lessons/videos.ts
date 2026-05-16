@@ -1,12 +1,12 @@
 /**
  * Ders → rehber video URL eşlemesi.
  *
- * Tüm videolar `public/videos/lessons/${lessonId}.mp4` formatında;
- * fakat 1 ders eksik: `badminton-1` videosu yok (kullanıcı not).
- * Bu fonksiyon eksikse `null` döner ve UI rehber paneli render etmez.
+ * Tüm videolar `public/videos/lessons/${lessonId}.mp4` formatında.
+ * Şu an 24/24 ders kapsanmış durumda — `MISSING_LESSON_VIDEOS` boş.
+ * Eksik bir ders gelirse buraya eklenir, UI rehber paneli render etmez.
  */
 
-const MISSING_LESSON_VIDEOS = new Set<string>(['badminton-1']);
+const MISSING_LESSON_VIDEOS = new Set<string>();
 
 export function getLessonVideoUrl(lessonId: string): string | null {
   if (MISSING_LESSON_VIDEOS.has(lessonId)) return null;
