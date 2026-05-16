@@ -27,7 +27,11 @@ import { GuideVideo } from '@/components/tests/shared/GuideVideo';
 import { createValidator } from '@/lib/lessons/validators';
 import { markLessonCompleted } from '@/lib/lessons/store';
 import { getLessonVideoUrl } from '@/lib/lessons/videos';
-import type { SportLesson, ValidatorState, ValidatorRuntime } from '@/lib/lessons/types';
+import type {
+  SportLesson,
+  ValidatorState,
+  ValidatorRuntime,
+} from '@/lib/lessons/types';
 import type { PoseFrame } from '@/types';
 
 type Phase = 'idle' | 'running' | 'success';
@@ -46,7 +50,11 @@ const DIFFICULTY_LABEL: Record<SportLesson['difficulty'], string> = {
   advanced: 'İleri',
 };
 
-export function LessonRunner({ lesson, nextLessonId, childId }: LessonRunnerProps) {
+export function LessonRunner({
+  lesson,
+  nextLessonId,
+  childId,
+}: LessonRunnerProps) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [state, setState] = useState<ValidatorState>({
     status: 'pending',
@@ -65,29 +73,32 @@ export function LessonRunner({ lesson, nextLessonId, childId }: LessonRunnerProp
     phaseRef.current = phase;
   }, [phase]);
 
-  const handleFrame = useCallback((frame: PoseFrame | null) => {
-    if (phaseRef.current !== 'running') return;
-    if (!frame) return;
-    const validator = validatorRef.current;
-    if (!validator) return;
-    const next = validator.observe(frame);
-    setState(next);
-    if (next.status === 'completed' && phaseRef.current === 'running') {
-      setPhase('success');
-      // Persist sadece bir kez (frame loop birkaç frame daha completed dönebilir).
-      // childId yoksa anonim/demo modu — sadece UI başarı animasyonu, kayıt yok.
-      if (!completionPersistedRef.current && childId) {
-        completionPersistedRef.current = true;
-        markLessonCompleted(childId, {
-          lessonId: lesson.id,
-          sportSlug: lesson.sportSlug,
-          completedAt: Date.now(),
-          durationMs: performance.now() - startedAtRef.current,
-          reps: next.reps,
-        });
+  const handleFrame = useCallback(
+    (frame: PoseFrame | null) => {
+      if (phaseRef.current !== 'running') return;
+      if (!frame) return;
+      const validator = validatorRef.current;
+      if (!validator) return;
+      const next = validator.observe(frame);
+      setState(next);
+      if (next.status === 'completed' && phaseRef.current === 'running') {
+        setPhase('success');
+        // Persist sadece bir kez (frame loop birkaç frame daha completed dönebilir).
+        // childId yoksa anonim/demo modu — sadece UI başarı animasyonu, kayıt yok.
+        if (!completionPersistedRef.current && childId) {
+          completionPersistedRef.current = true;
+          markLessonCompleted(childId, {
+            lessonId: lesson.id,
+            sportSlug: lesson.sportSlug,
+            completedAt: Date.now(),
+            durationMs: performance.now() - startedAtRef.current,
+            reps: next.reps,
+          });
+        }
       }
-    }
-  }, [lesson.id, lesson.sportSlug, childId]);
+    },
+    [lesson.id, lesson.sportSlug, childId]
+  );
 
   const start = () => {
     validatorRef.current = createValidator(lesson.validator);
@@ -117,12 +128,16 @@ export function LessonRunner({ lesson, nextLessonId, childId }: LessonRunnerProp
     <TestStage
       cameraSlot={
         <div className="relative">
+          {/* showOverlay her zaman true — idle'da da iskelet görünsün ki
+              çocuk "pose detection çalışıyor mu?" sorusuna anında cevap
+              alsın. Daha önce `phase === 'running'`'a bağlıydı; idle'da
+              skeleton yokken kullanıcı detection'ı kopuk sanıyordu. */}
           <CameraStream
             onFrame={handleFrame}
             width={640}
             height={480}
             filterPreset="sport"
-            showOverlay={phase === 'running'}
+            showOverlay
           />
           {phase === 'running' && <RunningOverlay state={state} />}
           {phase === 'success' && <SuccessOverlay name={lesson.name} />}
@@ -157,11 +172,7 @@ export function LessonRunner({ lesson, nextLessonId, childId }: LessonRunnerProp
               phase === 'running' ? (
                 <RunningPanel state={state} onCancel={retry} />
               ) : (
-                <StartCTA
-                  canStart
-                  onStart={start}
-                  readyLabel="Dersi Başlat"
-                />
+                <StartCTA canStart onStart={start} readyLabel="Dersi Başlat" />
               )
             }
             footer={
@@ -335,7 +346,10 @@ function SuccessPanel({
           className="grid h-12 w-12 place-items-center rounded-full"
           style={{ background: 'var(--field-mint)' }}
         >
-          <CheckCircle2 className="h-7 w-7" style={{ color: 'var(--deep-navy)' }} />
+          <CheckCircle2
+            className="h-7 w-7"
+            style={{ color: 'var(--deep-navy)' }}
+          />
         </span>
         <div>
           <p

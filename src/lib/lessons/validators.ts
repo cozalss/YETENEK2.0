@@ -37,8 +37,17 @@ const LANDMARK_INDEX: Record<TrackableLandmark, number> = {
   nose: POSE_LANDMARKS.NOSE,
 };
 
-const DEFAULT_STATIC_VARIANCE = 0.0008;
+// 0.0008 → 0.003: gerçek çocuklar postüral sallanma sergiler (±5-8 piksel,
+// 480px frame'de ~0.015 normalize SD). Variance bunun karesi → 0.0002 civarı
+// PER axis, combined ~0.0004. 0.0008 eşiği marjinal, kasıtsız sallanmayı bile
+// reddediyordu → "Daha sabit dur" mesajı sürekli, 3 sn hold timer hiç başlamıyor.
+// 0.003 daha forgiving — gerçek instabilite (>10cm sway) hâlâ tespit edilir.
+const DEFAULT_STATIC_VARIANCE = 0.003;
 const DEFAULT_VERTICAL_DELTA = 0.08;
+// Variance window: tüm requiredFrames yerine son 30 frame (~1 sn). Aksi takdirde
+// "warmup" sallanması 3 saniye boyunca buffer'da kalıyor, kullanıcı kımıldamasa
+// bile geç stabilite oluyor.
+const STATIC_VARIANCE_WINDOW = 30;
 
 function pending(targetReps: number, message: string): ValidatorState {
   return { status: 'pending', progress: 0, reps: 0, targetReps, message };
@@ -112,12 +121,14 @@ function createStaticPoseValidator(
 
     xBuffer.push(anchor.x);
     yBuffer.push(anchor.y);
-    if (xBuffer.length > requiredFrames) {
-      xBuffer = xBuffer.slice(-requiredFrames);
-      yBuffer = yBuffer.slice(-requiredFrames);
+    // Window stability: son 30 frame'lik kayan pencere. requiredFrames büyük
+    // olsa bile (örn. 90), variance sadece son 1 sn'ye bakar.
+    if (xBuffer.length > STATIC_VARIANCE_WINDOW) {
+      xBuffer = xBuffer.slice(-STATIC_VARIANCE_WINDOW);
+      yBuffer = yBuffer.slice(-STATIC_VARIANCE_WINDOW);
     }
 
-    if (xBuffer.length < Math.min(10, requiredFrames)) {
+    if (xBuffer.length < Math.min(10, STATIC_VARIANCE_WINDOW)) {
       currentState = inProgress(
         xBuffer.length / requiredFrames,
         0,
