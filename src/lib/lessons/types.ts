@@ -28,6 +28,22 @@ export type Direction = 'up' | 'down' | 'left' | 'right';
  * Discriminated union — her ders config bir validator type seçer.
  * Yeni ders eklemek için: yeni variant ekle + validators.ts'de runtime yaz.
  */
+/**
+ * staticPose validator'ının opsiyonel poz kontrolü. Sadece "sabit dur"
+ * yetmez — sporun spesifik duruşunda olmalı. Aksi takdirde çocuk
+ * doğal duruşunda kımıldamadan dersi bitirebiliyor.
+ *
+ *   wristsAboveShoulders → Yüzme Streamline (eller başın üstünde)
+ *   wristsAtFaceLevel    → Boks Guard (yumruklar yanak hizasında)
+ *   kneesBent            → Hazır duruş varyantları (dizler bükülü)
+ *   asymmetricStance     → Sprint Start (bir ayak önde, bir arkada)
+ */
+export type PostureCheck =
+  | 'wristsAboveShoulders'
+  | 'wristsAtFaceLevel'
+  | 'kneesBent'
+  | 'asymmetricStance';
+
 export type ValidatorConfig =
   | {
       /** Belirli bir pozda N ms sabit dur (postür stabilitesi). */
@@ -36,8 +52,11 @@ export type ValidatorConfig =
       holdMs: number;
       /** Hangi vücut bölgesinin varyansına bakılacak. */
       subject: 'fullBody' | 'upperBody' | 'lowerBody';
-      /** Maks. izin verilen varyans (0-1 normalize unit²). Default 0.0008. */
+      /** Maks. izin verilen varyans (0-1 normalize unit²). Default 0.0015. */
       maxVariance?: number;
+      /** Sporun spesifik duruşunu doğrulayan pre-check. Geçmedikçe
+       *  stability sayımı başlamaz — sadece dik durarak ders geçilmesin. */
+      posture?: PostureCheck;
     }
   | {
       /** Bir landmark'in belirli yönde ve mesafede uzanması (örn. tekme, yumruk). */

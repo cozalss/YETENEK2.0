@@ -21,6 +21,7 @@ import {
 
 import type {
   Direction,
+  PostureCheck,
   TrackableLandmark,
   ValidatorConfig,
   ValidatorRuntime,
@@ -37,16 +38,14 @@ const LANDMARK_INDEX: Record<TrackableLandmark, number> = {
   nose: POSE_LANDMARKS.NOSE,
 };
 
-// 0.0008 → 0.003: gerçek çocuklar postüral sallanma sergiler (±5-8 piksel,
-// 480px frame'de ~0.015 normalize SD). Variance bunun karesi → 0.0002 civarı
-// PER axis, combined ~0.0004. 0.0008 eşiği marjinal, kasıtsız sallanmayı bile
-// reddediyordu → "Daha sabit dur" mesajı sürekli, 3 sn hold timer hiç başlamıyor.
-// 0.003 daha forgiving — gerçek instabilite (>10cm sway) hâlâ tespit edilir.
-const DEFAULT_STATIC_VARIANCE = 0.003;
+// 0.0015 — orta sıkılık. 0.0008 (orijinal) gerçek çocuk sallanmasını
+// reddediyordu; 0.003 (sonra denedik) o kadar gevşekti ki sadece dik durmak
+// staticPose dersleri geçiriyordu. 0.0015 makul: ±5 piksel noise tolere
+// edilir, ±10cm+ gerçek instabilite hâlâ tespit edilir.
+const DEFAULT_STATIC_VARIANCE = 0.0015;
 const DEFAULT_VERTICAL_DELTA = 0.08;
-// Variance window: tüm requiredFrames yerine son 30 frame (~1 sn). Aksi takdirde
-// "warmup" sallanması 3 saniye boyunca buffer'da kalıyor, kullanıcı kımıldamasa
-// bile geç stabilite oluyor.
+// Variance penceresi son 30 frame (~1 sn) — buffer'daki ısınma hareketleri
+// geç stabilite oluşturmasın diye.
 const STATIC_VARIANCE_WINDOW = 30;
 
 function pending(targetReps: number, message: string): ValidatorState {
@@ -85,6 +84,153 @@ function clamp01(n: number): number {
 }
 
 // ============================================================
+// Posture pre-checks — staticPose için sporun spesifik duruşu
+// ============================================================
+
+interface PostureResult {
+  ok: boolean;
+  /** UI'ya yansıtılan ipucu — pose hatalıysa neye bakacağını söyle. */
+  hint: string;
+}
+
+function checkPosture(frame: PoseFrame, posture: PostureCheck): PostureResult {
+  const lm = frame.landmarks;
+  const minVis = 0.4;
+  const visible = (i: number) =>
+    lm[i] && (lm[i].visibility ?? 1) >= minVis;
+
+  switch (posture) {
+    case 'wristsAboveShoulders': {
+      // Yüzme Streamline — her iki bilek omuzdan YUKARIDA (image coords:
+      // y küçük = yukarı). Bilekler tepeye yakın, omuzlar daha aşağıda.
+      if (
+        !visible(POSE_LANDMARKS.LEFT_WRIST) ||
+        !visible(POSE_LANDMARKS.RIGHT_WRIST) ||
+        !visible(POSE_LANDMARKS.LEFT_SHOULDER) ||
+        !visible(POSE_LANDMARKS.RIGHT_SHOULDER)
+      ) {
+        return { ok: false, hint: 'Kollarını kameraya göster.' };
+      }
+      const leftWristY = lm[POSE_LANDMARKS.LEFT_WRIST].y;
+      const rightWristY = lm[POSE_LANDMARKS.RIGHT_WRIST].y;
+      const leftShoulderY = lm[POSE_LANDMARKS.LEFT_SHOULDER].y;
+      const rightShoulderY = lm[POSE_LANDMARKS.RIGHT_SHOULDER].y;
+      // Her bilek, ilgili omuzdan en az 0.05 daha yukarıda olmalı.
+      if (
+        leftWristY < leftShoulderY - 0.05 &&
+        rightWristY < rightShoulderY - 0.05
+      ) {
+        return { ok: true, hint: 'Streamline pozisyonundasın.' };
+      }
+      return {
+        ok: false,
+        hint: 'Kolları başının üstüne uzat — eller omuz üstünde olmalı.',
+      };
+    }
+
+    case 'wristsAtFaceLevel': {
+      // Boks Guard — yumruklar yanak hizasında. Her bilek omuz hizası
+      // veya hafif yukarısında (face seviyesi), aşağıda değil.
+      if (
+        !visible(POSE_LANDMARKS.LEFT_WRIST) ||
+        !visible(POSE_LANDMARKS.RIGHT_WRIST) ||
+        !visible(POSE_LANDMARKS.LEFT_SHOULDER) ||
+        !visible(POSE_LANDMARKS.RIGHT_SHOULDER)
+      ) {
+        return { ok: false, hint: 'Kollarını kameraya göster.' };
+      }
+      const wristY =
+        (lm[POSE_LANDMARKS.LEFT_WRIST].y +
+          lm[POSE_LANDMARKS.RIGHT_WRIST].y) /
+        2;
+      const shoulderY =
+        (lm[POSE_LANDMARKS.LEFT_SHOULDER].y +
+          lm[POSE_LANDMARKS.RIGHT_SHOULDER].y) /
+        2;
+      // Bilekler omuzun ~5cm aşağısı ile üstü arası (yanak hizası).
+      if (wristY <= shoulderY + 0.07) {
+        return { ok: true, hint: 'Guard pozisyonundasın.' };
+      }
+      return {
+        ok: false,
+        hint: 'Yumruklarını yanak hizasına kaldır — eller yukarıda olmalı.',
+      };
+    }
+
+    case 'kneesBent': {
+      // Hazır duruş varyantları — dizler bükülü. Hip-knee-ankle Y oranı:
+      // dik duruşta hip ≈ ankle - 0.5; bükülü duruşta hip ankle'a yakın
+      // (knee'nin daha aşağısına yakın). Diz Y'sinin hip ve ankle arasında
+      // 35-65% bandında olması doğal squat aralığı.
+      if (
+        !visible(POSE_LANDMARKS.LEFT_HIP) ||
+        !visible(POSE_LANDMARKS.RIGHT_HIP) ||
+        !visible(POSE_LANDMARKS.LEFT_KNEE) ||
+        !visible(POSE_LANDMARKS.RIGHT_KNEE) ||
+        !visible(POSE_LANDMARKS.LEFT_ANKLE) ||
+        !visible(POSE_LANDMARKS.RIGHT_ANKLE)
+      ) {
+        return { ok: false, hint: 'Tüm vücudunun göründüğünden emin ol.' };
+      }
+      const hipY =
+        (lm[POSE_LANDMARKS.LEFT_HIP].y + lm[POSE_LANDMARKS.RIGHT_HIP].y) / 2;
+      const kneeY =
+        (lm[POSE_LANDMARKS.LEFT_KNEE].y +
+          lm[POSE_LANDMARKS.RIGHT_KNEE].y) /
+        2;
+      const ankleY =
+        (lm[POSE_LANDMARKS.LEFT_ANKLE].y +
+          lm[POSE_LANDMARKS.RIGHT_ANKLE].y) /
+        2;
+      const total = ankleY - hipY;
+      if (total <= 0.1) {
+        // Vücut kameraya çok dik / çok yakın — pose ölçeği bozuk
+        return { ok: false, hint: 'Biraz geri çekil, tüm vücudun görünsün.' };
+      }
+      const kneeNorm = (kneeY - hipY) / total; // 0=hip seviyesi, 1=ankle
+      // Dik duruşta knee ankle'a yakın (kneeNorm ~0.55-0.65). Bükülü olunca
+      // hip aşağı gelir, knee bunun ortasında kalır → kneeNorm 0.40-0.55.
+      // Eşik: < 0.55 → bükülü kabul et.
+      if (kneeNorm < 0.55) {
+        return { ok: true, hint: 'Dizler bükülü — güzel.' };
+      }
+      return {
+        ok: false,
+        hint: 'Dizlerini biraz büküp hafif çömel — hazır pozisyon al.',
+      };
+    }
+
+    case 'asymmetricStance': {
+      // Sprint Start — ayaklar asimetrik (biri önde, biri arkada).
+      // 2D pose'da "öne/arka" z-axis (görünmez); ama yan dururken ayakların
+      // X-arası mesafe genişler. Front-facing'de de bir ayak diğerinden
+      // daha aşağıda (kameraya yakın) görünür. Ankle X arasındaki delta
+      // yeterli ölçü — yan durunca ankleX farkı büyük olur.
+      if (
+        !visible(POSE_LANDMARKS.LEFT_ANKLE) ||
+        !visible(POSE_LANDMARKS.RIGHT_ANKLE)
+      ) {
+        return { ok: false, hint: 'Ayaklarının kameraya göründüğünden emin ol.' };
+      }
+      const dx = Math.abs(
+        lm[POSE_LANDMARKS.LEFT_ANKLE].x - lm[POSE_LANDMARKS.RIGHT_ANKLE].x,
+      );
+      const dy = Math.abs(
+        lm[POSE_LANDMARKS.LEFT_ANKLE].y - lm[POSE_LANDMARKS.RIGHT_ANKLE].y,
+      );
+      // dx > 0.15 (yan duruş) VEYA dy > 0.05 (front'tan biri önde) → asimetrik.
+      if (dx > 0.15 || dy > 0.05) {
+        return { ok: true, hint: 'Sprint start pozisyonundasın.' };
+      }
+      return {
+        ok: false,
+        hint: 'Bir ayağını öne, diğerini arkaya al — asimetrik duruş.',
+      };
+    }
+  }
+}
+
+// ============================================================
 // 1. Static Pose Validator — N saniye sabit dur
 // ============================================================
 
@@ -117,6 +263,20 @@ function createStaticPoseValidator(
     if (!anchor) {
       currentState = pending(1, 'Tüm vücudunun göründüğünden emin ol.');
       return currentState;
+    }
+
+    // Posture pre-check: spesifik duruşa gir, yoksa stability sayma başlamaz.
+    // Bu sayede çocuk doğal duruşta sadece "sabit kalarak" dersi geçemez.
+    if (config.posture) {
+      const post = checkPosture(frame, config.posture);
+      if (!post.ok) {
+        // Posture kötü → buffer sıfırla, stability timer reset.
+        xBuffer = [];
+        yBuffer = [];
+        stableStartedAt = null;
+        currentState = inProgress(0, 0, 1, post.hint);
+        return currentState;
+      }
     }
 
     xBuffer.push(anchor.x);

@@ -26,7 +26,8 @@ export const CURRICULUM: readonly SportCurriculum[] = [
         sportSlug: 'taekwondo',
         order: 1,
         name: 'Hazır Duruş (Joonbi)',
-        description: 'Taekwondo seansının başlangıç duruşu — odaklan, dengeli dur.',
+        description:
+          'Taekwondo seansının başlangıç duruşu — odaklan, dengeli dur.',
         difficulty: 'beginner',
         instructions: [
           'Ayakların omuz genişliğinde, paralel dur.',
@@ -41,7 +42,8 @@ export const CURRICULUM: readonly SportCurriculum[] = [
         sportSlug: 'taekwondo',
         order: 2,
         name: 'Ön Tekme (Ap Chagi)',
-        description: 'Diz yukarı çek, ayağı öne savur — 3 tekrarlı ön tekme dizisi.',
+        description:
+          'Diz yukarı çek, ayağı öne savur — 3 tekrarlı ön tekme dizisi.',
         difficulty: 'intermediate',
         instructions: [
           'Hazır duruşta başla.',
@@ -84,7 +86,12 @@ export const CURRICULUM: readonly SportCurriculum[] = [
           'Çene aşağıda, gözler ileride.',
           '3 saniye sabit dur.',
         ],
-        validator: { type: 'staticPose', holdMs: 3000, subject: 'upperBody' },
+        validator: {
+          type: 'staticPose',
+          holdMs: 3000,
+          subject: 'upperBody',
+          posture: 'wristsAtFaceLevel',
+        },
       },
       {
         id: 'boks-2',
@@ -96,7 +103,7 @@ export const CURRICULUM: readonly SportCurriculum[] = [
         instructions: [
           'Guard pozisyonunda başla.',
           'Sol yumruğu öne ve hafif yukarı doğru hızla uzat.',
-          'Yumruğu geri çek, guard\'a dön.',
+          "Yumruğu geri çek, guard'a dön.",
           'Toplam 3 jab at.',
         ],
         // 2D pose'da "öne uzanma" z-axis (görünmez); jab atılırken bilek
@@ -126,7 +133,8 @@ export const CURRICULUM: readonly SportCurriculum[] = [
         sportSlug: 'voleybol',
         order: 1,
         name: 'Hazır Duruş',
-        description: 'Servis karşılama pozisyonu — bacaklar bükülü, eller önde.',
+        description:
+          'Servis karşılama pozisyonu — bacaklar bükülü, eller önde.',
         difficulty: 'beginner',
         instructions: [
           'Ayaklar omuz genişliğinde, hafif öne eğil.',
@@ -134,7 +142,12 @@ export const CURRICULUM: readonly SportCurriculum[] = [
           'Eller önde, parmak uçları birleşik.',
           '3 saniye sabit dur.',
         ],
-        validator: { type: 'staticPose', holdMs: 3000, subject: 'fullBody' },
+        validator: {
+          type: 'staticPose',
+          holdMs: 3000,
+          subject: 'fullBody',
+          posture: 'kneesBent',
+        },
       },
       {
         id: 'voleybol-2',
@@ -167,7 +180,8 @@ export const CURRICULUM: readonly SportCurriculum[] = [
         sportSlug: 'basketbol',
         order: 1,
         name: 'Triple Threat',
-        description: 'Hücum öncesi üçlü tehdit pozisyonu — alt vücut sabit 3 sn, dengeli ve hazır.',
+        description:
+          'Hücum öncesi üçlü tehdit pozisyonu — alt vücut sabit 3 sn, dengeli ve hazır.',
         difficulty: 'beginner',
         instructions: [
           'Ayaklar omuz genişliğinde.',
@@ -175,7 +189,12 @@ export const CURRICULUM: readonly SportCurriculum[] = [
           'Eller göğüs hizasında — top elinde gibi.',
           'Alt vücudu sallanmadan 3 saniye sabit tut.',
         ],
-        validator: { type: 'staticPose', holdMs: 3000, subject: 'lowerBody' },
+        validator: {
+          type: 'staticPose',
+          holdMs: 3000,
+          subject: 'lowerBody',
+          posture: 'kneesBent',
+        },
       },
       {
         id: 'basketbol-2',
@@ -208,7 +227,8 @@ export const CURRICULUM: readonly SportCurriculum[] = [
         sportSlug: 'tenis',
         order: 1,
         name: 'Split Step',
-        description: 'Topa tepki anı mini sıçraması — ayaklar yerden ~5 cm, 3 tekrar.',
+        description:
+          'Topa tepki anı mini sıçraması — ayaklar yerden ~5 cm, 3 tekrar.',
         difficulty: 'beginner',
         instructions: [
           'Ready pozisyonunda başla; ayaklar omuz genişliğinde.',
@@ -260,7 +280,8 @@ export const CURRICULUM: readonly SportCurriculum[] = [
         sportSlug: 'yuzme',
         order: 1,
         name: 'Streamline',
-        description: 'Yüzme öncesi gergin hidrodinamik duruş — kollar yukarı birleşik, üst vücut 2 sn sabit.',
+        description:
+          'Yüzme öncesi gergin hidrodinamik duruş — kollar yukarı birleşik, üst vücut 2 sn sabit.',
         difficulty: 'beginner',
         instructions: [
           'Dik dur, ayaklar bitişik.',
@@ -268,14 +289,20 @@ export const CURRICULUM: readonly SportCurriculum[] = [
           'Kulaklarını kollarına yapıştır, sırtın düz.',
           'Üst vücudunu sallanmadan 2 saniye sabit tut.',
         ],
-        validator: { type: 'staticPose', holdMs: 2000, subject: 'upperBody' },
+        validator: {
+          type: 'staticPose',
+          holdMs: 2000,
+          subject: 'upperBody',
+          posture: 'wristsAboveShoulders',
+        },
       },
       {
         id: 'yuzme-2',
         sportSlug: 'yuzme',
         order: 2,
         name: 'Kuru Kulaç',
-        description: 'Sağ bilek yukarı uzansın — serbest stil kulaç simülasyonu, 3 tekrar.',
+        description:
+          'Sağ bilek yukarı uzansın — serbest stil kulaç simülasyonu, 3 tekrar.',
         difficulty: 'intermediate',
         instructions: [
           'Dik dur, kollar yanda.',
@@ -307,7 +334,8 @@ export const CURRICULUM: readonly SportCurriculum[] = [
         sportSlug: 'futbol',
         order: 1,
         name: 'Pas',
-        description: 'Sağ ayağın iç yanı ile yana pas — 3 tekrarlı temel pas hareketi.',
+        description:
+          'Sağ ayağın iç yanı ile yana pas — 3 tekrarlı temel pas hareketi.',
         difficulty: 'beginner',
         instructions: [
           'Hazır duruşta başla, ağırlık sol ayakta.',
@@ -332,7 +360,8 @@ export const CURRICULUM: readonly SportCurriculum[] = [
         // ileri savrulur. Diz kaldırma reach validator için robust trigger;
         // ankle UP yanlış sinyaller verir (şutta ankle önce GERİ gider).
         name: 'Diz Çek',
-        description: 'Sağ dizi bel hizasına kaldır — şut/sprint biyomekaniğinin başlangıç fazı, 3 tekrar.',
+        description:
+          'Sağ dizi bel hizasına kaldır — şut/sprint biyomekaniğinin başlangıç fazı, 3 tekrar.',
         difficulty: 'intermediate',
         instructions: [
           'Sol ayak yere basılı, sağ ayak hazır.',
@@ -372,14 +401,20 @@ export const CURRICULUM: readonly SportCurriculum[] = [
           'Kollar hareket pozisyonunda (biri önde, biri arkada).',
           '3 saniye sabit dur.',
         ],
-        validator: { type: 'staticPose', holdMs: 3000, subject: 'fullBody' },
+        validator: {
+          type: 'staticPose',
+          holdMs: 3000,
+          subject: 'fullBody',
+          posture: 'asymmetricStance',
+        },
       },
       {
         id: 'atletizm-2',
         sportSlug: 'atletizm',
         order: 2,
         name: 'Diz Çekme',
-        description: 'Sprint diz çekme drili — sağ dizi bel hizasına 3 kez çek.',
+        description:
+          'Sprint diz çekme drili — sağ dizi bel hizasına 3 kez çek.',
         difficulty: 'intermediate',
         instructions: [
           'Dik dur.',
@@ -413,11 +448,12 @@ export const CURRICULUM: readonly SportCurriculum[] = [
         sportSlug: 'cimnastik',
         order: 1,
         name: 'Squat',
-        description: 'Kontrollü çömel-kalk — cimnastik bacak gücünün temeli, 3 tekrar.',
+        description:
+          'Kontrollü çömel-kalk — cimnastik bacak gücünün temeli, 3 tekrar.',
         difficulty: 'beginner',
         instructions: [
           'Dik dur, ayaklar omuz genişliğinde.',
-          'Kalçayı geri ittirerek dizleri 90°\'ye kadar bük.',
+          "Kalçayı geri ittirerek dizleri 90°'ye kadar bük.",
           'Patlayıcı şekilde başlangıca kalk.',
           'Toplam 3 squat.',
         ],
@@ -503,7 +539,12 @@ export const CURRICULUM: readonly SportCurriculum[] = [
           'Raket önde, bel hizasında.',
           '3 saniye sabit dur.',
         ],
-        validator: { type: 'staticPose', holdMs: 3000, subject: 'fullBody' },
+        validator: {
+          type: 'staticPose',
+          holdMs: 3000,
+          subject: 'fullBody',
+          posture: 'kneesBent',
+        },
       },
       {
         id: 'masa-tenisi-2',
@@ -542,7 +583,8 @@ export const CURRICULUM: readonly SportCurriculum[] = [
         sportSlug: 'badminton',
         order: 1,
         name: 'Hazır Duruş',
-        description: 'Servis karşılama — dengeli, yüksek bir reaksiyon pozisyonu.',
+        description:
+          'Servis karşılama — dengeli, yüksek bir reaksiyon pozisyonu.',
         difficulty: 'beginner',
         instructions: [
           'Ayaklar omuz genişliğinde.',
@@ -550,14 +592,20 @@ export const CURRICULUM: readonly SportCurriculum[] = [
           'Raket önde, gözler ileride.',
           '3 saniye sabit dur.',
         ],
-        validator: { type: 'staticPose', holdMs: 3000, subject: 'fullBody' },
+        validator: {
+          type: 'staticPose',
+          holdMs: 3000,
+          subject: 'fullBody',
+          posture: 'kneesBent',
+        },
       },
       {
         id: 'badminton-2',
         sportSlug: 'badminton',
         order: 2,
         name: 'Smaç Vuruşu',
-        description: 'Sağ kol yukarı hızla uzansın — smaç simülasyonu, 3 tekrar.',
+        description:
+          'Sağ kol yukarı hızla uzansın — smaç simülasyonu, 3 tekrar.',
         difficulty: 'intermediate',
         instructions: [
           'Hazır duruşta başla.',
@@ -583,8 +631,10 @@ export function getCurriculumBySlug(slug: string): SportCurriculum | undefined {
 
 export function getLessonById(
   slug: string,
-  lessonId: string,
-): { curriculum: SportCurriculum; lesson: SportCurriculum['lessons'][number] } | undefined {
+  lessonId: string
+):
+  | { curriculum: SportCurriculum; lesson: SportCurriculum['lessons'][number] }
+  | undefined {
   const curriculum = getCurriculumBySlug(slug);
   if (!curriculum) return undefined;
   const lesson = curriculum.lessons.find((l) => l.id === lessonId);
