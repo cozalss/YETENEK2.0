@@ -46,6 +46,10 @@ export function ReactionTest({
 
   const goTimestampRef = useRef<number | null>(null);
   const waitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // FEEDBACK_MS setTimeout'larını da tracked tut — trial bittikten sonra
+  // phase 'result' iken bu zincir setPhase('wait')→setPhase('go') tetiklemesin
+  // (yeşil ekran sonuç ekranı arkasında yanıp sönmesin diye).
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const phaseRef = useRef<Phase>('idle');
 
   // onComplete'i ref'te sabitle — parent inline arrow ile callback re-create
@@ -63,6 +67,24 @@ export function ReactionTest({
     if (waitTimerRef.current) {
       clearTimeout(waitTimerRef.current);
       waitTimerRef.current = null;
+    }
+  };
+
+  const clearFeedbackTimer = () => {
+    if (feedbackTimerRef.current) {
+      clearTimeout(feedbackTimerRef.current);
+      feedbackTimerRef.current = null;
+    }
+  };
+
+  /** Browser TTS queue'sunu sıfırla — "Dokun" sesleri arka planda çalmasın. */
+  const cancelSpeech = () => {
+    if (typeof window === 'undefined') return;
+    if (!('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+    } catch {
+      /* sessizce yut */
     }
   };
 
@@ -90,10 +112,13 @@ export function ReactionTest({
     if (p === 'wait') {
       // False start
       clearWaitTimer();
+      clearFeedbackTimer();
       setLastReactionMs(null);
       setPhase('falseStart');
-      setTimeout(() => {
+      feedbackTimerRef.current = setTimeout(() => {
+        feedbackTimerRef.current = null;
         // Yeniden dene, index aynı kalır (false start sayılmaz)
+        if (phaseRef.current === 'result') return;
         startTrial();
       }, FEEDBACK_MS);
       return;
@@ -101,43 +126,49 @@ export function ReactionTest({
 
     if (p === 'go' && goTimestampRef.current != null) {
       const reaction = performance.now() - goTimestampRef.current;
-      // UI feedback: corrected RT (hardware latency çıkarılmış) — Sonuç
-      // panelindeki ortalama ile tutarlı, kullanıcı kafası karışmasın.
       setLastReactionMs(correctReactionMs(reaction));
 
       const newTrial: ReactionTrial = {
         index: currentIndex,
-        reactionMs: reaction, // raw — analyzeReaction içinde corrected
+        reactionMs: reaction,
         falseStart: false,
       };
 
-      // Functional setter: setTrials([...trials, ...]) closure'daki eski
-      // `trials`'ı yakalar (React 19 concurrent mode'da re-render'lar
-      // arası stale olabilir). Functional form prev'i her zaman doğru
-      // alır ve içeride completion logic'i çalıştırır.
       setTrials((prev) => {
         const updatedTrials = [...prev, newTrial];
         if (updatedTrials.length >= TOTAL_TRIALS) {
           const result = analyzeReaction(updatedTrials, childAgeYears);
+          // Test bitti — pending tüm timer'ları ve TTS'i iptal et ki sonuç
+          // ekranı arkasından "Dokun" sesi gelmesin / yeşil yanıp sönmesin.
+          clearWaitTimer();
+          clearFeedbackTimer();
+          cancelSpeech();
           setAnalysis(result);
           setPhase('result');
           onCompleteRef.current?.(result);
         } else {
           setCurrentIndex((idx) => idx + 1);
           setPhase('between');
-          setTimeout(() => startTrial(), FEEDBACK_MS);
+          clearFeedbackTimer();
+          feedbackTimerRef.current = setTimeout(() => {
+            feedbackTimerRef.current = null;
+            if (phaseRef.current === 'result') return;
+            startTrial();
+          }, FEEDBACK_MS);
         }
         return updatedTrials;
       });
       return;
     }
-    // trials kasten dışarıda: functional setTrials ile prev okuyoruz.
-    // onComplete ref'ten okunuyor — bkz. JumpTest açıklaması.
   }, [currentIndex, childAgeYears, startTrial]);
 
-  // Cleanup
+  // Cleanup — unmount'ta tüm async iş tortusunu temizle.
   useEffect(() => {
-    return () => clearWaitTimer();
+    return () => {
+      clearWaitTimer();
+      clearFeedbackTimer();
+      cancelSpeech();
+    };
   }, []);
 
   if (phase === 'idle') {
@@ -255,8 +286,9 @@ function ActiveTrialPanel({
             : ''
           : 'Bekle, ekran yeşil olunca dokun…';
 
-  // Görme engelli kullanıcı için sesli "Dokun" sinyali — yeşile döndüğünde.
-  // SSR'da `window` yok, bu yüzden useEffect içinde feature-detect.
+  // Sesli "Dokun" sinyali — yeşile döndüğünde. Cleanup'ta cancel() ile
+  // queue'yu boşalt; yoksa testin son trial'ında utterance unmount'tan
+  // sonra bile arka planda çalmaya devam ediyordu.
   useEffect(() => {
     if (phase !== 'go') return;
     if (typeof window === 'undefined') return;
@@ -269,6 +301,16 @@ function ActiveTrialPanel({
     } catch (err) {
       console.warn('[ReactionTest] TTS başarısız:', err);
     }
+    return () => {
+      // Phase 'go'dan çıkınca (veya component unmount) pending speech'i kes.
+      if (typeof window === 'undefined') return;
+      if (!('speechSynthesis' in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+      } catch {
+        /* sessizce yut */
+      }
+    };
   }, [phase]);
 
   // Renk değil ikon ile de durum bildir (renk körü destek + SR aria-live).
