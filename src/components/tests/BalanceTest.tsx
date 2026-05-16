@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CameraStream } from '@/components/camera/CameraStream';
 import { GuideVideo } from '@/components/tests/shared/GuideVideo';
+import { TestStage } from '@/components/tests/shared/TestStage';
 import { checkBalanceFraming, type FramingStatus } from '@/lib/pose/framing';
 import {
   type BalanceAnalysis,
@@ -217,9 +218,9 @@ export function BalanceTest({ onComplete, childAgeYears }: Props) {
   }, [childAgeYears, phase]);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-5">
-      <div className="space-y-4 lg:col-span-3">
-        <div className="relative">
+    <TestStage
+      cameraSlot={
+        <>
           <CameraStream onFrame={handleFrame} width={640} height={480} />
 
           {(phase === 'rightCountdown' || phase === 'leftCountdown') && (
@@ -264,30 +265,113 @@ export function BalanceTest({ onComplete, childAgeYears }: Props) {
             phase === 'rightCountdown' ||
             phase === 'leftCountdown' ||
             phase === 'switch') && <FramingBadge framing={framing} />}
-        </div>
-
-        {phase === 'idle' && (
+        </>
+      }
+      belowCameraSlot={
+        <GuideVideo
+          src="/videos/tek-bacak-denge-rehber.mp4"
+          label="Tek Bacak Denge — örnek pozisyon"
+          caption="Bir bacak yerden 10 cm yukarda, kollar yanda veya kalçada. Sırt dik, bakış ileride. Videodaki duruşa benzet."
+        />
+      }
+      sidebar={
+        phase === 'idle' ? (
           <Instructions
             onStart={start}
             canStart={framing.ready}
             framing={framing}
           />
-        )}
-
-        {phase === 'result' && result && (
+        ) : phase === 'result' && result ? (
           <ResultPanel result={result} onRetry={start} />
-        )}
-      </div>
-
-      <aside className="lg:col-span-2">
-        <div className="lg:sticky lg:top-6">
-          <GuideVideo
-            src="/videos/tek-bacak-denge-rehber.mp4"
-            label="Tek Bacak Denge — örnek pozisyon"
-            caption="Bir bacak yerden 10 cm yukarda, kollar yanda veya kalçada. Sırt dik, bakış ileride. Videodaki duruşa benzet."
+        ) : (
+          <PhaseStatusCard
+            phase={phase}
+            captureRemaining={captureRemaining}
+            switchRemaining={switchRemaining}
           />
-        </div>
-      </aside>
+        )
+      }
+    />
+  );
+}
+
+function PhaseStatusCard({
+  phase,
+  captureRemaining,
+  switchRemaining,
+}: {
+  phase: Phase;
+  captureRemaining: number;
+  switchRemaining: number;
+}) {
+  const messages: Partial<
+    Record<Phase, { eyebrow: string; title: string; body: string }>
+  > = {
+    rightCountdown: {
+      eyebrow: 'Sırada',
+      title: 'Sağ bacağa hazırlan',
+      body: 'Sağ bacağında dik dur, sol ayağı yerden ~10 cm kaldır. Geri sayım bittiğinde 15 sn ölçüm başlar.',
+    },
+    rightCapture: {
+      eyebrow: 'Kayıt aktif',
+      title: 'Sağ bacak ölçülüyor',
+      body: `Sallanmadan sabit dur — kalan ${captureRemaining} sn. Bakışını sabit bir noktaya kilitle.`,
+    },
+    switch: {
+      eyebrow: 'Kısa mola',
+      title: 'Sol bacağa geç',
+      body: `${switchRemaining} sn sonra sol bacak ölçümü başlıyor. İki ayağına bas, hafifçe gerin.`,
+    },
+    leftCountdown: {
+      eyebrow: 'Sırada',
+      title: 'Sol bacağa hazırlan',
+      body: 'Sol bacağında dik dur, sağ ayağı yerden ~10 cm kaldır.',
+    },
+    leftCapture: {
+      eyebrow: 'Kayıt aktif',
+      title: 'Sol bacak ölçülüyor',
+      body: `Sallanmadan sabit dur — kalan ${captureRemaining} sn.`,
+    },
+    analyze: {
+      eyebrow: 'Hesaplanıyor',
+      title: 'Sonuç hazırlanıyor',
+      body: 'Sağ-sol skoru ve asimetri oranı çıkıyor.',
+    },
+  };
+  const m = messages[phase];
+  if (!m) return null;
+  return (
+    <div
+      className="rounded-3xl border-2 p-7"
+      style={{
+        background: 'rgba(255, 255, 255, 0.7)',
+        borderColor: 'rgba(44, 62, 107, 0.18)',
+      }}
+    >
+      <p
+        className="text-xs font-bold tracking-[0.25em] uppercase"
+        style={{
+          color: 'var(--color-ink-3, rgba(44, 62, 107, 0.6))',
+          fontFamily: 'var(--font-display)',
+        }}
+      >
+        {m.eyebrow}
+      </p>
+      <h2
+        className="mt-2 text-2xl font-black"
+        style={{
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+        }}
+      >
+        {m.title}
+      </h2>
+      <p
+        className="mt-4 text-sm leading-relaxed"
+        style={{ color: 'var(--color-ink-2, rgba(44, 62, 107, 0.75))' }}
+      >
+        {m.body}
+      </p>
     </div>
   );
 }
@@ -448,7 +532,7 @@ function ResultPanel({
         Test Tamamlandı
       </h3>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3">
         <Metric
           label="Sağ Bacak Skoru"
           value={`${result.right.score.toFixed(0)} / 100`}
