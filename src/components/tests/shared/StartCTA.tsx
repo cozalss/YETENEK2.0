@@ -26,12 +26,15 @@ interface StartCTAProps {
 export function StartCTA({
   onStart,
   canStart,
-  readyLabel = 'Hazırım, Başla',
-  notReadyLabel = 'Vücudun tam görünmüyor',
+  // Kısa label'lar — compact butonda başlığın yanına sığsın diye. Tam
+  // açıklama (örn. "Vücudun tam görünmüyor") zaten InstructionsPanel'in
+  // `helper` slot'unda altta gösteriliyor; butonda kısa eylem yeterli.
+  readyLabel = 'Başla',
+  notReadyLabel = 'Hazırlan',
   compact = false,
 }: StartCTAProps) {
   const sizing = compact
-    ? 'h-10 px-5 text-xs tracking-widest uppercase w-auto'
+    ? 'h-9 px-4 text-[11px] tracking-widest uppercase w-auto'
     : 'h-14 w-full text-base tracking-wide';
 
   return (
