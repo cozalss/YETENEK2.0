@@ -172,7 +172,7 @@ export function LessonRunner({
               phase === 'running' ? (
                 <RunningPanel state={state} onCancel={retry} />
               ) : (
-                <StartCTA canStart onStart={start} readyLabel="Dersi Başlat" />
+                <StartCTA canStart onStart={start} readyLabel="Dersi Başlat" compact />
               )
             }
             footer={

@@ -50,10 +50,10 @@ export function InstructionsPanel({
       aria-labelledby="test-instructions-title"
     >
       <header
-        className="flex items-start justify-between gap-3 border-b pb-5"
+        className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
         style={{ borderColor: 'rgba(44, 62, 107, 0.12)' }}
       >
-        <div>
+        <div className="flex-1">
           <p
             className="text-xs font-bold tracking-[0.25em] uppercase"
             style={{
@@ -63,29 +63,33 @@ export function InstructionsPanel({
           >
             {eyebrow}
           </p>
-          <h2
-            id="test-instructions-title"
-            className="mt-2 text-2xl leading-tight font-black md:text-3xl"
-            style={{
-              color: 'var(--form-navy)',
-              fontFamily: 'var(--font-display)',
-            }}
-          >
-            {title}
-          </h2>
+          <div className="mt-2 flex flex-wrap items-baseline gap-3">
+            <h2
+              id="test-instructions-title"
+              className="text-2xl leading-tight font-black md:text-3xl"
+              style={{
+                color: 'var(--form-navy)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              {title}
+            </h2>
+            {meta && (
+              <span
+                className="font-mono shrink-0 rounded-full border px-3 py-1 text-[11px] tracking-widest uppercase"
+                style={{
+                  borderColor: 'rgba(44, 62, 107, 0.2)',
+                  background: 'rgba(255, 255, 255, 0.6)',
+                  color: 'var(--form-navy)',
+                }}
+              >
+                {meta}
+              </span>
+            )}
+          </div>
         </div>
-        {meta && (
-          <span
-            className="font-mono shrink-0 rounded-full border px-3 py-1 text-[11px] tracking-widest uppercase"
-            style={{
-              borderColor: 'rgba(44, 62, 107, 0.2)',
-              background: 'rgba(255, 255, 255, 0.6)',
-              color: 'var(--form-navy)',
-            }}
-          >
-            {meta}
-          </span>
-        )}
+        {/* CTA artık başlığın yanında, kompakt — talimatların altından alındı. */}
+        <div className="shrink-0">{cta}</div>
       </header>
 
       <Timeline steps={steps} />
@@ -105,10 +109,7 @@ export function InstructionsPanel({
         </div>
       )}
 
-      <div className="space-y-3">
-        {cta}
-        {footer && <div className="flex justify-center">{footer}</div>}
-      </div>
+      {footer && <div className="flex justify-center pt-2">{footer}</div>}
     </motion.section>
   );
 }

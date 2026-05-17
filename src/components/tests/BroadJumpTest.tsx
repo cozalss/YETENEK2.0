@@ -251,7 +251,7 @@ export function BroadJumpTest({
             meta="~6 sn"
             steps={STEPS}
             helper={!framing.ready ? framing.hint : undefined}
-            cta={<StartCTA onStart={start} canStart={framing.ready} />}
+            cta={<StartCTA onStart={start} canStart={framing.ready} compact />}
             footer={
               <p
                 className="text-center text-xs"
