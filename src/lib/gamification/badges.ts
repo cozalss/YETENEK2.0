@@ -236,6 +236,102 @@ export const BADGES: Record<string, Badge> = {
     description: 'Yedi boyutta da yaş ortalamasının üstündesin.',
     earnedFor: 'Tüm 7 testte 60+ skor',
   },
+  champion: {
+    id: 'champion',
+    category: 'general',
+    emoji: '👑',
+    name: 'Şampiyon',
+    description: 'Yedi boyutta da yüksek performans — istisnai çocuk.',
+    earnedFor: 'Tüm 7 testte 80+ skor',
+  },
+
+  // Mutlak performans rozetleri (persentil değil, gerçek değer eşikleri)
+  bigJumper: {
+    id: 'bigJumper',
+    category: 'performance',
+    emoji: '🦘',
+    name: 'Süper Sıçrayıcı',
+    description: 'Sıçrama mesafen yaş gözetmeksizin elit seviyede.',
+    earnedFor: 'Tek sıçramada 35+ cm yükseklik',
+  },
+  fastReflex: {
+    id: 'fastReflex',
+    category: 'performance',
+    emoji: '🌪️',
+    name: 'Yıldırım Refleks',
+    description: 'En iyi reaksiyon süren elit aralıkta.',
+    earnedFor: 'En iyi reaksiyon süresi 250ms altında',
+  },
+
+  // Karakter / takım uyumu rozetleri
+  teamPlayer: {
+    id: 'teamPlayer',
+    category: 'general',
+    emoji: '🤝',
+    name: 'Takım Oyuncusu',
+    description: 'İş birliği yapma eğilimin çok yüksek.',
+    earnedFor: 'Karakter testinde iş birliği skoru 80+',
+  },
+  fairPlayer: {
+    id: 'fairPlayer',
+    category: 'general',
+    emoji: '🕊️',
+    name: 'Adil Oyuncu',
+    description: 'Fair play değerlerin örnek niteliğinde.',
+    earnedFor: 'Karakter testinde adil oyun skoru 80+',
+  },
+
+  // Streak (süreklilik) rozetleri — recordLessonActivity tarafından unlock
+  dailyHero: {
+    id: 'dailyHero',
+    category: 'streak',
+    emoji: '🔥',
+    name: 'Üç Gün Üst Üste',
+    description: 'Üç gün arka arkaya ders yaptın.',
+    earnedFor: '3 gün streak',
+  },
+  weekWarrior: {
+    id: 'weekWarrior',
+    category: 'streak',
+    emoji: '🗓️',
+    name: 'Haftalık Savaşçı',
+    description: 'Bir hafta boyunca her gün ders yaptın.',
+    earnedFor: '7 gün streak',
+  },
+  committed: {
+    id: 'committed',
+    category: 'streak',
+    emoji: '💪',
+    name: 'Kararlı',
+    description: 'İki hafta boyunca her gün ders yaptın — disiplin örneği.',
+    earnedFor: '14 gün streak',
+  },
+
+  // Ders (lesson) rozetleri — markLessonCompleted tarafından unlock
+  firstLesson: {
+    id: 'firstLesson',
+    category: 'general',
+    emoji: '📚',
+    name: 'İlk Ders',
+    description: 'Antrenman yolculuğunun ilk dersini bitirdin.',
+    earnedFor: 'İlk dersini tamamladın',
+  },
+  lessonMaster: {
+    id: 'lessonMaster',
+    category: 'general',
+    emoji: '🎓',
+    name: 'Branş Ustası',
+    description: 'Bir sporun yedi dersini de bitirdin.',
+    earnedFor: 'Bir spor için tüm 7 dersi tamamla',
+  },
+  polymath: {
+    id: 'polymath',
+    category: 'general',
+    emoji: '🌍',
+    name: 'Çok Yönlü',
+    description: 'Farklı branşlara açıksın.',
+    earnedFor: '3 farklı sporda en az birer ders tamamla',
+  },
 };
 
 /**
@@ -338,6 +434,51 @@ export function computeBadgesForSession(
     earned.push(BADGES.symmetric);
   }
 
+  // Şampiyon: tüm 7 testte 80+ skor (sevenWonders'tan daha sıkı tier)
+  if (
+    session.jump &&
+    session.balance &&
+    session.reaction &&
+    session.broadJump &&
+    session.lateralHops &&
+    session.coordination &&
+    session.endurance
+  ) {
+    const minOf7Strict = Math.min(
+      session.jump.score,
+      (session.balance.rightScore + session.balance.leftScore) / 2,
+      session.reaction.ageNormScore,
+      session.broadJump.score,
+      session.lateralHops.score,
+      session.coordination.score,
+      session.endurance.score
+    );
+    if (minOf7Strict >= 80) {
+      earned.push(BADGES.champion);
+    }
+  }
+
+  // Mutlak sıçrama yüksekliği (persentilden bağımsız)
+  if (
+    session.jump &&
+    session.jump.jumpHeightCm != null &&
+    session.jump.jumpHeightCm >= 35
+  ) {
+    earned.push(BADGES.bigJumper);
+  }
+
+  // Mutlak reaksiyon hızı (best trial <250ms)
+  if (session.reaction && session.reaction.bestMs > 0 && session.reaction.bestMs <= 250) {
+    earned.push(BADGES.fastReflex);
+  }
+
+  // Karakter rozetleri — character v2 factors varsa
+  const factors = session.character?.factors;
+  if (factors) {
+    if (factors.cooperation >= 80) earned.push(BADGES.teamPlayer);
+    if (factors.fairPlay >= 80) earned.push(BADGES.fairPlayer);
+  }
+
   // Profil rozetleri (top önerilerde bu spor varsa ve confidence 80+)
   const sportToBadge: Record<string, string> = {
     Voleybol: 'volleyballStar',
@@ -369,6 +510,38 @@ export function computeBadgesForSession(
     seen.add(b.id);
     return true;
   });
+}
+
+/**
+ * Streak (süreklilik) rozetlerini eşik değerlere göre döner.
+ * recordLessonActivity sonrası çağrılır; aynı gün tekrarlanırsa
+ * gamificationStore zaten "already-owned"ları yutar.
+ */
+export function computeStreakBadges(streakDays: number): Badge[] {
+  const earned: Badge[] = [];
+  if (streakDays >= 3) earned.push(BADGES.dailyHero);
+  if (streakDays >= 7) earned.push(BADGES.weekWarrior);
+  if (streakDays >= 14) earned.push(BADGES.committed);
+  return earned;
+}
+
+/**
+ * Lesson tamamlama rozetleri — markLessonCompleted sonrası çağrılır.
+ *
+ * @param totalCompleted   Çocuğun toplam tamamladığı ders sayısı
+ * @param sportsWithLesson Farklı branş sayısı (en az 1 ders tamamlanmış)
+ * @param maxLessonsInOneSport Tek bir sporda tamamlanan en fazla ders
+ */
+export function computeLessonBadges(snapshot: {
+  totalCompleted: number;
+  sportsWithLesson: number;
+  maxLessonsInOneSport: number;
+}): Badge[] {
+  const earned: Badge[] = [];
+  if (snapshot.totalCompleted >= 1) earned.push(BADGES.firstLesson);
+  if (snapshot.maxLessonsInOneSport >= 7) earned.push(BADGES.lessonMaster);
+  if (snapshot.sportsWithLesson >= 3) earned.push(BADGES.polymath);
+  return earned;
 }
 
 export function getBadgesByCategory(badges: Badge[]): Record<BadgeCategory, Badge[]> {

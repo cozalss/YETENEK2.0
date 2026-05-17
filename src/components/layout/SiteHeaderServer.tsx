@@ -7,8 +7,7 @@
  */
 
 import 'server-only';
-import { env } from '@/shared/config/env-public';
-import { getServerClient } from '@/lib/supabase/server';
+import { getCachedUser } from '@/lib/auth/get-cached-user';
 import { SiteHeader } from './SiteHeader';
 
 function deriveDisplayName(
@@ -32,17 +31,9 @@ function deriveDisplayName(
 }
 
 export async function SiteHeaderServer() {
-  let displayName: string | null = null;
-  if (env.isSupabaseConfigured) {
-    try {
-      const supabase = await getServerClient();
-      const { data } = await supabase.auth.getUser();
-      if (data.user) {
-        displayName = deriveDisplayName(data.user.user_metadata, data.user.email);
-      }
-    } catch {
-      // sessizce yut — header asla render hatasıyla sayfayı düşürmesin
-    }
-  }
+  const user = await getCachedUser();
+  const displayName = user
+    ? deriveDisplayName(user.user_metadata, user.email)
+    : null;
   return <SiteHeader displayName={displayName} />;
 }

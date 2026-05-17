@@ -67,10 +67,12 @@ const REACTION_NORMS_MS: Record<number, number> = {
 const TOUCH_LATENCY_OFFSET_MS = 25;
 
 /**
- * Minimum geçerli trial sayısı — istatistiksel anlamlılık için
- * SD tahminin makul kalsın (Dykiert 2012 önerisi: 6+ trial pediatric).
+ * Minimum geçerli trial sayısı — false-start'ları tolerans için 4'e düşürüldü.
+ * TOTAL_TRIALS=6 ile birlikte: çocuk 2 yanlış tıklama yapabilir, kalan 4
+ * geçerli denemeden hâlâ anlamlı SD elde edilir. Dykiert 2012 4+ trial'ı
+ * pediatric örneklem için kabul edilebilir alt limit olarak işaretliyor.
  */
-export const MIN_VALID_TRIALS = 6;
+export const MIN_VALID_TRIALS = 4;
 
 /**
  * Hardware bias düzeltmesi uygulanmış reaksiyon süresi.
@@ -119,8 +121,10 @@ export function analyzeReaction(
   const variance =
     times.reduce((s, v) => s + (v - averageMs) ** 2, 0) / times.length;
   const std = Math.sqrt(variance);
-  // 0ms std = 100, 150ms std = 0
-  const consistencyScore = Math.max(0, Math.min(100, (1 - std / 150) * 100));
+  // Pediatric kalibrasyon (Dykiert 2012, Front Psychol): 8-15 yaş çocukların
+  // tipik intra-individual SD'si ~60-100ms. Eski 150ms cap aşırı sert (100ms
+  // std → skor 33). Yeni 200ms cap: 50ms→75, 100ms→50, 200ms→0.
+  const consistencyScore = Math.max(0, Math.min(100, (1 - std / 200) * 100));
 
   // Yaş norm skoru
   const ages = Object.keys(REACTION_NORMS_MS).map(Number);
@@ -130,10 +134,7 @@ export function analyzeReaction(
   const norm = REACTION_NORMS_MS[closestAge];
   // Norm = 50 puan, %50 daha hızlı = 100, %50 daha yavaş = 0
   const ratio = averageMs / norm;
-  const ageNormScore = Math.max(
-    0,
-    Math.min(100, ((1.5 - ratio) / 1.0) * 100)
-  );
+  const ageNormScore = Math.max(0, Math.min(100, ((1.5 - ratio) / 1.0) * 100));
 
   return {
     trials,

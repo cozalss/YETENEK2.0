@@ -69,12 +69,14 @@ export function BioMotorRadar({
           width={size}
           height={size}
           data={data}
-          outerRadius="75%"
+          outerRadius="62%"
+          margin={{ top: 16, right: 32, bottom: 16, left: 32 }}
         >
           <PolarGrid stroke="rgba(44, 62, 107, 0.18)" />
           <PolarAngleAxis
             dataKey="axis"
             tick={{ fill: '#2c3e6b', fontSize: 11, fontWeight: 700 }}
+            tickSize={10}
           />
           <PolarRadiusAxis
             angle={90}

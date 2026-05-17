@@ -12,7 +12,7 @@
 
 'use client';
 
-import { useReportQuery } from '@/hooks/use-report-query';
+import { useReportStream } from '@/hooks/use-report-stream';
 import type { SessionSummary } from '@/lib/session/store';
 
 interface Props {
@@ -32,8 +32,8 @@ export function AiReportPanel({
 }: Props) {
   // initialReport varsa hook'u disable et (gereksiz network).
   const enabled = !initialReport;
-  const { data, isLoading, isError, error, refetch, isFetching } =
-    useReportQuery(enabled ? session : null);
+  const { text, source, isStreaming, isError, error, refetch } =
+    useReportStream(enabled ? session : null);
 
   if (initialReport) {
     return (
@@ -43,7 +43,8 @@ export function AiReportPanel({
     );
   }
 
-  if (isLoading || (!data && !isError)) {
+  // Henüz hiç token gelmediyse skeleton; ilk parça gelir gelmez metni göster
+  if (isStreaming && text.length === 0) {
     return (
       <ReportContainer source={null} loading>
         <Skeleton />
@@ -51,7 +52,7 @@ export function AiReportPanel({
     );
   }
 
-  if (isError || !data) {
+  if (isError) {
     return (
       <ReportContainer source={null}>
         <div className="space-y-3">
@@ -59,14 +60,12 @@ export function AiReportPanel({
             className="text-sm font-medium"
             style={{ color: 'var(--deep-navy)' }}
           >
-            Rapor üretilemedi:{' '}
-            {error instanceof Error ? error.message : 'Beklenmedik hata.'}
+            Rapor üretilemedi: {error ?? 'Beklenmedik hata.'}
           </p>
           <button
             type="button"
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="h-10 rounded-full px-4 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] disabled:opacity-50"
+            onClick={refetch}
+            className="h-10 rounded-full px-4 text-sm font-black tracking-wide transition-transform hover:scale-[1.03]"
             style={{
               background: 'var(--track-mustard)',
               color: 'var(--form-navy)',
@@ -74,7 +73,7 @@ export function AiReportPanel({
               boxShadow: '0 4px 0 rgba(44, 62, 107, 0.18)',
             }}
           >
-            {isFetching ? 'Deneniyor…' : 'Tekrar Dene'}
+            Tekrar Dene
           </button>
         </div>
       </ReportContainer>
@@ -82,8 +81,8 @@ export function AiReportPanel({
   }
 
   return (
-    <ReportContainer source={data.source}>
-      <ReportText text={data.report} />
+    <ReportContainer source={source} loading={isStreaming}>
+      <ReportText text={text} typing={isStreaming} />
     </ReportContainer>
   );
 }
@@ -152,13 +151,28 @@ function ReportContainer({
   );
 }
 
-function ReportText({ text }: { text: string }) {
+function ReportText({
+  text,
+  typing = false,
+}: {
+  text: string;
+  typing?: boolean;
+}) {
   return (
     <div
-      className="prose prose-sm max-w-none whitespace-pre-wrap leading-relaxed"
+      className="prose prose-sm max-w-none leading-relaxed whitespace-pre-wrap"
       style={{ color: 'var(--color-ink-1)' }}
     >
       {text}
+      {typing && (
+        <span
+          aria-hidden="true"
+          className="ml-0.5 inline-block animate-pulse"
+          style={{ color: 'var(--track-mustard)' }}
+        >
+          ▍
+        </span>
+      )}
     </div>
   );
 }

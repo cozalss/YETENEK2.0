@@ -43,8 +43,8 @@ export default function PrivacyPage() {
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-[var(--color-ink-2)]">
             Yetenek 2.0 KVKK Madde 9 (özel nitelikli veri / sağlık verisi) ve
             Madde 10 (aydınlatma yükümlülüğü) kapsamında çocuk velisinin
-            açık-rıza vermesi varsayımıyla çalışır. Aşağıda neyin nereye
-            gittiği son derece açık.
+            açık-rıza vermesi varsayımıyla çalışır. Aşağıda neyin nereye gittiği
+            son derece açık.
           </p>
         </header>
 
@@ -83,8 +83,7 @@ export default function PrivacyPage() {
               <li>
                 <strong>Profil:</strong> İsim (sadece ekranda göstermek için),
                 yaş, cinsiyet, opsiyonel boy ve kilo. Bunlar yaş normu
-                karşılaştırması ve antropometrik bonus hesabı için
-                kullanılıyor.
+                karşılaştırması ve antropometrik bonus hesabı için kullanılıyor.
               </li>
               <li>
                 <strong>Test sonuçları:</strong> Sayısal skorlar — sıçrama cm,
@@ -106,8 +105,8 @@ export default function PrivacyPage() {
 
           <Section number="02" title="Veri nereye gidiyor?">
             <p>
-              Üç farklı yer söz konusu, ve her biri için ayrı ayrı şeffaf
-              olmaya çalışıyoruz.
+              Üç farklı yer söz konusu, ve her biri için ayrı ayrı şeffaf olmaya
+              çalışıyoruz.
             </p>
             <h3>Cihazınızın tarayıcısı (localStorage)</h3>
             <p>
@@ -128,9 +127,7 @@ export default function PrivacyPage() {
             </p>
 
             <h3>Anthropic Claude API (sadece AI rapor + AI koç chat için)</h3>
-            <p>
-              AI rapor ve AI koç chat isteğinde sunucuya yalnızca:
-            </p>
+            <p>AI rapor ve AI koç chat isteğinde sunucuya yalnızca:</p>
             <ul>
               <li>Test skorları (sayısal)</li>
               <li>Yaş ve cinsiyet</li>
@@ -140,9 +137,9 @@ export default function PrivacyPage() {
             </ul>
             <p>
               gönderilir. <strong>Çocuk ismi, boy, kilo gönderilmez.</strong>{' '}
-              Bu, KVKK Madde 9 cross-border data transfer riskini en aza
-              indirme amacıyla bilinçli bir tasarım kararıdır. Anthropic'in
-              kendi gizlilik politikası için{' '}
+              Bu, KVKK Madde 9 cross-border data transfer riskini en aza indirme
+              amacıyla bilinçli bir tasarım kararıdır. Anthropic'in kendi
+              gizlilik politikası için{' '}
               <a
                 href="https://www.anthropic.com/legal/privacy"
                 target="_blank"
@@ -157,16 +154,16 @@ export default function PrivacyPage() {
 
           <Section number="03" title="Çocuk verisi (özel nitelikli)">
             <p>
-              KVKK Madde 9 sağlık verisi <em>özel nitelikli</em> sayar.
-              Yetenek 2.0'da fiziksel test sonuçları sağlık verisi
-              kapsamındadır. Çocuklarda işleme için <strong>velinin açık
-              rızası</strong> gerekir. Bu uygulamayı çocuğunuzla
-              kullanırken, sonuçların yukarıda tanımlanan şekilde
-              işleneceğine rıza gösterdiğinizi varsayıyoruz.
+              KVKK Madde 9 sağlık verisi <em>özel nitelikli</em> sayar. Yetenek
+              2.0'da fiziksel test sonuçları sağlık verisi kapsamındadır.
+              Çocuklarda işleme için <strong>velinin açık rızası</strong>{' '}
+              gerekir. Bu uygulamayı çocuğunuzla kullanırken, sonuçların
+              yukarıda tanımlanan şekilde işleneceğine rıza gösterdiğinizi
+              varsayıyoruz.
             </p>
             <p>
-              Velisi olmadığınız bir çocuğun verisini bu uygulamaya
-              girmemenizi rica ederiz.
+              Velisi olmadığınız bir çocuğun verisini bu uygulamaya girmemenizi
+              rica ederiz.
             </p>
           </Section>
 
@@ -182,10 +179,9 @@ export default function PrivacyPage() {
             </ul>
             <p>
               Talepler için <code>cannozall@gmail.com</code> adresine
-              yazabilirsiniz. Pilot sürümde merkezi bir veri tabanı
-              olmadığı için "silinmesini isteme" pratikte tarayıcı
-              localStorage'ınızı temizlemekle aynı şey — o da kullanıcının
-              kontrolündedir.
+              yazabilirsiniz. Pilot sürümde merkezi bir veri tabanı olmadığı
+              için "silinmesini isteme" pratikte tarayıcı localStorage'ınızı
+              temizlemekle aynı şey — o da kullanıcının kontrolündedir.
             </p>
           </Section>
 
@@ -193,19 +189,18 @@ export default function PrivacyPage() {
             <p>
               Yetenek 2.0 hackathon sürümünde reklam çerezi, analytics çerezi,
               veya 3. taraf takip pikseli kullanmaz. Yalnızca kendi
-              tarayıcınızdaki localStorage (oturum tutmak için) kullanılır.
-              Bu, tarayıcının "Çerezler" değil "Web Storage" kategorisinde
-              yer alır.
+              tarayıcınızdaki localStorage (oturum tutmak için) kullanılır. Bu,
+              tarayıcının "Çerezler" değil "Web Storage" kategorisinde yer alır.
             </p>
           </Section>
 
           <Section number="06" title="Veri cihazlar arasında taşınmaz">
             <p>
               Şu anda pilot sürümde test sonuçlarınız sadece kullandığınız
-              tarayıcıda kalıyor — sunucuda saklanmıyor. Aynı tarayıcıda
-              geçmişi görebilir ve silebilirsiniz; başka bir cihaza geçtiğinizde
-              geçmişe erişemezsiniz. Hesaplı bir sürüm eklenirse bu metin
-              güncellenecek ve ayrıca açık rıza istenecektir.
+              tarayıcıda kalıyor — sunucuda saklanmıyor. Aynı tarayıcıda geçmişi
+              görebilir ve silebilirsiniz; başka bir cihaza geçtiğinizde geçmişe
+              erişemezsiniz. Hesaplı bir sürüm eklenirse bu metin güncellenecek
+              ve ayrıca açık rıza istenecektir.
             </p>
           </Section>
         </article>
@@ -257,7 +252,7 @@ function Section({
         {number}
       </p>
       <h2 className="mt-2 text-2xl font-bold md:text-3xl">{title}</h2>
-      <div className="mt-5 space-y-4 text-base leading-relaxed text-[var(--color-ink-2)] [&_h3]:mt-6 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-[var(--color-ink-1)] [&_strong]:text-[var(--color-ink-1)] [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6 [&_li]:pl-2 [&_code]:rounded-md [&_code]:bg-[var(--color-surface)] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-sm [&_code]:text-[var(--color-signal)]">
+      <div className="mt-5 space-y-4 text-base leading-relaxed text-[var(--color-ink-2)] [&_code]:rounded-md [&_code]:bg-[var(--color-surface)] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-sm [&_code]:text-[var(--color-signal)] [&_h3]:mt-6 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-[var(--color-ink-1)] [&_li]:pl-2 [&_strong]:text-[var(--color-ink-1)] [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6">
         {children}
       </div>
     </section>

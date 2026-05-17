@@ -35,8 +35,8 @@ export default function TermsPage() {
             <span className="text-[var(--color-signal)]">önce gelir.</span>
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-[var(--color-ink-2)]">
-            Yetenek 2.0, çocukların spor yatkınlığını anlamaya yardımcı olan
-            bir ön değerlendirme aracıdır. Sonuçlar karar desteği sağlar; tıbbi
+            Yetenek 2.0, çocukların spor yatkınlığını anlamaya yardımcı olan bir
+            ön değerlendirme aracıdır. Sonuçlar karar desteği sağlar; tıbbi
             tanı, kesin yetenek seçimi veya profesyonel antrenör değerlendirmesi
             yerine geçmez.
           </p>

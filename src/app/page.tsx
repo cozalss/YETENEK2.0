@@ -8,8 +8,10 @@ import {
   LandingNavigation,
   LandingFooter,
 } from '@/components/landing';
+import { getCachedIsAuthenticated } from '@/lib/auth/get-cached-user';
 
-export default function Home() {
+export default async function Home() {
+  const isAuthenticated = await getCachedIsAuthenticated();
   return (
     <>
       {/*
@@ -24,7 +26,7 @@ export default function Home() {
         fetchPriority="high"
       />
       <main className="relative bg-[var(--whistle-cream)] text-[var(--form-navy)]">
-        <LandingNavigation />
+        <LandingNavigation isAuthenticated={isAuthenticated} />
         <HeroSection />
         <TestsSection />
         <AIAnalysisSection />

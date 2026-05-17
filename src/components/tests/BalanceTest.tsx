@@ -47,7 +47,7 @@ interface Props {
 }
 
 const COUNTDOWN_SECONDS = 3;
-const CAPTURE_SECONDS = 15;
+const CAPTURE_SECONDS = 7;
 const SWITCH_SECONDS = 3;
 
 export function BalanceTest({ onComplete, childAgeYears }: Props) {
@@ -310,7 +310,7 @@ function PhaseStatusCard({
     rightCountdown: {
       eyebrow: 'Sırada',
       title: 'Sağ bacağa hazırlan',
-      body: 'Sağ bacağında dik dur, sol ayağı yerden ~10 cm kaldır. Geri sayım bittiğinde 15 sn ölçüm başlar.',
+      body: 'Sağ bacağında dik dur, sol ayağı yerden ~10 cm kaldır. Geri sayım bittiğinde 7 sn ölçüm başlar.',
     },
     rightCapture: {
       eyebrow: 'Kayıt aktif',
@@ -459,9 +459,9 @@ function Instructions({
       >
         <li>Kamerayı 1.5m yüksekliğe koy, baştan ayağa görünmelisin.</li>
         <li>
-          İlk olarak SAĞ bacakta 15 saniye dur, sol ayak yerden 10cm yukarda.
+          İlk olarak SAĞ bacakta 7 saniye dur, sol ayak yerden 10cm yukarda.
         </li>
-        <li>3 saniye dinlenme, sonra SOL bacakta 15 saniye.</li>
+        <li>3 saniye dinlenme, sonra SOL bacakta 7 saniye.</li>
         <li>Kollar yanda veya kalçada olabilir, başını öne eğme.</li>
       </ol>
       {!canStart && (

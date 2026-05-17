@@ -12,12 +12,17 @@
  */
 
 import 'server-only';
+import { cache } from 'react';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { env } from '@/shared/config/env-public';
 
-export async function getServerClient(): Promise<SupabaseClient> {
+/**
+ * React `cache()` ile sarılmış — aynı render ağacında birden fazla repository
+ * çağırsa bile tek bir Supabase client instance oluşturulur.
+ */
+export const getServerClient = cache(async (): Promise<SupabaseClient> => {
   const cookieStore = await cookies();
 
   return createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
@@ -37,4 +42,4 @@ export async function getServerClient(): Promise<SupabaseClient> {
       },
     },
   });
-}
+});

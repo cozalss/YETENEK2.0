@@ -84,9 +84,7 @@ export function StreakBadge({ childId, compact = false }: Props) {
         >
           {title}
         </span>
-        {!compact && (
-          <span className="text-[11px] opacity-75">{subtitle}</span>
-        )}
+        {!compact && <span className="text-[11px] opacity-75">{subtitle}</span>}
       </div>
     </div>
   );

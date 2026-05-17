@@ -84,14 +84,13 @@ export function SiteHeader({ displayName }: Props = {}) {
                 {displayName.slice(0, 1).toUpperCase()}
               </span>
               <span>
-                Hoş geldin,{' '}
-                <span className="font-black">{displayName}</span>
+                Hoş geldin, <span className="font-black">{displayName}</span>
               </span>
             </Link>
           )}
           <Link
             href="/profile"
-            className="inline-flex h-10 items-center gap-2 rounded-full px-5 text-[11px] font-black uppercase tracking-[0.25em] transition-transform hover:scale-[1.03]"
+            className="inline-flex h-10 items-center gap-2 rounded-full px-5 text-[11px] font-black tracking-[0.25em] uppercase transition-transform hover:scale-[1.03]"
             style={{
               background: 'var(--form-navy)',
               color: 'var(--whistle-cream)',

@@ -13,12 +13,10 @@ import {
   AnthropicError,
   generateText,
   isAnthropicConfigured,
+  streamText,
 } from './anthropic';
 import { generateFallbackReport } from './fallbackReport';
-import {
-  REPORT_SYSTEM_PROMPT,
-  buildReportUserMessage,
-} from './reportPrompt';
+import { REPORT_SYSTEM_PROMPT, buildReportUserMessage } from './reportPrompt';
 
 export interface ReportResult {
   /** Türkçe rapor metni (her durumda dolu — fallback olsa bile) */
@@ -73,6 +71,72 @@ export async function generateReport(
       source: 'fallback',
       reason,
     };
+  }
+}
+
+/**
+ * Streaming rapor üretimi — text delta'ları yield eden async generator.
+ *
+ * İlk yield her zaman bir meta event'i ('claude' veya 'fallback'); ardından
+ * `delta` event'leri text parçaları taşır. Hata olursa fallback metin tek
+ * parçada gelir — UI iki kod yolu yazmak zorunda kalmaz.
+ */
+export type ReportStreamEvent =
+  | { type: 'meta'; source: 'claude' | 'fallback'; reason?: string }
+  | { type: 'delta'; text: string }
+  | { type: 'done' };
+
+export async function* generateReportStream(
+  session: SessionSummary,
+  signal?: AbortSignal
+): AsyncGenerator<ReportStreamEvent, void, void> {
+  if (!isAnthropicConfigured()) {
+    yield {
+      type: 'meta',
+      source: 'fallback',
+      reason: 'ANTHROPIC_API_KEY tanımlı değil.',
+    };
+    yield { type: 'delta', text: generateFallbackReport(session) };
+    yield { type: 'done' };
+    return;
+  }
+
+  yield { type: 'meta', source: 'claude' };
+
+  const userMessage = buildReportUserMessage(session);
+  let received = '';
+
+  try {
+    for await (const chunk of streamText({
+      systemPrompt: REPORT_SYSTEM_PROMPT,
+      userMessage,
+      generationConfig: { temperature: 0.7, maxTokens: 1500 },
+      signal,
+    })) {
+      received += chunk;
+      yield { type: 'delta', text: chunk };
+    }
+
+    if (received.trim().length === 0) {
+      // Claude boş döndü — fallback'e geç ve UI'a yeniden meta sinyalle
+      yield {
+        type: 'meta',
+        source: 'fallback',
+        reason: 'Claude boş içerik döndü.',
+      };
+      yield { type: 'delta', text: generateFallbackReport(session) };
+    }
+    yield { type: 'done' };
+  } catch (err) {
+    const reason = describeError(err);
+    console.error(
+      '[claudeReport:stream] Hata, fallback devreye giriyor:',
+      reason
+    );
+    // Akış ortasında hata: kullanıcının görmediği partial'ı atıp fallback'i tek seferde gönder
+    yield { type: 'meta', source: 'fallback', reason };
+    yield { type: 'delta', text: generateFallbackReport(session) };
+    yield { type: 'done' };
   }
 }
 

@@ -68,14 +68,16 @@ export default async function LessonRunnerPage({
   // childId yoksa (demo/anonim): her ders açık (persistence yok).
   let previousRequired: { id: string; name: string } | null = null;
   if (childId && lesson.order > 1) {
-    const previous = curriculum.lessons.find((l) => l.order === lesson.order - 1);
+    const previous = curriculum.lessons.find(
+      (l) => l.order === lesson.order - 1
+    );
     if (previous) {
       const completedResult = await supabaseLessonRepository.listCompleted({
         childId,
         sportSlug: curriculum.sportSlug,
       });
       const completedIds = new Set(
-        completedResult.ok ? completedResult.value.map((c) => c.lessonId) : [],
+        completedResult.ok ? completedResult.value.map((c) => c.lessonId) : []
       );
       if (!completedIds.has(previous.id)) {
         previousRequired = { id: previous.id, name: previous.name };
@@ -168,7 +170,7 @@ function LockedLessonPanel({
       <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
         <Link
           href={`/lessons/${sportSlug}/${previous.id}${qs}`}
-          className="inline-flex h-12 items-center gap-2 rounded-full px-6 text-sm font-black uppercase tracking-widest"
+          className="inline-flex h-12 items-center gap-2 rounded-full px-6 text-sm font-black tracking-widest uppercase"
           style={{
             background: 'var(--track-mustard)',
             color: 'var(--deep-navy)',

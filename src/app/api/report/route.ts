@@ -12,7 +12,7 @@
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { generateReport } from '@/lib/llm/claudeReport';
+import { generateReport, generateReportStream } from '@/lib/llm/claudeReport';
 import type { SessionSummary } from '@/lib/session/store';
 import { logger } from '@/shared/logger/logger';
 
@@ -42,9 +42,7 @@ const jumpSchema = z
     jumpUnits: z.number(),
     flightTimeMs: z.number(),
     score: z.number(),
-    method: z
-      .enum(['flight-time', 'hip-displacement', 'consensus'])
-      .optional(),
+    method: z.enum(['flight-time', 'hip-displacement', 'consensus']).optional(),
     consistent: z.boolean().optional(),
   })
   .optional();
@@ -169,8 +167,7 @@ function isRateLimited(ip: string): boolean {
 
 export async function POST(request: Request): Promise<NextResponse> {
   const ip =
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    'unknown';
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
 
   if (isRateLimited(ip)) {
     return NextResponse.json(
@@ -217,6 +214,47 @@ export async function POST(request: Request): Promise<NextResponse> {
     ...data,
     completedTests: data.completedTests ?? inferredCompleted,
   } as unknown as SessionSummary;
+
+  // Streaming yolu: ?stream=1 → NDJSON akışı (text/plain; chunked)
+  const url = new URL(request.url);
+  if (url.searchParams.get('stream') === '1') {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        const write = (obj: unknown) => {
+          controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
+        };
+        try {
+          for await (const event of generateReportStream(session)) {
+            write(event);
+          }
+        } catch (err) {
+          log.error('streaming rapor üretiminde beklenmedik hata', {
+            cause: err instanceof Error ? err.message : String(err),
+          });
+          write({
+            type: 'meta',
+            source: 'fallback',
+            reason: 'Akış kesildi.',
+          });
+          write({
+            type: 'delta',
+            text: 'Rapor anlık olarak üretilemedi. Birkaç saniye sonra tekrar deneyin.',
+          });
+          write({ type: 'done' });
+        } finally {
+          controller.close();
+        }
+      },
+    });
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'X-Accel-Buffering': 'no',
+      },
+    });
+  }
 
   try {
     const result = await generateReport(session);

@@ -18,6 +18,8 @@ import { SiteFooter } from '@/components/layout/SiteFooter';
 import { REFERENCES } from '@/lib/content/bibliography';
 import { getAllReferences } from '@/infrastructure/storage/supabase-content-repository';
 
+export const revalidate = 300; // 5 dk ISR — içerik nadiren değişir
+
 export const metadata: Metadata = {
   title: 'Hakkında',
   description:
@@ -53,10 +55,10 @@ export default async function AboutPage() {
             saklı.
           </h1>
           <p className="max-w-3xl text-lg leading-relaxed text-[var(--color-ink-2)] md:text-xl">
-            Yetenek 2.0, telefon kamerasıyla 5 dakikada 7 boyutlu çocuk
-            yetenek profili çıkaran, AI destekli açık kaynak bir spor
-            tarama platformudur. Hedefimiz: Türkiye'de hiçbir potansiyel
-            tespit edilmeden kaybolmasın.
+            Yetenek 2.0, telefon kamerasıyla 5 dakikada 7 boyutlu çocuk yetenek
+            profili çıkaran, AI destekli açık kaynak bir spor tarama
+            platformudur. Hedefimiz: Türkiye'de hiçbir potansiyel tespit
+            edilmeden kaybolmasın.
           </p>
         </header>
 
@@ -90,9 +92,9 @@ export default async function AboutPage() {
           <p className="mt-5 max-w-3xl text-lg leading-relaxed text-[var(--color-ink-2)]">
             Talent identification literatüründe (Bompa, Régnier, Vaeyens) her
             spor için tipik 5-7 bio-motor yetinin önemli olduğu söylenir.
-            Yetenek 2.0 bu 7 yetiyi kameralı testlerle ölçüyor — ardından
-            12 sporun ideal profili ile karşılaştırarak kişiselleştirilmiş
-            öneri çıkarıyor.
+            Yetenek 2.0 bu 7 yetiyi kameralı testlerle ölçüyor — ardından 12
+            sporun ideal profili ile karşılaştırarak kişiselleştirilmiş öneri
+            çıkarıyor.
           </p>
 
           <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -166,7 +168,10 @@ export default async function AboutPage() {
         </section>
 
         {/* Bilim referansları */}
-        <section className="mt-24 border-t border-[var(--color-line)] pt-16" id="bilim">
+        <section
+          className="mt-24 border-t border-[var(--color-line)] pt-16"
+          id="bilim"
+        >
           <p className="text-xs font-semibold tracking-[0.25em] text-[var(--color-signal)] uppercase">
             Bilim Referansları
           </p>
@@ -175,9 +180,9 @@ export default async function AboutPage() {
           </h2>
           <p className="mt-5 max-w-3xl text-base leading-relaxed text-[var(--color-ink-2)]">
             Norm tabloları ve sport profile vektörleri için kullanılan
-            kaynaklar. Her birini doğrulayabilir, kendin de okuyabilirsin.
-            Eksik kalan boyutlar (lateral hops 8-10 yaş, jumping jacks
-            pediatric norm) Türkiye pilot validasyon ile tamamlanacak.
+            kaynaklar. Her birini doğrulayabilir, kendin de okuyabilirsin. Eksik
+            kalan boyutlar (lateral hops 8-10 yaş, jumping jacks pediatric norm)
+            Türkiye pilot validasyon ile tamamlanacak.
           </p>
 
           <ol className="mt-12 space-y-4">
@@ -186,7 +191,7 @@ export default async function AboutPage() {
                 key={ref.id}
                 className="flex gap-4 rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5"
               >
-                <span className="font-mono shrink-0 rounded-md bg-[var(--color-canvas)] px-2 py-1 text-xs font-bold text-[var(--color-signal)]">
+                <span className="shrink-0 rounded-md bg-[var(--color-canvas)] px-2 py-1 font-mono text-xs font-bold text-[var(--color-signal)]">
                   {String(idx + 1).padStart(2, '0')}
                 </span>
                 <div className="flex-1">
@@ -228,8 +233,8 @@ export default async function AboutPage() {
           </p>
           <h2 className="mt-3 text-3xl font-bold md:text-4xl">Ekip ve ürün</h2>
           <p className="mt-5 max-w-3xl text-base leading-relaxed text-[var(--color-ink-2)]">
-            Yetenek 2.0 açık kaynak, ücretsiz ve donanım bağımsız bir pilot
-            ürün olarak geliştiriliyor. Hedefimiz, bilimsel testleri herkesin
+            Yetenek 2.0 açık kaynak, ücretsiz ve donanım bağımsız bir pilot ürün
+            olarak geliştiriliyor. Hedefimiz, bilimsel testleri herkesin
             erişebileceği sade bir web deneyimine taşımak.
           </p>
           <div className="mt-6 flex flex-wrap gap-2">

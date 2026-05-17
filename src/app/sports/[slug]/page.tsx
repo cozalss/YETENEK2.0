@@ -16,7 +16,12 @@ import {
 import { SiteHeaderServer } from '@/components/layout/SiteHeaderServer';
 import { SiteFooter } from '@/components/layout/SiteFooter';
 import { SPORTS, getSport } from '@/lib/content/sports';
-import { getAllSports, getSportBySlug } from '@/infrastructure/storage/supabase-content-repository';
+import {
+  getAllSports,
+  getSportBySlug,
+} from '@/infrastructure/storage/supabase-content-repository';
+
+export const revalidate = 300; // 5 dk ISR — DB override'lar statik sayfayı tazeler
 
 export function generateStaticParams() {
   return SPORTS.map((s) => ({ slug: s.slug }));
@@ -87,7 +92,11 @@ export default async function SportDetailPage({ params }: PageProps) {
           <Fact icon={Calendar} label="Başlama Yaşı" value={sport.startAge} />
           <Fact icon={Coins} label="Aylık Ücret" value={sport.monthlyCost} />
           <Fact icon={Sparkles} label="Sezon" value={sport.season} />
-          <Fact icon={MapPin} label="Federasyon" value={sport.federation.name} />
+          <Fact
+            icon={MapPin}
+            label="Federasyon"
+            value={sport.federation.name}
+          />
         </section>
 
         {/* Highlights */}

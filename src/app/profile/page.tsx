@@ -8,7 +8,7 @@
 
 import Link from 'next/link';
 import { ArrowLeft, LogOut } from 'lucide-react';
-import { getServerClient } from '@/lib/supabase/server';
+import { getCachedUser } from '@/lib/auth/get-cached-user';
 import { supabaseChildRepository } from '@/infrastructure/storage/supabase-child-repository';
 import { supabaseLessonRepository } from '@/infrastructure/storage/supabase-lesson-repository';
 import { env } from '@/shared/config/env-public';
@@ -47,23 +47,22 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     return <UnconfiguredView />;
   }
 
-  const supabase = await getServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCachedUser();
 
   // Middleware zaten redirect ediyor ama defensive:
   if (!user) {
     return <UnauthView />;
   }
 
-  const childrenResult = await supabaseChildRepository.list();
+  // İki bağımsız fetch paralel çalışır — sıralı await yerine ~50-150ms kazanç.
+  const [childrenResult, enrollmentsResult] = await Promise.all([
+    supabaseChildRepository.list(),
+    supabaseLessonRepository.listEnrollmentsForUser(),
+  ]);
   const children = childrenResult.ok ? childrenResult.value : [];
 
   // Her çocuğun aktif spor kaydını çek; ChildrenSection bunları küçük rozet
   // olarak gösterebilir. Kart detayında full progress var.
-  const enrollmentsResult =
-    await supabaseLessonRepository.listEnrollmentsForUser();
   const enrollmentsByChild = new Map<string, string>();
   if (enrollmentsResult.ok) {
     for (const e of enrollmentsResult.value) {

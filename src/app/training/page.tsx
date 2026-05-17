@@ -10,6 +10,8 @@ import { SiteFooter } from '@/components/layout/SiteFooter';
 import { PROGRAM_LIST } from '@/lib/training/programs';
 import { getAllTrainingPrograms } from '@/infrastructure/storage/supabase-content-repository';
 
+export const revalidate = 300; // 5 dk ISR — antrenman içeriği nadiren değişir
+
 export const metadata: Metadata = {
   title: 'Antrenman Programları',
   description:
@@ -19,7 +21,8 @@ export const metadata: Metadata = {
 export default async function TrainingIndexPage() {
   // DB önceliği; eksikse static fallback
   const dbPrograms = await getAllTrainingPrograms();
-  const programs = dbPrograms.size > 0 ? Array.from(dbPrograms.values()) : PROGRAM_LIST;
+  const programs =
+    dbPrograms.size > 0 ? Array.from(dbPrograms.values()) : PROGRAM_LIST;
   return (
     <main className="min-h-screen bg-[var(--color-canvas)] text-[var(--color-ink-1)]">
       <SiteHeaderServer />
@@ -43,9 +46,8 @@ export default async function TrainingIndexPage() {
             <span className="text-[var(--color-signal)]">başlangıç.</span>
           </h1>
           <p className="max-w-2xl text-lg leading-relaxed text-[var(--color-ink-2)] md:text-xl">
-            Test çocuğunun zayıf boyutunu söyledi. Şimdi geliştirmek için
-            7 boyuta özel pediatrik program. Bompa, ACSM Youth, GSB
-            referansları.
+            Test çocuğunun zayıf boyutunu söyledi. Şimdi geliştirmek için 7
+            boyuta özel pediatrik program. Bompa, ACSM Youth, GSB referansları.
           </p>
         </header>
 

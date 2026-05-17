@@ -13,6 +13,8 @@ import { TRAINING_PROGRAMS, PROGRAM_LIST } from '@/lib/training/programs';
 import type { DimensionKey } from '@/lib/matching/sportProfiles';
 import { getTrainingProgram } from '@/infrastructure/storage/supabase-content-repository';
 
+export const revalidate = 300; // 5 dk ISR — DB override'lar statik sayfayı tazeler
+
 export function generateStaticParams() {
   return PROGRAM_LIST.map((p) => ({ dimension: p.dimension }));
 }
@@ -78,7 +80,10 @@ export default async function TrainingDimensionPage({ params }: PageProps) {
             label="Hedef Sporlar"
             value={`${program.benefitsFor.length} branş`}
           />
-          <Meta label="Egzersiz" value={`${program.exercises.length} hareket`} />
+          <Meta
+            label="Egzersiz"
+            value={`${program.exercises.length} hareket`}
+          />
         </section>
 
         {/* Hedef sporlar */}
@@ -115,7 +120,7 @@ export default async function TrainingDimensionPage({ params }: PageProps) {
                 className="rounded-3xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6"
               >
                 <div className="flex items-start gap-4">
-                  <span className="font-mono shrink-0 grid h-10 w-10 place-items-center rounded-full bg-[var(--color-canvas)] text-sm font-bold text-[var(--color-signal)]">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-canvas)] font-mono text-sm font-bold text-[var(--color-signal)]">
                     {String(idx + 1).padStart(2, '0')}
                   </span>
                   <div className="flex-1">
@@ -152,8 +157,7 @@ export default async function TrainingDimensionPage({ params }: PageProps) {
               </p>
               <p className="mt-3 text-xs text-amber-100/70">
                 Bu program ön-uzman doğrulaması bekliyor. Çocuğun sağlık
-                durumuna göre antrenör veya çocuk doktoru görüşü almak
-                önerilir.
+                durumuna göre antrenör veya çocuk doktoru görüşü almak önerilir.
               </p>
             </div>
           </div>

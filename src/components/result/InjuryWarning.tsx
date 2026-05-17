@@ -65,15 +65,9 @@ export function InjuryWarning({
             Sakatlanma Riski Erken Uyarısı
           </h3>
           {asymmetryPercent != null && weakerSide && (
-            <p
-              className="mt-1 text-sm"
-              style={{ color: 'var(--color-ink-2)' }}
-            >
+            <p className="mt-1 text-sm" style={{ color: 'var(--color-ink-2)' }}>
               {weakerSide === 'right' ? 'Sağ' : 'Sol'} bacak{' '}
-              <span
-                className="font-bold"
-                style={{ color: 'var(--form-navy)' }}
-              >
+              <span className="font-bold" style={{ color: 'var(--form-navy)' }}>
                 %{asymmetryPercent.toFixed(0)} asimetrik
               </span>
             </p>
@@ -104,7 +98,7 @@ export function InjuryWarning({
           }}
         >
           <p
-            className="text-[10px] font-bold uppercase tracking-[0.25em]"
+            className="text-[10px] font-bold tracking-[0.25em] uppercase"
             style={{
               color: 'rgba(44, 62, 107, 0.6)',
               fontFamily: 'var(--font-display)',
@@ -146,7 +140,7 @@ export function InjuryWarning({
                     {d.name}
                   </span>
                   <span
-                    className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                    className="rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase"
                     style={{
                       background: FOCUS_BADGE_COLOR[d.focus],
                       color: 'var(--form-navy)',
@@ -157,7 +151,7 @@ export function InjuryWarning({
                   </span>
                 </div>
                 <p
-                  className="mt-1 text-[11px] font-mono"
+                  className="mt-1 font-mono text-[11px]"
                   style={{ color: 'rgba(44, 62, 107, 0.7)' }}
                 >
                   {d.dosage}

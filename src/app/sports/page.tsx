@@ -10,6 +10,8 @@ import { SiteFooter } from '@/components/layout/SiteFooter';
 import { SPORTS } from '@/lib/content/sports';
 import { getAllSports } from '@/infrastructure/storage/supabase-content-repository';
 
+export const revalidate = 300; // 5 dk ISR — spor içeriği nadiren değişir
+
 export const metadata: Metadata = {
   title: 'Spor Rehberi',
   description:

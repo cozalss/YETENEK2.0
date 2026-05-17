@@ -10,6 +10,8 @@
 
 import type { LessonAttempt } from './types';
 import { recordLessonActivity } from './streak';
+import { computeLessonBadges } from '@/lib/gamification/badges';
+import { gamificationStore } from '@/lib/gamification/store';
 
 const STORAGE_PREFIX = 'yetenek:lessons:';
 
@@ -44,7 +46,7 @@ function writeState(childId: string, state: LessonsState): void {
 
 export function markLessonCompleted(
   childId: string,
-  attempt: LessonAttempt,
+  attempt: LessonAttempt
 ): void {
   const state = readState(childId);
   const next: LessonsState = {
@@ -53,6 +55,25 @@ export function markLessonCompleted(
   writeState(childId, next);
   // Streak: her ders tamamlama günlük seriyi günceller (aynı gün no-op).
   recordLessonActivity(childId, new Date(attempt.completedAt));
+
+  // Lesson rozetleri — firstLesson, lessonMaster, polymath
+  const attempts = Object.values(next.completed);
+  const totalCompleted = attempts.length;
+  const perSport = new Map<string, number>();
+  for (const a of attempts) {
+    perSport.set(a.sportSlug, (perSport.get(a.sportSlug) ?? 0) + 1);
+  }
+  const sportsWithLesson = perSport.size;
+  const maxLessonsInOneSport = Math.max(0, ...perSport.values());
+  const lessonBadges = computeLessonBadges({
+    totalCompleted,
+    sportsWithLesson,
+    maxLessonsInOneSport,
+  });
+  if (lessonBadges.length > 0) {
+    gamificationStore.unlock(lessonBadges);
+  }
+
   void persistLessonToServer(childId, attempt);
 }
 
@@ -60,20 +81,18 @@ export function isLessonCompleted(childId: string, lessonId: string): boolean {
   return readState(childId).completed[lessonId] != null;
 }
 
-export function getCompletedLessons(
-  childId: string,
-): readonly LessonAttempt[] {
+export function getCompletedLessons(childId: string): readonly LessonAttempt[] {
   return Object.values(readState(childId).completed).sort(
-    (a, b) => b.completedAt - a.completedAt,
+    (a, b) => b.completedAt - a.completedAt
   );
 }
 
 export function getCompletedCountForSport(
   childId: string,
-  sportSlug: string,
+  sportSlug: string
 ): number {
   return Object.values(readState(childId).completed).filter(
-    (a) => a.sportSlug === sportSlug,
+    (a) => a.sportSlug === sportSlug
   ).length;
 }
 
@@ -82,12 +101,12 @@ export function getCompletedCountForSport(
  */
 export function getCompletedLessonIdsForSport(
   childId: string,
-  sportSlug: string,
+  sportSlug: string
 ): ReadonlySet<string> {
   return new Set(
     Object.values(readState(childId).completed)
       .filter((a) => a.sportSlug === sportSlug)
-      .map((a) => a.lessonId),
+      .map((a) => a.lessonId)
   );
 }
 
@@ -109,7 +128,7 @@ interface LessonOrderRef {
 export function isLessonUnlocked(
   lesson: LessonOrderRef,
   allLessonsForSport: readonly LessonOrderRef[],
-  completedIds: ReadonlySet<string>,
+  completedIds: ReadonlySet<string>
 ): boolean {
   if (lesson.order <= 1) return true;
   const previous = allLessonsForSport.find((l) => l.order === lesson.order - 1);
@@ -128,7 +147,7 @@ export function clearAllLessons(childId: string): void {
 
 async function persistLessonToServer(
   childId: string,
-  attempt: LessonAttempt,
+  attempt: LessonAttempt
 ): Promise<void> {
   if (typeof window === 'undefined') return;
   try {

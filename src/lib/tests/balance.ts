@@ -23,14 +23,16 @@ import {
   standardDeviation,
 } from '@/lib/pose/extractKeypoints';
 
-// İyi denge için tüm vücut görünür olmalı (özellikle ayak/diz/kalça).
+// Denge analizi yalnızca kalça + omuz X salınımını kullanıyor (Era 2006);
+// havadaki ayağın visibility'si tek bacak postüründe sıklıkla < 0.5 oluyor
+// (kadrajdan çıkma / gövde arkasına geçme). Daha önce ankle/diz zorunluydu →
+// tüm frame'ler reddediliyor, hasEnoughData=false hatası alınıyordu. Şimdi
+// yalnızca analizin gerçekten okuduğu noktaları zorunlu kılıyoruz.
 const REQUIRED_LANDMARKS = [
   POSE_LANDMARKS.LEFT_HIP,
   POSE_LANDMARKS.RIGHT_HIP,
-  POSE_LANDMARKS.LEFT_KNEE,
-  POSE_LANDMARKS.RIGHT_KNEE,
-  POSE_LANDMARKS.LEFT_ANKLE,
-  POSE_LANDMARKS.RIGHT_ANKLE,
+  POSE_LANDMARKS.LEFT_SHOULDER,
+  POSE_LANDMARKS.RIGHT_SHOULDER,
 ];
 
 export type Leg = 'right' | 'left';
@@ -175,7 +177,7 @@ export function analyzeLeg(samples: PostureSample[]): LegBalanceResult {
 function asymmetryThresholdForAge(ageYears: number | undefined): number {
   if (ageYears == null || !Number.isFinite(ageYears)) return 0.13;
   if (ageYears <= 10) return 0.12;
-  return 0.10;
+  return 0.1;
 }
 
 /**

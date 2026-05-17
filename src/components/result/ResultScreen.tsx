@@ -18,6 +18,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import type { SessionSummary } from '@/lib/session/store';
 import { computeBadgesForSession, type Badge } from '@/lib/gamification/badges';
 import { gamificationStore } from '@/lib/gamification/store';
@@ -152,10 +153,7 @@ export function ResultScreen({
             style={{ color: 'var(--color-ink-2)' }}
           >
             En güçlü uyumun{' '}
-            <span
-              className="font-black"
-              style={{ color: 'var(--form-navy)' }}
-            >
+            <span className="font-black" style={{ color: 'var(--form-navy)' }}>
               {topSport.sport}
             </span>{' '}
             ile{' '}
@@ -261,9 +259,7 @@ function TabBar({
             className="flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold tracking-wide transition-colors focus-visible:outline-none"
             style={{
               background: active ? 'var(--color-signal)' : 'transparent',
-              color: active
-                ? 'var(--form-navy)'
-                : 'var(--color-ink-2)',
+              color: active ? 'var(--form-navy)' : 'var(--color-ink-2)',
               boxShadow: active
                 ? '0 4px 12px -4px rgba(242, 201, 76, 0.5)'
                 : 'none',
@@ -357,9 +353,7 @@ function ProfileTab({
                 : `${session.jump.score.toFixed(0)} skor`
             }
             citationTag="jump"
-            confidence={
-              session.jump.consistent === false ? 'low' : 'high'
-            }
+            confidence={session.jump.consistent === false ? 'low' : 'high'}
           />
         )}
         {session.broadJump && (
@@ -429,7 +423,7 @@ function ProfileTab({
 
 function PdfExportSkeleton() {
   return (
-    <div className="rounded-3xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6 animate-pulse">
+    <div className="animate-pulse rounded-3xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6">
       <div className="h-3 w-16 rounded bg-[var(--color-line-strong)]" />
       <div className="mt-2 h-6 w-40 rounded bg-[var(--color-line-strong)]" />
       <div className="mt-2 h-4 w-full rounded bg-[var(--color-line-strong)]" />
@@ -489,7 +483,7 @@ function Metric({
     >
       <div className="flex items-center justify-between gap-2">
         <div
-          className="text-[10px] font-bold uppercase tracking-[0.18em]"
+          className="text-[10px] font-bold tracking-[0.18em] uppercase"
           style={{
             color: 'var(--color-ink-3)',
             fontFamily: 'var(--font-display)',
@@ -499,7 +493,7 @@ function Metric({
         </div>
         {citation && (
           <span
-            className="rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+            className="rounded-full border px-1.5 py-0.5 text-[9px] font-bold tracking-wider uppercase"
             style={{
               borderColor: 'rgba(242, 201, 76, 0.5)',
               background: 'rgba(242, 201, 76, 0.18)',
@@ -523,16 +517,13 @@ function Metric({
         {value}
       </div>
       {sub && (
-        <div
-          className="mt-0.5 text-xs"
-          style={{ color: 'var(--color-ink-3)' }}
-        >
+        <div className="mt-0.5 text-xs" style={{ color: 'var(--color-ink-3)' }}>
           {sub}
         </div>
       )}
       {confidence === 'low' && (
         <div
-          className="mt-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+          className="mt-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase"
           style={{
             borderColor: 'rgba(244, 182, 194, 0.7)',
             background: 'rgba(244, 182, 194, 0.25)',
@@ -680,7 +671,7 @@ function NextStepRow({
 }) {
   return (
     <li>
-      <a
+      <Link
         href={href}
         className="group flex items-center justify-between rounded-2xl border-2 p-4 transition-colors hover:bg-[var(--color-surface)]"
         style={{
@@ -712,7 +703,7 @@ function NextStepRow({
         >
           →
         </span>
-      </a>
+      </Link>
     </li>
   );
 }

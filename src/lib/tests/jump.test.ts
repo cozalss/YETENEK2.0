@@ -39,7 +39,8 @@ function synthesizeJumpSamples(opts: {
   const preIdleMs = opts.preFlightIdleMs ?? 900;
   const loadingMs = opts.loadingMs ?? 400;
   const flightTimeMs = opts.flightTimeMs ?? 400;
-  const durationMs = opts.durationMs ?? preIdleMs + loadingMs + flightTimeMs + 700;
+  const durationMs =
+    opts.durationMs ?? preIdleMs + loadingMs + flightTimeMs + 700;
   const jumpDelta = opts.jumpDelta ?? 0.08;
   const ankleLift = opts.ankleLift ?? 0.04;
   const fps = 30;
@@ -85,7 +86,11 @@ function synthesizeJumpSamples(opts: {
   return samples;
 }
 
-function makePoseFrame(landmarkOverrides: Partial<Record<number, { x: number; y: number; z?: number; visibility?: number }>> = {}): PoseFrame {
+function makePoseFrame(
+  landmarkOverrides: Partial<
+    Record<number, { x: number; y: number; z?: number; visibility?: number }>
+  > = {}
+): PoseFrame {
   // 33 default landmark — hepsi orta pozisyonda, görünür.
   const landmarks = Array.from({ length: 33 }, () => ({
     x: 0.5,
@@ -208,7 +213,7 @@ describe('calibrateJumpHeight — cross-check', () => {
     expect(calibrated.jumpHeightCm).not.toBeNull();
   });
 
-  it('iki yöntem tutarlıysa method = consensus', () => {
+  it('flight-time varsa birincil — hip-displacement sadece tutarlılık check', () => {
     const calibFrame = makePoseFrame({
       [POSE_LANDMARKS.LEFT_HIP]: { x: 0.5, y: 0.55, visibility: 0.95 },
       [POSE_LANDMARKS.RIGHT_HIP]: { x: 0.5, y: 0.55, visibility: 0.95 },
@@ -241,10 +246,10 @@ describe('calibrateJumpHeight — cross-check', () => {
     const analysis = analyzeJump(samples);
     const calibrated = calibrateJumpHeight(analysis, calibFrame, null);
 
-    // Tutarlı (her iki yöntem de ~20cm civarında) → consensus
-    if (calibrated.consistent) {
-      expect(calibrated.method).toBe('consensus');
-    }
+    // Yeni politika: flight-time varsa her zaman birincil; hip-displacement
+    // sadece tutarlılık flag'i için kullanılır (perspektif hatası bozmasın).
+    expect(calibrated.method).toBe('flight-time');
+    expect(calibrated.jumpHeightCm).toBe(calibrated.jumpHeightCmFlight);
   });
 
   it('valid=false ise calibrate hiçbir şey değiştirmez', () => {
@@ -286,7 +291,7 @@ describe('jumpPercentile + jumpScore', () => {
     expect(jumpPercentile(200, 12, 'male')).toBeLessThanOrEqual(99);
   });
 
-  it('jumpScore eski API\'yi koruyor (backward compat)', () => {
+  it("jumpScore eski API'yi koruyor (backward compat)", () => {
     const score = jumpScore(28, 12, 'male');
     const percentile = jumpPercentile(28, 12, 'male');
     expect(score).toBe(percentile);

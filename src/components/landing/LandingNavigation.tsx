@@ -12,7 +12,12 @@ const NAV_ITEMS = [
   { label: 'CÜZDANIM', href: '/profile' },
 ];
 
-export function LandingNavigation() {
+interface Props {
+  /** Server'dan türetilmiş; true ise GİRİŞ butonu gizlenir, CTA Cüzdanım olur. */
+  isAuthenticated?: boolean;
+}
+
+export function LandingNavigation({ isAuthenticated = false }: Props = {}) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -70,18 +75,20 @@ export function LandingNavigation() {
               {item.label}
             </Link>
           ))}
+          {!isAuthenticated && (
+            <Link
+              href="/auth/sign-in?next=/profile"
+              className="text-xs font-bold tracking-[0.2em] transition-colors duration-300 hover:opacity-70"
+              style={{
+                color: scrolled ? '#2C3E6B' : '#FFF5E1',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              GİRİŞ
+            </Link>
+          )}
           <Link
-            href="/auth/sign-in?next=/profile"
-            className="text-xs font-bold tracking-[0.2em] transition-colors duration-300 hover:opacity-70"
-            style={{
-              color: scrolled ? '#2C3E6B' : '#FFF5E1',
-              fontFamily: 'var(--font-display)',
-            }}
-          >
-            GİRİŞ
-          </Link>
-          <Link
-            href="/auth/sign-up?next=/profile"
+            href={isAuthenticated ? '/profile' : '/auth/sign-up?next=/profile'}
             className="inline-flex h-9 items-center rounded-full px-4 text-[11px] font-black tracking-[0.25em] uppercase transition-transform hover:scale-[1.04]"
             style={{
               background: scrolled
@@ -130,19 +137,21 @@ export function LandingNavigation() {
               {item.label}
             </Link>
           ))}
+          {!isAuthenticated && (
+            <Link
+              href="/auth/sign-in?next=/profile"
+              onClick={() => setMobileOpen(false)}
+              className="py-2 text-left text-sm font-bold tracking-[0.2em]"
+              style={{
+                color: '#2C3E6B',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              GİRİŞ
+            </Link>
+          )}
           <Link
-            href="/auth/sign-in?next=/profile"
-            onClick={() => setMobileOpen(false)}
-            className="py-2 text-left text-sm font-bold tracking-[0.2em]"
-            style={{
-              color: '#2C3E6B',
-              fontFamily: 'var(--font-display)',
-            }}
-          >
-            GİRİŞ
-          </Link>
-          <Link
-            href="/auth/sign-up?next=/profile"
+            href={isAuthenticated ? '/profile' : '/auth/sign-up?next=/profile'}
             onClick={() => setMobileOpen(false)}
             className="mt-1 inline-flex h-10 items-center justify-center rounded-full px-4 text-[11px] font-black tracking-[0.25em] uppercase"
             style={{

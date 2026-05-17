@@ -115,7 +115,7 @@ const HEIGHT_AGREEMENT_TOLERANCE = 0.2;
  */
 function flightTimeToHeightCm(flightTimeMs: number): number {
   const t = flightTimeMs / 1000;
-  return (GRAVITY_M_PER_S2 * t * t) / 8 * 100;
+  return ((GRAVITY_M_PER_S2 * t * t) / 8) * 100;
 }
 
 interface FlightDetection {
@@ -146,8 +146,9 @@ function detectFlightPhase(samples: HipSample[]): FlightDetection | null {
   const smoothedAnkles = smoothSeries(ankleYs, 3);
 
   // Baseline: ilk 25 frame'in median'ı (yere basıyor varsayımı).
-  const baselineSlice = [...smoothedAnkles.slice(0, Math.min(25, smoothedAnkles.length))]
-    .sort((a, b) => a - b);
+  const baselineSlice = [
+    ...smoothedAnkles.slice(0, Math.min(25, smoothedAnkles.length)),
+  ].sort((a, b) => a - b);
   const baselineAnkleY = baselineSlice[Math.floor(baselineSlice.length / 2)];
 
   let takeoffIdx = -1;
@@ -165,8 +166,7 @@ function detectFlightPhase(samples: HipSample[]): FlightDetection | null {
 
   if (takeoffIdx === -1 || landingIdx === -1) return null;
 
-  const flightTimeMs =
-    ankleSamples[landingIdx].t - ankleSamples[takeoffIdx].t;
+  const flightTimeMs = ankleSamples[landingIdx].t - ankleSamples[takeoffIdx].t;
 
   if (flightTimeMs < MIN_FLIGHT_TIME_MS || flightTimeMs > MAX_FLIGHT_TIME_MS) {
     return null;
@@ -210,7 +210,9 @@ function invalid(
  */
 export function analyzeJump(samples: HipSample[]): JumpAnalysis {
   if (samples.length < 30) {
-    return invalid('Yetersiz örnek. Vücudunun kameraya tam görünmesi gerekiyor.');
+    return invalid(
+      'Yetersiz örnek. Vücudunun kameraya tam görünmesi gerekiyor.'
+    );
   }
 
   // Frame jitter'ını kır.
@@ -265,7 +267,9 @@ export function analyzeJump(samples: HipSample[]): JumpAnalysis {
   // Hip-displacement fallback uçuş süresi: apex etrafında simetri varsayımı.
   const fallbackFlightMs = upDurationMs * 2;
   const flightTimeMs = flight?.flightTimeMs ?? fallbackFlightMs;
-  const jumpHeightCmFlight = flight ? flightTimeToHeightCm(flight.flightTimeMs) : null;
+  const jumpHeightCmFlight = flight
+    ? flightTimeToHeightCm(flight.flightTimeMs)
+    : null;
 
   // Flight-time çok düşük yükseklik veriyorsa, hip-displacement güçlü olsa
   // bile noise sayılır — primary metot yanlış-pozitif vermesin. Çocuk hafif
@@ -312,24 +316,26 @@ export function calibrateJumpHeight(
   const jumpHeightCmHip =
     cmPerUnit != null ? analysis.jumpUnits * cmPerUnit : null;
 
-  // Birincil yükseklik: flight-time > hip > olduğu gibi
+  // Birincil yükseklik politikası:
+  //   - flight-time varsa HER ZAMAN birincil (Bosco 1983 — perspektif bağımsız,
+  //     fiziksel olarak doğru). Hip-displacement sadece cross-check ve tutarlılık
+  //     flag'i için kullanılır.
+  //   - flight-time yoksa hip-displacement fallback.
+  //
+  // Eski "consensus = ortalama" davranışı kaldırıldı çünkü hip-displacement
+  // kamera açısı/perspektif hatalarından doğrudan etkileniyor ve doğru
+  // flight-time ölçümünü bozuyordu.
   let primary: number | null = analysis.jumpHeightCmFlight;
-  let method: HeightMethod =
+  const method: HeightMethod =
     analysis.jumpHeightCmFlight != null ? 'flight-time' : 'hip-displacement';
   let consistent = true;
 
   if (primary != null && jumpHeightCmHip != null && primary > 0) {
     const diff = Math.abs(primary - jumpHeightCmHip) / primary;
     consistent = diff <= HEIGHT_AGREEMENT_TOLERANCE;
-    if (consistent) {
-      // İki yöntem yakınsa ortalamasını al → daha düşük varyans
-      primary = (primary + jumpHeightCmHip) / 2;
-      method = 'consensus';
-    }
-    // Tutarsızsa flight-time'a güven (perspektif/kalibrasyon hatasından bağımsız)
+    // primary değiştirilmiyor — flight-time kalır
   } else if (primary == null && jumpHeightCmHip != null) {
     primary = jumpHeightCmHip;
-    method = 'hip-displacement';
   }
 
   return {

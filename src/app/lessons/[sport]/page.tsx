@@ -24,8 +24,7 @@ import { supabaseLessonRepository } from '@/infrastructure/storage/supabase-less
 import type { SportLesson } from '@/lib/lessons/types';
 
 // generateStaticParams kapatıldı — ?childId query param dinamik render gerektirir.
-// Sayfanın kendisi hızlı; ISR cache içerik tablolarını çoktan cache'liyor.
-export const dynamic = 'force-dynamic';
+// `searchParams` await'i Next.js'i zaten dinamik moda sokar; force-dynamic gereksiz.
 
 interface PageProps {
   params: Promise<{ sport: string }>;
@@ -44,7 +43,10 @@ export async function generateMetadata({
   };
 }
 
-export default async function LessonsListPage({ params, searchParams }: PageProps) {
+export default async function LessonsListPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { sport } = await params;
   const { childId } = await searchParams;
   const curriculum = getCurriculumBySlug(sport);
@@ -74,7 +76,9 @@ export default async function LessonsListPage({ params, searchParams }: PageProp
       sportSlug: sport,
     });
     if (completedResult.ok) {
-      completedLessonIds = new Set(completedResult.value.map((c) => c.lessonId));
+      completedLessonIds = new Set(
+        completedResult.value.map((c) => c.lessonId)
+      );
     }
   }
 

@@ -8,6 +8,7 @@
  * `/test/full?childId=`'a iletir.
  */
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { Calendar, ChevronRight, Plus, Sparkles } from 'lucide-react';
 import { addChildAction } from '@/app/children/actions';
@@ -98,10 +99,24 @@ function ChildCard({
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div
-              className="flex h-12 w-12 items-center justify-center rounded-full text-2xl"
+              className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full text-2xl"
               style={{ background: 'var(--whistle-cream)' }}
             >
-              {item.avatarEmoji ?? (item.sex === 'female' ? '👧' : '👦')}
+              {item.avatarEmoji ? (
+                <span>{item.avatarEmoji}</span>
+              ) : (
+                <Image
+                  src={
+                    item.sex === 'female'
+                      ? '/avatars/girl.png'
+                      : '/avatars/boy.png'
+                  }
+                  alt={item.displayName}
+                  fill
+                  sizes="48px"
+                  className="object-cover"
+                />
+              )}
             </div>
             <div>
               <h3
@@ -142,14 +157,14 @@ function ChildCard({
             </dd>
           </div>
           <div>
-            <dt className="opacity-60 flex items-center gap-1">
+            <dt className="flex items-center gap-1 opacity-60">
               <Calendar className="h-3 w-3" /> Son
             </dt>
             <dd className="font-bold">{lastTest ?? '—'}</dd>
           </div>
         </dl>
 
-        {enrolledCurriculum && (
+        {enrolledCurriculum ? (
           <div
             className="mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold"
             style={{
@@ -161,6 +176,19 @@ function ChildCard({
             <span aria-hidden>{enrolledCurriculum.emoji}</span>
             <span>{enrolledCurriculum.sportName} antrenmanı</span>
           </div>
+        ) : (
+          <div
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold"
+            style={{
+              borderColor: 'rgba(44, 62, 107, 0.18)',
+              background: 'rgba(44, 62, 107, 0.04)',
+              color: 'var(--form-navy)',
+              opacity: 0.7,
+            }}
+          >
+            <Sparkles className="h-3 w-3" />
+            <span>Henüz antrenman yok</span>
+          </div>
         )}
       </Link>
 
@@ -168,7 +196,7 @@ function ChildCard({
       <div className="mt-3 flex flex-wrap gap-2">
         <Link
           href={`/test/full?childId=${encodeURIComponent(item.id)}`}
-          className="inline-flex flex-1 items-center justify-center rounded-full px-4 py-2 text-xs font-bold uppercase tracking-widest transition-transform hover:scale-[1.02]"
+          className="inline-flex flex-1 items-center justify-center rounded-full px-4 py-2 text-xs font-bold tracking-widest uppercase transition-transform hover:scale-[1.02]"
           style={{
             background: 'var(--track-mustard)',
             color: 'var(--form-navy)',
@@ -179,7 +207,7 @@ function ChildCard({
         </Link>
         <Link
           href={`/test/full?childId=${encodeURIComponent(item.id)}&mode=quick`}
-          className="inline-flex flex-1 items-center justify-center rounded-full border-2 px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors hover:bg-neutral-50"
+          className="inline-flex flex-1 items-center justify-center rounded-full border-2 px-4 py-2 text-xs font-bold tracking-widest uppercase transition-colors hover:bg-neutral-50"
           style={{
             borderColor: 'var(--form-navy)',
             color: 'var(--form-navy)',
@@ -216,8 +244,8 @@ function EmptyHint() {
         className="mx-auto mt-2 max-w-md text-sm"
         style={{ color: 'var(--form-navy)', opacity: 0.7 }}
       >
-        Aşağıdaki formla başlayalım. Her çocuğun yaşına göre özel test ve
-        analiz oluşturulur.
+        Aşağıdaki formla başlayalım. Her çocuğun yaşına göre özel test ve analiz
+        oluşturulur.
       </p>
     </div>
   );
@@ -233,7 +261,7 @@ function AddChildForm() {
       }}
     >
       <summary
-        className="flex cursor-pointer items-center gap-2 text-sm font-bold uppercase tracking-widest"
+        className="flex cursor-pointer items-center gap-2 text-sm font-bold tracking-widest uppercase"
         style={{
           color: 'var(--form-navy)',
           fontFamily: 'var(--font-display)',
@@ -264,7 +292,7 @@ function AddChildForm() {
           />
           <label className="block">
             <span
-              className="mb-1.5 block text-xs font-bold uppercase tracking-widest"
+              className="mb-1.5 block text-xs font-bold tracking-widest uppercase"
               style={{ color: 'var(--form-navy)' }}
             >
               Cinsiyet
@@ -313,7 +341,7 @@ function AddChildForm() {
         <div className="flex items-end md:col-start-2">
           <button
             type="submit"
-            className="w-full rounded-full px-6 py-3 text-sm font-bold uppercase tracking-widest transition-transform hover:scale-[1.02]"
+            className="w-full rounded-full px-6 py-3 text-sm font-bold tracking-widest uppercase transition-transform hover:scale-[1.02]"
             style={{
               background: 'var(--track-mustard)',
               color: 'var(--form-navy)',
@@ -357,7 +385,7 @@ function Field({
   return (
     <label className="block">
       <span
-        className="mb-1.5 block text-xs font-bold uppercase tracking-widest"
+        className="mb-1.5 block text-xs font-bold tracking-widest uppercase"
         style={{ color: 'var(--form-navy)' }}
       >
         {label}

@@ -10,6 +10,9 @@
  *   yetenek:streak:{childId} → { current, longest, lastDate }
  */
 
+import { computeStreakBadges } from '@/lib/gamification/badges';
+import { gamificationStore } from '@/lib/gamification/store';
+
 const STORAGE_PREFIX = 'yetenek:streak:';
 
 export interface StreakState {
@@ -118,6 +121,13 @@ export function recordLessonActivity(
   }
 
   writeState(childId, next);
+
+  // Streak rozetlerini unlock et — gamificationStore "already-owned"ları yutar
+  const streakBadges = computeStreakBadges(next.current);
+  if (streakBadges.length > 0) {
+    gamificationStore.unlock(streakBadges);
+  }
+
   return {
     ...next,
     isActiveToday: next.lastDate === todayKey,

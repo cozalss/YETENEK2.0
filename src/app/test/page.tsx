@@ -1,10 +1,5 @@
 import Link from 'next/link';
-import {
-  ArrowRight,
-  Activity,
-  Scale,
-  Zap,
-} from 'lucide-react';
+import { ArrowRight, Activity, Scale, Zap } from 'lucide-react';
 import { Reveal } from '@/components/motion/Reveal';
 import { SiteHeaderServer } from '@/components/layout/SiteHeaderServer';
 import { SiteFooter } from '@/components/layout/SiteFooter';
@@ -23,7 +18,7 @@ export default function TestIndex() {
           </h1>
         </Reveal>
         <Reveal delay={160}>
-          <p className="mt-6 max-w-2xl text-lg text-[var(--color-ink-2)] leading-relaxed">
+          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-[var(--color-ink-2)]">
             Tam akış 7 boyutlu taramayı sırayla yapar ve AI raporunu üretir.
             Daha kısa başlamak istersen hızlı akışta 3 çekirdek test var.
           </p>
@@ -92,9 +87,7 @@ function FullFlowCallout() {
             Profilini gir, 7 testi ardışık yap, AI raporun ve spor önerin
             sonunda otomatik gelsin. Hızlı modda 3 çekirdek testle
             başlayabilirsin.{' '}
-            <span className="font-mono text-[var(--color-signal)]">
-              ~5 dk
-            </span>
+            <span className="font-mono text-[var(--color-signal)]">~5 dk</span>
           </p>
         </div>
         <div className="inline-flex h-14 items-center gap-3 rounded-full bg-[var(--color-signal)] px-7 text-base font-bold text-[var(--color-canvas)] shadow-[0_8px_30px_-8px_rgba(246,196,83,0.6)] transition-all group-hover:scale-[1.03]">
@@ -102,7 +95,7 @@ function FullFlowCallout() {
           <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
         </div>
       </div>
-      <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[var(--color-signal)]/20 blur-3xl" />
+      <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-[var(--color-signal)]/20 blur-3xl" />
     </Link>
   );
 }
@@ -159,7 +152,7 @@ function TestCard({
         {title}
       </h3>
       <p
-        className={`mt-2 text-sm text-[var(--color-ink-2)] leading-relaxed ${compact ? '' : 'md:text-base'}`}
+        className={`mt-2 text-sm leading-relaxed text-[var(--color-ink-2)] ${compact ? '' : 'md:text-base'}`}
       >
         {desc}
       </p>

@@ -12,10 +12,11 @@
  * sessions ayrı paralel query.
  */
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, Calendar, Plus, Trash2 } from 'lucide-react';
 import { notFound } from 'next/navigation';
-import { getServerClient } from '@/lib/supabase/server';
+import { getCachedUser } from '@/lib/auth/get-cached-user';
 import { supabaseChildRepository } from '@/infrastructure/storage/supabase-child-repository';
 import { supabaseChildProgressRepository } from '@/infrastructure/storage/supabase-child-progress-repository';
 import { removeChildAction } from '@/app/children/actions';
@@ -37,10 +38,7 @@ export default async function ChildDetailPage({
   const { id } = await params;
   const { error, info } = await searchParams;
 
-  const supabase = await getServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCachedUser();
   if (!user) {
     // Middleware zaten redirect ediyor ama defensive
     return null;
@@ -54,6 +52,7 @@ export default async function ChildDetailPage({
     summaryResult,
     enrollmentResult,
     completedLessonsResult,
+    badgesMetadata,
   ] = await Promise.all([
     supabaseChildRepository.get(childId),
     supabaseChildProgressRepository.listBadges(childId),
@@ -61,6 +60,7 @@ export default async function ChildDetailPage({
     supabaseChildProgressRepository.getSummary(childId),
     supabaseLessonRepository.getEnrollment(id),
     supabaseLessonRepository.listCompleted({ childId: id }),
+    getBadgesMetadata(),
   ]);
 
   if (!childResult.ok) {
@@ -110,7 +110,7 @@ export default async function ChildDetailPage({
 
         <BadgesWallet
           badgeIds={badges.map((b) => b.badgeId)}
-          metadata={await getBadgesMetadata()}
+          metadata={badgesMetadata}
         />
 
         <SessionHistory sessions={sessions} childId={child.id} />
@@ -119,7 +119,7 @@ export default async function ChildDetailPage({
 
         <BadgesShowcase
           earnedIds={badges.map((b) => b.badgeId)}
-          metadata={await getBadgesMetadata()}
+          metadata={badgesMetadata}
         />
       </div>
     </main>
@@ -172,10 +172,25 @@ function ChildHero({
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-4">
           <div
-            className="flex h-20 w-20 items-center justify-center rounded-full text-5xl shadow-inner"
+            className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full text-5xl shadow-inner"
             style={{ background: '#fff' }}
           >
-            {child.avatarEmoji ?? (child.sex === 'female' ? '👧' : '👦')}
+            {child.avatarEmoji ? (
+              <span>{child.avatarEmoji}</span>
+            ) : (
+              <Image
+                src={
+                  child.sex === 'female'
+                    ? '/avatars/girl.png'
+                    : '/avatars/boy.png'
+                }
+                alt={child.displayName}
+                fill
+                sizes="80px"
+                className="object-cover"
+                priority
+              />
+            )}
           </div>
           <div>
             <p

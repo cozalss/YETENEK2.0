@@ -48,3 +48,9 @@ next-env.d.ts
 # supabase CLI cache (per-developer, never commit)
 supabase/.temp/
 supabase/.branches/
+
+# Lokal env/video dosyaları (yanlışlıkla commit edilmesin)
+env.download
+/CMJ_*.mp4
+/Tek_*.mp4
+ders_videoları/

@@ -103,9 +103,9 @@ export function TestsSection() {
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3 lg:gap-10">
           {TESTS.map((test, i) => (
-            <Reveal key={test.id} delay={i * 120}>
+            <Reveal key={test.id} delay={i * 120} className="h-full">
               <div
-                className="group relative overflow-hidden rounded-xl"
+                className="group relative flex h-full flex-col overflow-hidden rounded-xl"
                 style={{ background: test.color }}
               >
                 <div className="relative aspect-square overflow-hidden">
@@ -132,7 +132,7 @@ export function TestsSection() {
                     </span>
                   </div>
                 </div>
-                <div className="p-6">
+                <div className="flex flex-1 flex-col p-6">
                   <h3
                     className="mb-1 text-2xl font-black tracking-wide"
                     style={{
@@ -163,7 +163,7 @@ export function TestsSection() {
                     {test.description}
                   </p>
                   <div
-                    className="mt-4 flex items-center justify-between pt-4"
+                    className="mt-auto flex items-center justify-between pt-4"
                     style={{ borderTop: '1px solid rgba(44, 62, 107, 0.2)' }}
                   >
                     <span
