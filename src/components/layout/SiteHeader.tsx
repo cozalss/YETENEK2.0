@@ -1,50 +1,22 @@
 /**
- * Site genelinde paylaşılan üst header.
- * Brand + ana navigasyon + CTA + giriş yapılmışsa "Hoş geldin, {veli ismi}".
+ * Site genelinde paylaşılan üst header — SAFE for client + server.
  *
- * Async server component — Supabase'den oturum açan veliyi alır,
- * `user.user_metadata.full_name` veya fallback email-localpart gösterir.
+ * Bu sync presentational bileşen — Supabase fetch'i yok. Welcome badge için
+ * sunucu pages `displayName` prop'unu geçer veya doğrudan `SiteHeaderServer`
+ * (server-only wrapper) kullanır.
+ *
+ * Önceki versiyon async + getServerClient ile birlikteydi; 'use client'
+ * sayfalardan import edilince `server-only` import zincirini kırıyordu.
  */
 
 import Link from 'next/link';
-import { env } from '@/shared/config/env-public';
-import { getServerClient } from '@/lib/supabase/server';
 
-function deriveDisplayName(
-  metadata: Record<string, unknown> | null | undefined,
-  email: string | null | undefined
-): string | null {
-  if (metadata) {
-    const fullName = metadata['full_name'];
-    if (typeof fullName === 'string' && fullName.trim().length > 0) {
-      return fullName.trim().split(/\s+/)[0];
-    }
-    const displayName = metadata['displayName'];
-    if (typeof displayName === 'string' && displayName.trim().length > 0) {
-      return displayName.trim().split(/\s+/)[0];
-    }
-  }
-  if (email && email.includes('@')) {
-    return email.split('@')[0];
-  }
-  return null;
+interface Props {
+  /** Sunucu tarafında türetilmiş veli adı — varsa "Hoş geldin" rozeti. */
+  displayName?: string | null;
 }
 
-export async function SiteHeader() {
-  let displayName: string | null = null;
-  if (env.isSupabaseConfigured) {
-    try {
-      const supabase = await getServerClient();
-      const { data } = await supabase.auth.getUser();
-      const user = data.user;
-      if (user) {
-        displayName = deriveDisplayName(user.user_metadata, user.email);
-      }
-    } catch {
-      // Header asla render hatasıyla sayfayı düşürmesin — sessizce yut.
-    }
-  }
-
+export function SiteHeader({ displayName }: Props = {}) {
   return (
     <header
       className="border-b"
