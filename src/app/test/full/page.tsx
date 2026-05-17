@@ -647,7 +647,7 @@ function PhaseShell({
         </div>
         <button
           type="button"
-          onClick={done ? onAdvance : onSkip ?? onAdvance}
+          onClick={done ? onAdvance : (onSkip ?? onAdvance)}
           className="h-11 shrink-0 rounded-full px-5 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           style={
             done
@@ -665,7 +665,8 @@ function PhaseShell({
                 }
           }
         >
-          {done ? advanceLabel : 'İlerle'} →
+          {/* Hangi yöne gittiğini de söyle — "İlerle"den daha bilgilendirici. */}
+          {advanceLabel} →
         </button>
       </div>
       {!done && onSkip && (
