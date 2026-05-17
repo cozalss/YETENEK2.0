@@ -76,7 +76,7 @@ export function InstructionsPanel({
             </h2>
             {meta && (
               <span
-                className="font-mono shrink-0 rounded-full border px-3 py-1 text-[11px] tracking-widest uppercase"
+                className="shrink-0 rounded-full border px-3 py-1 font-mono text-[11px] tracking-widest uppercase"
                 style={{
                   borderColor: 'rgba(44, 62, 107, 0.2)',
                   background: 'rgba(255, 255, 255, 0.6)',

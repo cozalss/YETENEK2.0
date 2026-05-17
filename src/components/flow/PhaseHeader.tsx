@@ -58,10 +58,7 @@ export function PhaseHeader({ current, labels, childName }: Props) {
               style={{ color: 'rgba(44, 62, 107, 0.65)' }}
             >
               Şu an:{' '}
-              <span
-                className="font-bold"
-                style={{ color: 'var(--form-navy)' }}
-              >
+              <span className="font-bold" style={{ color: 'var(--form-navy)' }}>
                 {childName}
               </span>
             </p>
@@ -73,7 +70,7 @@ export function PhaseHeader({ current, labels, childName }: Props) {
         {steps.map((step, idx) => (
           <li
             key={`${idx}-${step.label}`}
-            className="flex flex-1 items-center gap-1.5 min-w-0"
+            className="flex min-w-0 flex-1 items-center gap-1.5"
           >
             <div
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black"

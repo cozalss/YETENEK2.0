@@ -632,9 +632,7 @@ function PhaseShell({
               fontFamily: 'var(--font-display)',
             }}
           >
-            {done
-              ? '✓ Test sonuçları kaydedildi'
-              : 'Test henüz tamamlanmadı'}
+            {done ? '✓ Test sonuçları kaydedildi' : 'Test henüz tamamlanmadı'}
           </p>
           <p
             className="mt-0.5 text-xs"

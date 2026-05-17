@@ -72,7 +72,13 @@ export default async function ChildDetailPage({
   const sessions = sessionsResult.ok ? sessionsResult.value : [];
   const summary = summaryResult.ok
     ? summaryResult.value
-    : { badgeCount: 0, sessionCount: 0, lastTestedAt: null, streakDays: 0, childId: id };
+    : {
+        badgeCount: 0,
+        sessionCount: 0,
+        lastTestedAt: null,
+        streakDays: 0,
+        childId: id,
+      };
   const enrollment = enrollmentResult.ok ? enrollmentResult.value : null;
   const completedLessons = completedLessonsResult.ok
     ? completedLessonsResult.value
@@ -173,7 +179,7 @@ function ChildHero({
           </div>
           <div>
             <p
-              className="text-xs font-bold uppercase tracking-[0.3em]"
+              className="text-xs font-bold tracking-[0.3em] uppercase"
               style={{ color: 'var(--track-mustard)' }}
             >
               Profil
@@ -201,7 +207,7 @@ function ChildHero({
           <input type="hidden" name="id" value={child.id} />
           <button
             type="submit"
-            className="inline-flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-xs font-bold uppercase tracking-widest transition-colors hover:bg-red-50"
+            className="inline-flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-xs font-bold tracking-widest uppercase transition-colors hover:bg-red-50"
             style={{
               borderColor: 'var(--mindar-pink)',
               color: 'var(--deep-navy)',
@@ -233,7 +239,7 @@ function StatTile({ label, value }: { label: string; value: number | string }) {
       }}
     >
       <div
-        className="text-xs font-bold uppercase tracking-widest"
+        className="text-xs font-bold tracking-widest uppercase"
         style={{ color: 'var(--track-mustard)' }}
       >
         {label}
@@ -258,7 +264,7 @@ function NewTestCTA({ childId }: { childId: string }) {
       <div className="flex flex-col gap-3 md:flex-row">
         <Link
           href={`/test/full?childId=${encodeURIComponent(childId)}`}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-black uppercase tracking-widest transition-transform hover:scale-[1.02]"
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-black tracking-widest uppercase transition-transform hover:scale-[1.02]"
           style={{
             background: 'var(--track-mustard)',
             color: 'var(--form-navy)',
@@ -271,7 +277,7 @@ function NewTestCTA({ childId }: { childId: string }) {
         </Link>
         <Link
           href={`/test/full?childId=${encodeURIComponent(childId)}&mode=quick`}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border-2 px-6 py-3 text-sm font-bold uppercase tracking-widest transition-colors hover:bg-neutral-50"
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border-2 px-6 py-3 text-sm font-bold tracking-widest uppercase transition-colors hover:bg-neutral-50"
           style={{
             borderColor: 'var(--form-navy)',
             color: 'var(--form-navy)',
@@ -372,7 +378,10 @@ interface SessionItem {
   readonly id: string;
   readonly completedAt: string | null;
   readonly summary: {
-    readonly recommendations?: ReadonlyArray<{ sport: string; confidencePercent: number }>;
+    readonly recommendations?: ReadonlyArray<{
+      sport: string;
+      confidencePercent: number;
+    }>;
   };
 }
 
@@ -465,7 +474,7 @@ function SessionHistory({
       <div className="mt-4 text-right">
         <Link
           href={`/history?childId=${encodeURIComponent(childId)}`}
-          className="text-xs font-bold uppercase tracking-widest underline"
+          className="text-xs font-bold tracking-widest uppercase underline"
           style={{ color: 'var(--form-navy)', opacity: 0.7 }}
         >
           Tüm geçmiş →
@@ -492,10 +501,7 @@ function BadgesShowcase({
   // Tüm rozet katalogunu DB + static fallback'tan birleştir; aynı id
   // varsa DB önceliği. Sonra category → name sırasıyla deterministik
   // sırala (UI her yenilemede aynı görünsün).
-  const allBadges = new Map<
-    string,
-    (typeof BADGES)[keyof typeof BADGES]
-  >();
+  const allBadges = new Map<string, (typeof BADGES)[keyof typeof BADGES]>();
   for (const [id, badge] of metadata) allBadges.set(id, badge);
   for (const [id, badge] of Object.entries(BADGES)) {
     if (!allBadges.has(id)) allBadges.set(id, badge);
@@ -550,8 +556,8 @@ function BadgesShowcase({
             style={{ color: 'var(--form-navy)', opacity: 0.7 }}
           >
             Toplayabileceğin tüm rozetler — kalan{' '}
-            <strong>{total - earnedCount}</strong> tanesi için
-            test yapmaya / ders bitirmeye devam et.
+            <strong>{total - earnedCount}</strong> tanesi için test yapmaya /
+            ders bitirmeye devam et.
           </p>
         </div>
         <div className="flex items-center gap-3">

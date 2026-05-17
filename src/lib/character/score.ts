@@ -60,7 +60,7 @@ const FACTOR_LABEL_TR: Record<CharacterFactor, string> = {
  */
 function factorAverage(
   answers: CharacterAnswers,
-  factor: CharacterFactor,
+  factor: CharacterFactor
 ): number {
   const items = CHARACTER_QUESTIONS.filter((q) => q.factor === factor);
   if (items.length === 0) return 3;

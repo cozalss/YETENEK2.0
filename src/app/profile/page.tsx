@@ -74,10 +74,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
   // Asla ham e-posta gösterme — full_name → displayName → email-localpart sırası.
   // Demo hesabı için metadata.displayName = 'Demo Veli' set edilmişti; gerçek
   // sign-up'tan gelen veliler için metadata.full_name dolu olur.
-  const displayName = deriveProfileDisplayName(
-    user.user_metadata,
-    user.email
-  );
+  const displayName = deriveProfileDisplayName(user.user_metadata, user.email);
 
   return (
     <main

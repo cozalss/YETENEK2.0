@@ -86,9 +86,7 @@ class SessionStoreFacade {
     this.applyTransform((s) => recordUseCase.recordBroadJump(s, analysis));
   }
 
-  recordLateralHops(
-    analysis: LateralHopsAnalysis & { score: number }
-  ): void {
+  recordLateralHops(analysis: LateralHopsAnalysis & { score: number }): void {
     this.applyTransform((s) => recordUseCase.recordLateralHops(s, analysis));
   }
 
@@ -96,9 +94,7 @@ class SessionStoreFacade {
     this.applyTransform((s) => recordUseCase.recordCoordination(s, analysis));
   }
 
-  recordEndurance(
-    analysis: EnduranceJacksAnalysis & { score: number }
-  ): void {
+  recordEndurance(analysis: EnduranceJacksAnalysis & { score: number }): void {
     this.applyTransform((s) => recordUseCase.recordEndurance(s, analysis));
   }
 

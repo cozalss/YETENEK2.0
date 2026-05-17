@@ -274,15 +274,15 @@ export function LateralHopsTest({
 
           {phase === 'capture' && (
             <>
-              <div className="absolute right-4 top-4 flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-2xl ring-1 ring-red-400/50">
+              <div className="absolute top-4 right-4 flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-2xl ring-1 ring-red-400/50">
                 <span
                   className={`h-2 w-2 rounded-full bg-white ${reducedMotion ? '' : 'animate-pulse'}`}
                 />
                 {(captureRemainingMs / 1000).toFixed(1)}s
               </div>
-              <div className="absolute left-4 top-4 flex items-center gap-3 rounded-full bg-amber-400 px-5 py-2.5 text-base font-bold text-neutral-950 shadow-2xl ring-1 ring-amber-300/40">
+              <div className="absolute top-4 left-4 flex items-center gap-3 rounded-full bg-amber-400 px-5 py-2.5 text-base font-bold text-neutral-950 shadow-2xl ring-1 ring-amber-300/40">
                 <span className="font-mono text-xl">{liveHopCount}</span>
-                <span className="text-xs uppercase tracking-widest opacity-70">
+                <span className="text-xs tracking-widest uppercase opacity-70">
                   Hop
                 </span>
               </div>
@@ -383,7 +383,7 @@ function PhaseStatusCard({
             {liveHopCount}
           </div>
           <div
-            className="mt-1 text-xs uppercase tracking-widest"
+            className="mt-1 text-xs tracking-widest uppercase"
             style={{
               color: 'var(--color-ink-3)',
               fontFamily: 'var(--font-display)',
@@ -403,7 +403,10 @@ function PhaseStatusCard({
     );
   }
 
-  const messages: Record<Phase, { eyebrow: string; title: string; body: string }> = {
+  const messages: Record<
+    Phase,
+    { eyebrow: string; title: string; body: string }
+  > = {
     idle: { eyebrow: '', title: '', body: '' },
     calibrate: {
       eyebrow: 'Hazırlık',
@@ -499,7 +502,7 @@ function ResultCard({
         <button
           type="button"
           onClick={onRetry}
-          className="mt-5 h-11 rounded-full px-6 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          className="mt-5 h-11 rounded-full px-6 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           style={{
             background: 'var(--track-mustard)',
             color: 'var(--form-navy)',
@@ -555,13 +558,14 @@ function ResultCard({
           className="mt-5 text-xs leading-relaxed"
           style={{ color: 'var(--color-ink-2)' }}
         >
-          Frame eksikliği yüksek — daha iyi aydınlatma ile tekrar deneyebilirsin.
+          Frame eksikliği yüksek — daha iyi aydınlatma ile tekrar
+          deneyebilirsin.
         </p>
       )}
       <button
         type="button"
         onClick={onRetry}
-        className="mt-6 h-11 w-full rounded-full text-base font-black tracking-wide transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        className="mt-6 h-11 w-full rounded-full text-base font-black tracking-wide transition-transform hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         style={{
           background: 'var(--track-mustard)',
           color: 'var(--form-navy)',
@@ -591,7 +595,7 @@ function Stat({
       style={{ borderColor: 'rgba(44, 62, 107, 0.18)' }}
     >
       <dt
-        className="text-[10px] font-bold uppercase tracking-[0.2em]"
+        className="text-[10px] font-bold tracking-[0.2em] uppercase"
         style={{
           color: 'var(--color-ink-3)',
           fontFamily: 'var(--font-display)',

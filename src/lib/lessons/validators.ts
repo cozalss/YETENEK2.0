@@ -56,7 +56,7 @@ function inProgress(
   progress: number,
   reps: number,
   targetReps: number,
-  message: string,
+  message: string
 ): ValidatorState {
   return {
     status: 'in_progress',
@@ -67,7 +67,11 @@ function inProgress(
   };
 }
 
-function completed(reps: number, targetReps: number, message: string): ValidatorState {
+function completed(
+  reps: number,
+  targetReps: number,
+  message: string
+): ValidatorState {
   return {
     status: 'completed',
     progress: 1,
@@ -96,8 +100,7 @@ interface PostureResult {
 function checkPosture(frame: PoseFrame, posture: PostureCheck): PostureResult {
   const lm = frame.landmarks;
   const minVis = 0.4;
-  const visible = (i: number) =>
-    lm[i] && (lm[i].visibility ?? 1) >= minVis;
+  const visible = (i: number) => lm[i] && (lm[i].visibility ?? 1) >= minVis;
 
   switch (posture) {
     case 'wristsAboveShoulders': {
@@ -140,8 +143,7 @@ function checkPosture(frame: PoseFrame, posture: PostureCheck): PostureResult {
         return { ok: false, hint: 'Kollarını kameraya göster.' };
       }
       const wristY =
-        (lm[POSE_LANDMARKS.LEFT_WRIST].y +
-          lm[POSE_LANDMARKS.RIGHT_WRIST].y) /
+        (lm[POSE_LANDMARKS.LEFT_WRIST].y + lm[POSE_LANDMARKS.RIGHT_WRIST].y) /
         2;
       const shoulderY =
         (lm[POSE_LANDMARKS.LEFT_SHOULDER].y +
@@ -175,12 +177,9 @@ function checkPosture(frame: PoseFrame, posture: PostureCheck): PostureResult {
       const hipY =
         (lm[POSE_LANDMARKS.LEFT_HIP].y + lm[POSE_LANDMARKS.RIGHT_HIP].y) / 2;
       const kneeY =
-        (lm[POSE_LANDMARKS.LEFT_KNEE].y +
-          lm[POSE_LANDMARKS.RIGHT_KNEE].y) /
-        2;
+        (lm[POSE_LANDMARKS.LEFT_KNEE].y + lm[POSE_LANDMARKS.RIGHT_KNEE].y) / 2;
       const ankleY =
-        (lm[POSE_LANDMARKS.LEFT_ANKLE].y +
-          lm[POSE_LANDMARKS.RIGHT_ANKLE].y) /
+        (lm[POSE_LANDMARKS.LEFT_ANKLE].y + lm[POSE_LANDMARKS.RIGHT_ANKLE].y) /
         2;
       const total = ankleY - hipY;
       if (total <= 0.1) {
@@ -210,13 +209,16 @@ function checkPosture(frame: PoseFrame, posture: PostureCheck): PostureResult {
         !visible(POSE_LANDMARKS.LEFT_ANKLE) ||
         !visible(POSE_LANDMARKS.RIGHT_ANKLE)
       ) {
-        return { ok: false, hint: 'Ayaklarının kameraya göründüğünden emin ol.' };
+        return {
+          ok: false,
+          hint: 'Ayaklarının kameraya göründüğünden emin ol.',
+        };
       }
       const dx = Math.abs(
-        lm[POSE_LANDMARKS.LEFT_ANKLE].x - lm[POSE_LANDMARKS.RIGHT_ANKLE].x,
+        lm[POSE_LANDMARKS.LEFT_ANKLE].x - lm[POSE_LANDMARKS.RIGHT_ANKLE].x
       );
       const dy = Math.abs(
-        lm[POSE_LANDMARKS.LEFT_ANKLE].y - lm[POSE_LANDMARKS.RIGHT_ANKLE].y,
+        lm[POSE_LANDMARKS.LEFT_ANKLE].y - lm[POSE_LANDMARKS.RIGHT_ANKLE].y
       );
       // dx > 0.15 (yan duruş) VEYA dy > 0.05 (front'tan biri önde) → asimetrik.
       if (dx > 0.15 || dy > 0.05) {
@@ -235,7 +237,7 @@ function checkPosture(frame: PoseFrame, posture: PostureCheck): PostureResult {
 // ============================================================
 
 function createStaticPoseValidator(
-  config: Extract<ValidatorConfig, { type: 'staticPose' }>,
+  config: Extract<ValidatorConfig, { type: 'staticPose' }>
 ): ValidatorRuntime {
   const maxVar = config.maxVariance ?? DEFAULT_STATIC_VARIANCE;
   // ~30fps × holdMs / 1000 frame; 8s × 30fps = 240 frame
@@ -293,7 +295,7 @@ function createStaticPoseValidator(
         xBuffer.length / requiredFrames,
         0,
         1,
-        'Hazırlanıyor…',
+        'Hazırlanıyor…'
       );
       return currentState;
     }
@@ -317,7 +319,7 @@ function createStaticPoseValidator(
       heldMs / config.holdMs,
       0,
       1,
-      `Sabit dur… ${Math.ceil((config.holdMs - heldMs) / 1000)} sn`,
+      `Sabit dur… ${Math.ceil((config.holdMs - heldMs) / 1000)} sn`
     );
     return currentState;
   }
@@ -339,7 +341,7 @@ function createStaticPoseValidator(
 // ============================================================
 
 function createReachValidator(
-  config: Extract<ValidatorConfig, { type: 'reach' }>,
+  config: Extract<ValidatorConfig, { type: 'reach' }>
 ): ValidatorRuntime {
   const landmarkIdx = LANDMARK_INDEX[config.landmark];
   let baseline: Keypoint | null = null;
@@ -348,10 +350,14 @@ function createReachValidator(
   let reps = 0;
   let currentState: ValidatorState = pending(
     config.reps,
-    `Önce hazır pozisyona geç — ${describeDirection(config.direction)} hareketi yapacaksın.`,
+    `Önce hazır pozisyona geç — ${describeDirection(config.direction)} hareketi yapacaksın.`
   );
 
-  function offsetIn(direction: Direction, point: Keypoint, ref: Keypoint): number {
+  function offsetIn(
+    direction: Direction,
+    point: Keypoint,
+    ref: Keypoint
+  ): number {
     // y artar = aşağı (image coords). Bu yüzden 'up' negatif y delta.
     switch (direction) {
       case 'up':
@@ -373,7 +379,7 @@ function createReachValidator(
         reps / config.reps,
         reps,
         config.reps,
-        'Hedef noktan kameraya görünsün.',
+        'Hedef noktan kameraya görünsün.'
       );
       return currentState;
     }
@@ -383,8 +389,12 @@ function createReachValidator(
       if (!baseline) baseline = { x: point.x, y: point.y };
       else {
         baseline = {
-          x: (baseline.x * calibrationFrames + point.x) / (calibrationFrames + 1),
-          y: (baseline.y * calibrationFrames + point.y) / (calibrationFrames + 1),
+          x:
+            (baseline.x * calibrationFrames + point.x) /
+            (calibrationFrames + 1),
+          y:
+            (baseline.y * calibrationFrames + point.y) /
+            (calibrationFrames + 1),
         };
       }
       calibrationFrames++;
@@ -403,14 +413,18 @@ function createReachValidator(
       inExtension = true;
       reps++;
       if (reps >= config.reps) {
-        currentState = completed(reps, config.reps, 'Mükemmel! Tüm tekrarlar tamam.');
+        currentState = completed(
+          reps,
+          config.reps,
+          'Mükemmel! Tüm tekrarlar tamam.'
+        );
         return currentState;
       }
       currentState = inProgress(
         reps / config.reps,
         reps,
         config.reps,
-        `Güzel! ${config.reps - reps} tekrar kaldı.`,
+        `Güzel! ${config.reps - reps} tekrar kaldı.`
       );
       return currentState;
     }
@@ -426,7 +440,7 @@ function createReachValidator(
       config.reps,
       reps === 0
         ? `${describeDirection(config.direction)} hareketi yap!`
-        : `${config.reps - reps} tekrar kaldı.`,
+        : `${config.reps - reps} tekrar kaldı.`
     );
     return currentState;
   }
@@ -441,7 +455,7 @@ function createReachValidator(
       reps = 0;
       currentState = pending(
         config.reps,
-        `Önce hazır pozisyona geç — ${describeDirection(config.direction)} hareketi yapacaksın.`,
+        `Önce hazır pozisyona geç — ${describeDirection(config.direction)} hareketi yapacaksın.`
       );
     },
   };
@@ -465,7 +479,7 @@ function describeDirection(d: Direction): string {
 // ============================================================
 
 function createVerticalRepValidator(
-  config: Extract<ValidatorConfig, { type: 'verticalRep' }>,
+  config: Extract<ValidatorConfig, { type: 'verticalRep' }>
 ): ValidatorRuntime {
   const minDelta = config.minDelta ?? DEFAULT_VERTICAL_DELTA;
   let baselineY: number | null = null;
@@ -476,7 +490,7 @@ function createVerticalRepValidator(
     config.reps,
     config.pattern === 'squatDown'
       ? 'Dik dur, sonra çömeleceksin.'
-      : 'Dik dur, sonra sıçrayacaksın.',
+      : 'Dik dur, sonra sıçrayacaksın.'
   );
 
   function observe(frame: PoseFrame): ValidatorState {
@@ -485,14 +499,14 @@ function createVerticalRepValidator(
       !hasVisibleLandmarks(
         frame,
         [POSE_LANDMARKS.LEFT_HIP, POSE_LANDMARKS.RIGHT_HIP],
-        0.4,
+        0.4
       )
     ) {
       currentState = inProgress(
         reps / config.reps,
         reps,
         config.reps,
-        'Tüm vücudunun göründüğünden emin ol.',
+        'Tüm vücudunun göründüğünden emin ol.'
       );
       return currentState;
     }
@@ -510,7 +524,8 @@ function createVerticalRepValidator(
     }
     if (baselineY == null) return currentState;
 
-    const delta = config.pattern === 'squatDown' ? hip.y - baselineY : baselineY - hip.y;
+    const delta =
+      config.pattern === 'squatDown' ? hip.y - baselineY : baselineY - hip.y;
 
     if (phase === 'ready' && delta > minDelta) {
       phase = 'extreme';
@@ -519,14 +534,18 @@ function createVerticalRepValidator(
       phase = 'ready';
       reps++;
       if (reps >= config.reps) {
-        currentState = completed(reps, config.reps, 'Süper! Tüm tekrarlar tamam.');
+        currentState = completed(
+          reps,
+          config.reps,
+          'Süper! Tüm tekrarlar tamam.'
+        );
         return currentState;
       }
       currentState = inProgress(
         reps / config.reps,
         reps,
         config.reps,
-        `${config.reps - reps} tekrar kaldı.`,
+        `${config.reps - reps} tekrar kaldı.`
       );
       return currentState;
     }
@@ -541,7 +560,7 @@ function createVerticalRepValidator(
           : 'İniş yap!'
         : config.pattern === 'squatDown'
           ? 'Çömel!'
-          : 'Sıçra!',
+          : 'Sıçra!'
     );
     return currentState;
   }
@@ -558,7 +577,7 @@ function createVerticalRepValidator(
         config.reps,
         config.pattern === 'squatDown'
           ? 'Dik dur, sonra çömeleceksin.'
-          : 'Dik dur, sonra sıçrayacaksın.',
+          : 'Dik dur, sonra sıçrayacaksın.'
       );
     },
   };
@@ -569,10 +588,13 @@ function createVerticalRepValidator(
 // ============================================================
 
 function createDemoValidator(
-  config: Extract<ValidatorConfig, { type: 'demo' }>,
+  config: Extract<ValidatorConfig, { type: 'demo' }>
 ): ValidatorRuntime {
   let startedAt: number | null = null;
-  let currentState: ValidatorState = pending(1, 'Demo modu — hazır olduğunda başla.');
+  let currentState: ValidatorState = pending(
+    1,
+    'Demo modu — hazır olduğunda başla.'
+  );
 
   function observe(frame: PoseFrame): ValidatorState {
     if (currentState.status === 'completed') return currentState;
@@ -586,7 +608,7 @@ function createDemoValidator(
       elapsed / config.durationMs,
       0,
       1,
-      `Devam et… ${Math.ceil((config.durationMs - elapsed) / 1000)} sn`,
+      `Devam et… ${Math.ceil((config.durationMs - elapsed) / 1000)} sn`
     );
     return currentState;
   }
