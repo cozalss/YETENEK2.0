@@ -133,9 +133,7 @@ function FullFlowInner() {
   const [phase, setPhase] = useState<Phase>('profile');
   const [child, setChild] = useState<ChildIdentity | null>(null);
   const [done, setDone] = useState<DoneFlags>(EMPTY_DONE);
-  const [finalSession, setFinalSession] = useState<SessionSummary | null>(
-    null
-  );
+  const [finalSession, setFinalSession] = useState<SessionSummary | null>(null);
   const [childLoadError, setChildLoadError] = useState<string | null>(null);
 
   const phaseOrder = mode === 'quick' ? QUICK_PHASE_ORDER : FULL_PHASE_ORDER;
@@ -150,19 +148,28 @@ function FullFlowInner() {
     (async () => {
       try {
         const res = await fetch(
-          `/api/children/${encodeURIComponent(childIdParam)}`,
+          `/api/children/${encodeURIComponent(childIdParam)}`
         );
         if (!res.ok) {
           if (cancelled) return;
-          const code = res.status === 401
-            ? 'Önce giriş yap.'
-            : res.status === 404
-              ? 'Çocuk bulunamadı.'
-              : 'Çocuk bilgisi getirilemedi.';
+          const code =
+            res.status === 401
+              ? 'Önce giriş yap.'
+              : res.status === 404
+                ? 'Çocuk bulunamadı.'
+                : 'Çocuk bilgisi getirilemedi.';
           setChildLoadError(code);
           return;
         }
-        const json: { child?: { displayName: string; ageYears: number; sex: 'male' | 'female'; heightCm?: number; weightKg?: number } } = await res.json();
+        const json: {
+          child?: {
+            displayName: string;
+            ageYears: number;
+            sex: 'male' | 'female';
+            heightCm?: number;
+            weightKg?: number;
+          };
+        } = await res.json();
         if (cancelled || !json.child) return;
         const identity: ChildIdentity = {
           name: json.child.displayName,
@@ -232,7 +239,10 @@ function FullFlowInner() {
       // düşürüp Sentry/Logger entegrasyonu eklendiğinde otomatik
       // yakalanacak. Kullanıcı localStorage kopyasını /history'de görür.
       if (!result.ok) {
-        console.warn('[test/full] Supabase session kaydı başarısız:', result.error);
+        console.warn(
+          '[test/full] Supabase session kaydı başarısız:',
+          result.error
+        );
       }
     });
     // phase tek tetikleyici; childIdParam zaten ilk mount'tan sabit.
@@ -311,7 +321,7 @@ function FullFlowInner() {
                 </span>
                 <a
                   href="/profile"
-                  className="inline-flex shrink-0 items-center justify-center rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-widest transition-transform hover:scale-[1.03]"
+                  className="inline-flex shrink-0 items-center justify-center rounded-full px-4 py-1.5 text-xs font-bold tracking-widest uppercase transition-transform hover:scale-[1.03]"
                   style={{
                     background: 'var(--track-mustard)',
                     color: 'var(--form-navy)',
@@ -597,53 +607,73 @@ function PhaseShell({
       />
 
       {children}
-      {done && (
-        <div
-          className="flex flex-col items-start justify-between gap-4 rounded-2xl border-2 p-5 sm:flex-row sm:items-center"
-          style={{
-            background: 'rgba(168, 213, 186, 0.22)',
-            borderColor: 'var(--field-mint)',
-          }}
-        >
-          <div>
-            <p
-              className="text-sm font-bold"
-              style={{
-                color: 'var(--form-navy)',
-                fontFamily: 'var(--font-display)',
-              }}
-            >
-              ✓ Test sonuçları kaydedildi
-            </p>
-            <p
-              className="mt-0.5 text-xs"
-              style={{ color: 'rgba(44, 62, 107, 0.7)' }}
-            >
-              Hazır olduğunda devam et. Daha iyi yapabileceğini düşünüyorsan
-              testi tekrar deneyebilirsin.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onAdvance}
-            className="h-11 shrink-0 rounded-full px-5 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+      {/* İlerle barı — HER ZAMAN görünür. done=true ise primary mustard
+          "Sonraki Teste Geç", false ise outline "Atla ve İlerle" (test
+          tamamlanmasa bile kullanıcı sıkışmasın). */}
+      <div
+        className="flex flex-col items-start justify-between gap-4 rounded-2xl border-2 p-5 sm:flex-row sm:items-center"
+        style={
+          done
+            ? {
+                background: 'rgba(168, 213, 186, 0.22)',
+                borderColor: 'var(--field-mint)',
+              }
+            : {
+                background: 'rgba(44, 62, 107, 0.04)',
+                borderColor: 'rgba(44, 62, 107, 0.18)',
+              }
+        }
+      >
+        <div>
+          <p
+            className="text-sm font-bold"
             style={{
-              background: 'var(--track-mustard)',
               color: 'var(--form-navy)',
               fontFamily: 'var(--font-display)',
-              boxShadow: '0 4px 0 rgba(44, 62, 107, 0.18)',
             }}
           >
-            {advanceLabel} →
-          </button>
+            {done
+              ? '✓ Test sonuçları kaydedildi'
+              : 'Test henüz tamamlanmadı'}
+          </p>
+          <p
+            className="mt-0.5 text-xs"
+            style={{ color: 'rgba(44, 62, 107, 0.7)' }}
+          >
+            {done
+              ? 'Hazır olduğunda devam et. Daha iyi yapabileceğini düşünüyorsan testi tekrar deneyebilirsin.'
+              : 'Sorun yaşıyorsan veya geçmek istiyorsan İlerle ile sonraki adıma geçebilirsin.'}
+          </p>
         </div>
-      )}
+        <button
+          type="button"
+          onClick={done ? onAdvance : onSkip ?? onAdvance}
+          className="h-11 shrink-0 rounded-full px-5 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          style={
+            done
+              ? {
+                  background: 'var(--track-mustard)',
+                  color: 'var(--form-navy)',
+                  fontFamily: 'var(--font-display)',
+                  boxShadow: '0 4px 0 rgba(44, 62, 107, 0.18)',
+                }
+              : {
+                  background: 'rgba(255, 255, 255, 0.85)',
+                  color: 'var(--form-navy)',
+                  border: '2px solid var(--form-navy)',
+                  fontFamily: 'var(--font-display)',
+                }
+          }
+        >
+          {done ? advanceLabel : 'İlerle'} →
+        </button>
+      </div>
       {!done && onSkip && (
         <div className="flex justify-end">
           <button
             type="button"
             onClick={onSkip}
-            className="rounded-full border px-4 py-2 text-xs font-bold uppercase tracking-wider transition-opacity hover:opacity-70 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            className="rounded-full border px-4 py-2 text-xs font-bold tracking-wider uppercase transition-opacity hover:opacity-70 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
             style={{
               borderColor: 'rgba(44, 62, 107, 0.3)',
               color: 'rgba(44, 62, 107, 0.75)',
@@ -676,10 +706,7 @@ function FinalizingStage() {
       >
         Sonuçlar hazırlanıyor…
       </div>
-      <div
-        className="mt-2 text-sm"
-        style={{ color: 'rgba(44, 62, 107, 0.7)' }}
-      >
+      <div className="mt-2 text-sm" style={{ color: 'rgba(44, 62, 107, 0.7)' }}>
         AI tüm test verilerini birleştiriyor.
       </div>
     </div>
@@ -703,16 +730,13 @@ function ResultStage({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <p
-          className="text-sm font-bold"
-          style={{ color: 'var(--form-navy)' }}
-        >
+        <p className="text-sm font-bold" style={{ color: 'var(--form-navy)' }}>
           {ageDescription}
         </p>
         <button
           type="button"
           onClick={onRestart}
-          className="rounded-full border px-4 py-2 text-xs font-bold uppercase tracking-wider transition-opacity hover:opacity-70 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          className="rounded-full border px-4 py-2 text-xs font-bold tracking-wider uppercase transition-opacity hover:opacity-70 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           style={{
             borderColor: 'rgba(44, 62, 107, 0.3)',
             color: 'var(--form-navy)',
