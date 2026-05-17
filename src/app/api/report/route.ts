@@ -247,7 +247,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         }
       },
     });
-    return new Response(stream, {
+    return new NextResponse(stream, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
