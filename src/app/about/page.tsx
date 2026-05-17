@@ -13,7 +13,7 @@ import {
   Sparkles,
   Trophy,
 } from 'lucide-react';
-import { SiteHeader } from '@/components/layout/SiteHeader';
+import { SiteHeaderServer } from '@/components/layout/SiteHeaderServer';
 import { SiteFooter } from '@/components/layout/SiteFooter';
 import { REFERENCES } from '@/lib/content/bibliography';
 import { getAllReferences } from '@/infrastructure/storage/supabase-content-repository';
@@ -30,7 +30,7 @@ export default async function AboutPage() {
   const references = dbRefs.length > 0 ? dbRefs : REFERENCES;
   return (
     <main className="min-h-screen bg-[var(--color-canvas)] text-[var(--color-ink-1)]">
-      <SiteHeader />
+      <SiteHeaderServer />
 
       <div className="mx-auto max-w-6xl px-6 pt-12 pb-20 md:px-12 md:pt-20">
         <Link

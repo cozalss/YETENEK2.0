@@ -7,7 +7,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Calendar, ShieldAlert, Trophy } from 'lucide-react';
-import { SiteHeader } from '@/components/layout/SiteHeader';
+import { SiteHeaderServer } from '@/components/layout/SiteHeaderServer';
 import { SiteFooter } from '@/components/layout/SiteFooter';
 import { TRAINING_PROGRAMS, PROGRAM_LIST } from '@/lib/training/programs';
 import type { DimensionKey } from '@/lib/matching/sportProfiles';
@@ -46,7 +46,7 @@ export default async function TrainingDimensionPage({ params }: PageProps) {
 
   return (
     <main className="min-h-screen bg-[var(--color-canvas)] text-[var(--color-ink-1)]">
-      <SiteHeader />
+      <SiteHeaderServer />
 
       <div className="mx-auto max-w-4xl px-6 pt-12 pb-20 md:px-12 md:pt-20">
         <Link

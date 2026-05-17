@@ -15,7 +15,7 @@ import {
   signInWithGoogleAction,
 } from '@/app/auth/actions';
 import { env } from '@/shared/config/env-public';
-import { SiteHeader } from '@/components/layout/SiteHeader';
+import { SiteHeaderServer } from '@/components/layout/SiteHeaderServer';
 import './sign-in.css';
 
 interface PageProps {
@@ -38,7 +38,7 @@ export default async function SignInPage({ searchParams }: PageProps) {
   return (
     <div className="signin-scope">
       <div className="signin-header-wrap">
-        <SiteHeader />
+        <SiteHeaderServer />
       </div>
 
       <div className="signin-grid-bg" aria-hidden="true">

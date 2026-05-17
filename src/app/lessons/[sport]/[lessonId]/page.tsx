@@ -9,7 +9,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Lock } from 'lucide-react';
-import { SiteHeader } from '@/components/layout/SiteHeader';
+import { SiteHeaderServer } from '@/components/layout/SiteHeaderServer';
 import { LessonRunner } from '@/components/lessons/LessonRunner';
 import { getLessonById } from '@/lib/lessons/curriculum';
 import { getLessonInstruction } from '@/infrastructure/storage/supabase-content-repository';
@@ -85,7 +85,7 @@ export default async function LessonRunnerPage({
 
   return (
     <main className="min-h-screen bg-[var(--color-canvas)] text-[var(--color-ink-1)]">
-      <SiteHeader />
+      <SiteHeaderServer />
 
       <div className="mx-auto max-w-6xl px-4 pt-8 pb-16 md:px-8 md:pt-12">
         <Link

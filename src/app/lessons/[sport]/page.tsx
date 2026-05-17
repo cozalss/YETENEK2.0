@@ -11,7 +11,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
-import { SiteHeader } from '@/components/layout/SiteHeader';
+import { SiteHeaderServer } from '@/components/layout/SiteHeaderServer';
 import { SiteFooter } from '@/components/layout/SiteFooter';
 import { LessonCard } from '@/components/lessons/LessonCard';
 import { getCurriculumBySlug } from '@/lib/lessons/curriculum';
@@ -80,7 +80,7 @@ export default async function LessonsListPage({ params, searchParams }: PageProp
 
   return (
     <main className="min-h-screen bg-[var(--color-canvas)] text-[var(--color-ink-1)]">
-      <SiteHeader />
+      <SiteHeaderServer />
 
       <div className="mx-auto max-w-5xl px-6 pt-12 pb-20 md:px-12 md:pt-16">
         <Link
