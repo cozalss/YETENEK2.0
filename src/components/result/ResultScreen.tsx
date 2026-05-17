@@ -85,17 +85,18 @@ export function ResultScreen({
 }: Props) {
   const router = useRouter();
   const [tab, setTab] = useState<TabKey>('profile');
-  // Eksik boyutlar 50 (popülasyon medyanı) ile gösterilir; "Ölçülmedi"
-  // rozeti ayrıca aşağıda metric grid'inde belirir.
+  // Eksik boyutlar 0 ile gösterilir — ölçülmemiş bir boyut için medyan
+  // göstermek yanıltıcı ("çocuk ortalama" izlenimi). Boş radar = test yok.
+  // "Ölçülmedi" rozeti ayrıca aşağıda metric grid'inde belirir.
   const radarValues = useMemo(
     () => ({
-      explosivePower: session.jump?.score ?? 50,
-      horizontalPower: session.broadJump?.score ?? 50,
-      balance: session.balance?.averageScore ?? 50,
-      reaction: session.reaction?.ageNormScore ?? 50,
-      agility: session.lateralHops?.score ?? 50,
-      coordination: session.coordination?.score ?? 50,
-      endurance: session.endurance?.score ?? 50,
+      explosivePower: session.jump?.score ?? 0,
+      horizontalPower: session.broadJump?.score ?? 0,
+      balance: session.balance?.averageScore ?? 0,
+      reaction: session.reaction?.ageNormScore ?? 0,
+      agility: session.lateralHops?.score ?? 0,
+      coordination: session.coordination?.score ?? 0,
+      endurance: session.endurance?.score ?? 0,
     }),
     [session]
   );

@@ -42,7 +42,7 @@ export function GuideVideo({ src, label, caption }: GuideVideoProps) {
           Sessiz · Döngü
         </span>
       </div>
-      <div className="relative mt-2 aspect-video w-full overflow-hidden bg-neutral-950">
+      <div className="relative mt-2 aspect-[4/3] w-full overflow-hidden bg-neutral-950">
         <video
           src={src}
           autoPlay
@@ -51,7 +51,7 @@ export function GuideVideo({ src, label, caption }: GuideVideoProps) {
           playsInline
           preload="metadata"
           aria-label={label}
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-contain"
         />
       </div>
       <figcaption className="px-4 pt-2 pb-3">

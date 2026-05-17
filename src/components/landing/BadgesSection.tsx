@@ -1,67 +1,8 @@
 // Server Component — statik veri + Reveal/LazyVideo client leaf.
+// Rozet vitrini gerçek 36 rozeti gösteriyor (BadgesShowcaseLanding client island).
 import { Reveal } from '@/components/motion/Reveal';
 import { LazyVideo } from './LazyVideo';
-import {
-  Star,
-  Trophy,
-  Zap,
-  Target,
-  Flame,
-  Award,
-  Crown,
-  Medal,
-} from 'lucide-react';
-
-const BADGES = [
-  {
-    icon: Star,
-    label: 'İlk Adım',
-    color: '#F2C94C',
-    description: 'İlk test tamamlandı',
-  },
-  {
-    icon: Trophy,
-    label: 'Tam Tarama',
-    color: '#F2C94C',
-    description: '7 testin tamamı bitti',
-  },
-  {
-    icon: Zap,
-    label: 'Şimşek',
-    color: '#F4B6C2',
-    description: 'Reaksiyon skoru 80+',
-  },
-  {
-    icon: Target,
-    label: 'Akrobat',
-    color: '#A8D5BA',
-    description: 'Denge skoru 80+',
-  },
-  {
-    icon: Flame,
-    label: 'Roketsırtı',
-    color: '#F2C94C',
-    description: 'Sıçrama skoru 80+',
-  },
-  {
-    icon: Award,
-    label: 'Yedi Yıldız',
-    color: '#A8D5BA',
-    description: '7 boyutta 60+',
-  },
-  {
-    icon: Crown,
-    label: 'Spor Profili',
-    color: '#F2C94C',
-    description: 'Spor eşleşmesi %80+',
-  },
-  {
-    icon: Medal,
-    label: 'Süreklilik',
-    color: '#C4E0D0',
-    description: 'Son 14 günde test günleri',
-  },
-];
+import { BadgesShowcaseLanding } from './BadgesShowcaseLanding';
 
 const PROGRESS_STEPS = [
   {
@@ -176,51 +117,7 @@ export function BadgesSection() {
 
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
           <Reveal>
-            <div>
-              <h3
-                className="mb-6 text-center text-sm font-bold tracking-[0.2em] uppercase lg:text-left"
-                style={{
-                  color: 'var(--form-navy)',
-                  fontFamily: 'var(--font-display)',
-                }}
-              >
-                KAZANILABİLECEK ROZETLER
-              </h3>
-              <div className="grid grid-cols-4 gap-3">
-                {BADGES.map((badge) => {
-                  const Icon = badge.icon;
-                  return (
-                    <div
-                      key={badge.label}
-                      className="flex cursor-pointer flex-col items-center rounded-xl p-3 transition-all duration-300 hover:scale-110"
-                      style={{
-                        background: 'rgba(255, 245, 225, 0.6)',
-                        backdropFilter: 'blur(8px)',
-                        border: '2px solid rgba(44, 62, 107, 0.15)',
-                      }}
-                      title={`${badge.label}: ${badge.description}`}
-                    >
-                      <div
-                        className="mb-2 flex h-10 w-10 items-center justify-center rounded-full"
-                        style={{ background: badge.color }}
-                      >
-                        <Icon size={18} style={{ color: 'var(--form-navy)' }} />
-                      </div>
-                      <span
-                        className="text-center text-[8px] leading-tight tracking-wider uppercase"
-                        style={{
-                          color: 'var(--form-navy)',
-                          fontFamily: 'var(--font-display)',
-                          fontWeight: 700,
-                        }}
-                      >
-                        {badge.label}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <BadgesShowcaseLanding />
           </Reveal>
 
           <Reveal from="right">

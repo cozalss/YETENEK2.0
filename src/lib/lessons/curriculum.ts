@@ -889,19 +889,22 @@ export const CURRICULUM: readonly SportCurriculum[] = [
         order: 6,
         name: 'Kelebek Kol Stroku',
         description:
-          'İki bilek aynı anda yukarı — kelebek stil çift kol simülasyonu, 3 tekrar.',
+          'Sol bileği yukarı uzat — kelebek stil kol simülasyonu, 3 tekrar.',
         difficulty: 'intermediate',
         instructions: [
           'Dik dur, kollar yanda.',
-          'İki bileği aynı anda başın üstüne uzat (kelebek kulaç).',
+          'Sol bileği başının üstüne hızla uzat (kelebek kulaç).',
           'Yanlardan indir (itme fazı).',
-          'Toplam 3 kelebek kulaç.',
+          'Toplam 3 kulaç.',
         ],
+        // Validator'ı diğer yüzme reach'leriyle uyumlu hale getir: 0.22 eşiği
+        // pratik koşullarda (kamera açısı + omuz oklüzyonu) çok sıkıydı, çocuk
+        // defalarca yapsa bile sayım tutmuyordu. 0.15'e indirildi.
         validator: {
           type: 'reach',
           landmark: 'leftWrist',
           direction: 'up',
-          threshold: 0.22,
+          threshold: 0.15,
           reps: 3,
         },
       },

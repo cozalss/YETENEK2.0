@@ -111,7 +111,31 @@ const testKeySchema = z.enum([
   'lateralHops',
   'coordination',
   'endurance',
+  'character',
 ]);
+
+// Karakter (Likert) testi sonucu — Quick Flow'un 4. adımı.
+const characterFactorsSchema = z.object({
+  cooperation: z.number().min(0).max(100),
+  encouragement: z.number().min(0).max(100),
+  persistence: z.number().min(0).max(100),
+  fairPlay: z.number().min(0).max(100),
+});
+const characterSchema = z
+  .object({
+    teamAffinity: z.number().min(0).max(100),
+    factors: characterFactorsSchema.optional(),
+    averageScore: z.number().min(1).max(5),
+    band: z.enum(['individual', 'balanced', 'team']),
+    summary: z.string().max(400),
+    topFactor: z
+      .enum(['cooperation', 'encouragement', 'persistence', 'fairPlay'])
+      .optional(),
+    bottomFactor: z
+      .enum(['cooperation', 'encouragement', 'persistence', 'fairPlay'])
+      .optional(),
+  })
+  .optional();
 
 // String alanlar bilinçli olarak sınırlandırıldı — payload prompt'a doğrudan
 // enjekte edildiği için unbounded string'ler prompt-injection vektörü olur.
@@ -135,6 +159,7 @@ const payloadSchema = z.object({
     lateralHops: lateralHopsSchema,
     coordination: coordinationSchema,
     endurance: enduranceSchema,
+    character: characterSchema,
     recommendations: z.array(recommendationSchema).max(20).optional(),
     injuryWarnings: z.array(z.string().max(300)).max(10),
     completedTests: z.array(testKeySchema).max(20).optional(),

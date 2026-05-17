@@ -88,6 +88,18 @@ export function SiteHeader({ displayName }: Props = {}) {
               </span>
             </Link>
           )}
+          {!displayName && (
+            <Link
+              href="/auth/sign-in?next=/profile"
+              className="hidden text-xs font-bold tracking-[0.2em] transition-opacity hover:opacity-70 md:inline-flex"
+              style={{
+                color: 'var(--form-navy)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              GİRİŞ
+            </Link>
+          )}
           <Link
             href="/profile"
             className="inline-flex h-10 items-center gap-2 rounded-full px-5 text-[11px] font-black tracking-[0.25em] uppercase transition-transform hover:scale-[1.03]"

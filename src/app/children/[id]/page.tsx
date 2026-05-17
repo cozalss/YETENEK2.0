@@ -165,7 +165,7 @@ function ChildHero({
     weightKg?: number;
     avatarEmoji?: string;
   };
-  summary: { badgeCount: number; sessionCount: number };
+  summary: { badgeCount: number; sessionCount: number; streakDays: number };
 }) {
   return (
     <section className="pt-10 pb-8">
@@ -236,9 +236,12 @@ function ChildHero({
       </div>
 
       <dl className="mt-8 grid grid-cols-3 gap-3">
-        <StatTile label="Rozet" value={summary.badgeCount} />
-        <StatTile label="Test" value={summary.sessionCount} />
-        <StatTile label="Streak" value={summary.sessionCount > 0 ? '✓' : '—'} />
+        <StatTile label="Kazanılan Rozet" value={summary.badgeCount} />
+        <StatTile label="Tamamlanan Test" value={summary.sessionCount} />
+        <StatTile
+          label="Streak"
+          value={summary.streakDays > 0 ? `🔥 ${summary.streakDays} gün` : '—'}
+        />
       </dl>
     </section>
   );

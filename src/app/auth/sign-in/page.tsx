@@ -73,10 +73,10 @@ export default async function SignInPage({ searchParams }: PageProps) {
         <section className="signin-wrap">
           <header className="signin-head">
             <h1>
-              Welcome
+              Tekrar
               <br />
               <span className="signin-head-bold">
-                back
+                hoş geldin
                 <span className="signin-sparkle" aria-hidden="true">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/login/star.svg" alt="" width={22} height={22} />
@@ -84,9 +84,9 @@ export default async function SignInPage({ searchParams }: PageProps) {
               </span>
             </h1>
             <p className="signin-subtitle">
-              Log in to continue
+              Hesabına dönüp
               <br />
-              where you left off.
+              nereden kaldıysan oradan başla.
             </p>
           </header>
 
