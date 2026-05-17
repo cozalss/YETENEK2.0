@@ -110,6 +110,11 @@ export default async function ChildDetailPage({
         <SessionHistory sessions={sessions} childId={child.id} />
 
         <StreakBlock streakDays={summary.streakDays} />
+
+        <BadgesShowcase
+          earnedIds={badges.map((b) => b.badgeId)}
+          metadata={await getBadgesMetadata()}
+        />
       </div>
     </main>
   );
@@ -465,6 +470,220 @@ function SessionHistory({
         >
           Tüm geçmiş →
         </Link>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Tüm kazanılabilir rozetleri sergileyen vitrin — earned full-color,
+ * locked silüet+kilit. Çocuk "şu kalan rozetleri de açmak istiyorum"
+ * motivasyonu kazansın diye süreklilik bloğunun altına yerleştirilir.
+ */
+function BadgesShowcase({
+  earnedIds,
+  metadata,
+}: {
+  earnedIds: ReadonlyArray<string>;
+  metadata: ReadonlyMap<string, (typeof BADGES)[keyof typeof BADGES]>;
+}) {
+  const earnedSet = new Set(earnedIds);
+
+  // Tüm rozet katalogunu DB + static fallback'tan birleştir; aynı id
+  // varsa DB önceliği. Sonra category → name sırasıyla deterministik
+  // sırala (UI her yenilemede aynı görünsün).
+  const allBadges = new Map<
+    string,
+    (typeof BADGES)[keyof typeof BADGES]
+  >();
+  for (const [id, badge] of metadata) allBadges.set(id, badge);
+  for (const [id, badge] of Object.entries(BADGES)) {
+    if (!allBadges.has(id)) allBadges.set(id, badge);
+  }
+
+  const CATEGORY_ORDER: Record<string, number> = {
+    general: 0,
+    performance: 1,
+    profile: 2,
+  };
+  const CATEGORY_LABEL: Record<string, string> = {
+    general: 'Genel',
+    performance: 'Performans',
+    profile: 'Spor Profili',
+  };
+
+  const list = [...allBadges.values()].sort((a, b) => {
+    const ca = CATEGORY_ORDER[a.category ?? 'general'] ?? 99;
+    const cb = CATEGORY_ORDER[b.category ?? 'general'] ?? 99;
+    if (ca !== cb) return ca - cb;
+    return a.name.localeCompare(b.name, 'tr');
+  });
+
+  const total = list.length;
+  const earnedCount = list.filter((b) => earnedSet.has(b.id)).length;
+  const progress = total > 0 ? Math.round((earnedCount / total) * 100) : 0;
+
+  // Kategori gruplama (görsel section'lar)
+  const byCategory = new Map<string, typeof list>();
+  for (const b of list) {
+    const cat = b.category ?? 'general';
+    const arr = byCategory.get(cat) ?? [];
+    arr.push(b);
+    byCategory.set(cat, arr);
+  }
+
+  return (
+    <section className="mt-12">
+      <header className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
+        <div>
+          <h2
+            className="text-2xl font-black md:text-3xl"
+            style={{
+              color: 'var(--form-navy)',
+              fontFamily: 'var(--font-display)',
+            }}
+          >
+            Rozet Vitrini
+          </h2>
+          <p
+            className="mt-1 text-sm"
+            style={{ color: 'var(--form-navy)', opacity: 0.7 }}
+          >
+            Toplayabileceğin tüm rozetler — kalan{' '}
+            <strong>{total - earnedCount}</strong> tanesi için
+            test yapmaya / ders bitirmeye devam et.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span
+            className="text-xs font-bold tracking-wider uppercase"
+            style={{
+              color: 'var(--form-navy)',
+              fontFamily: 'var(--font-display)',
+              opacity: 0.7,
+            }}
+          >
+            {earnedCount} / {total}
+          </span>
+          <div
+            className="h-2 w-32 overflow-hidden rounded-full"
+            style={{ background: 'rgba(44, 62, 107, 0.12)' }}
+            aria-label={`İlerleme yüzde ${progress}`}
+          >
+            <div
+              className="h-full"
+              style={{
+                width: `${progress}%`,
+                background: 'var(--track-mustard)',
+              }}
+            />
+          </div>
+        </div>
+      </header>
+
+      <div className="space-y-6">
+        {[...byCategory.entries()]
+          .sort(
+            (a, b) =>
+              (CATEGORY_ORDER[a[0]] ?? 99) - (CATEGORY_ORDER[b[0]] ?? 99)
+          )
+          .map(([cat, items]) => (
+            <div key={cat}>
+              <h3
+                className="mb-3 text-[11px] font-bold tracking-[0.25em] uppercase"
+                style={{
+                  color: 'var(--form-navy)',
+                  opacity: 0.55,
+                  fontFamily: 'var(--font-display)',
+                }}
+              >
+                {CATEGORY_LABEL[cat] ?? cat}
+              </h3>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                {items.map((b) => {
+                  const isEarned = earnedSet.has(b.id);
+                  return (
+                    <article
+                      key={b.id}
+                      className="relative rounded-2xl border-2 p-4 text-center transition-transform hover:scale-[1.02]"
+                      style={
+                        isEarned
+                          ? {
+                              background: '#fff',
+                              borderColor: 'rgba(242, 201, 76, 0.6)',
+                              boxShadow:
+                                '0 4px 0 rgba(44, 62, 107, 0.1), 0 8px 18px -8px rgba(242, 201, 76, 0.45)',
+                            }
+                          : {
+                              background:
+                                'repeating-linear-gradient(45deg, rgba(44,62,107,0.04) 0 8px, rgba(44,62,107,0.06) 8px 16px)',
+                              borderColor: 'rgba(44, 62, 107, 0.15)',
+                            }
+                      }
+                      aria-label={
+                        isEarned
+                          ? `${b.name} rozeti kazanıldı`
+                          : `${b.name} rozeti henüz kazanılmadı`
+                      }
+                    >
+                      <div
+                        className="text-3xl"
+                        style={{
+                          filter: isEarned ? 'none' : 'grayscale(1)',
+                          opacity: isEarned ? 1 : 0.45,
+                        }}
+                      >
+                        {b.emoji}
+                      </div>
+                      <h4
+                        className="mt-2 text-sm font-bold"
+                        style={{
+                          color: 'var(--form-navy)',
+                          opacity: isEarned ? 1 : 0.65,
+                          fontFamily: 'var(--font-display)',
+                        }}
+                      >
+                        {b.name}
+                      </h4>
+                      <p
+                        className="mt-1 text-[11px] leading-relaxed"
+                        style={{
+                          color: 'var(--form-navy)',
+                          opacity: isEarned ? 0.7 : 0.5,
+                        }}
+                      >
+                        {b.description}
+                      </p>
+                      {!isEarned && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute top-2 right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px]"
+                          style={{
+                            background: 'rgba(44, 62, 107, 0.85)',
+                            color: 'var(--whistle-cream)',
+                          }}
+                        >
+                          🔒
+                        </span>
+                      )}
+                      {isEarned && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute top-2 right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-black"
+                          style={{
+                            background: 'var(--field-mint)',
+                            color: 'var(--form-navy)',
+                          }}
+                        >
+                          ✓
+                        </span>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
       </div>
     </section>
   );
