@@ -1,9 +1,8 @@
 # Supabase — Yetenek 2.0
 
-Bu klasor `metu-sports-hackathon` (eu-west-1) projesinin
-**versiyonlanmis schema kaynagidir**. GitHub'a push edildiginde Supabase
-otomatik olarak migration'lari dashboard'a uygular (Project Settings →
-GitHub baglantisi aktif).
+Bu klasör yeni veya mevcut herhangi bir Supabase projesinin
+**versiyonlanmış şema kaynağıdır**. Proje bağlantısı `.env.local` içindeki
+`SUPABASE_PROJECT_REF`/`NEXT_PUBLIC_SUPABASE_URL` değerlerinden belirlenir.
 
 ## Migration zinciri (tek doğruluk kaynağı)
 
@@ -15,6 +14,10 @@ supabase/
     ├── 0002_child_progress.sql # child_badges, child_progress_summary view
     └── 0003_extras.sql         # app_role, denorm cols, coach_chats, storage buckets
 ```
+
+Yeni projelerde **Automatically expose new tables** kapalı tutulabilir;
+`0016_explicit_api_grants.sql` Data API rollerine gereken izinleri açıkça verir.
+RLS ve policy'ler önceki migration'larda ayrıca uygulanır.
 
 **Konvansiyon:** Tüm tablolar `parent_user_id` (auth.users → uuid) +
 `display_name` + `age_years` alanlarını kullanır. `parent_id` / `name` /
@@ -40,28 +43,29 @@ cihazda `@mediapipe/tasks-vision` ile yapılır.
 
 ## Anahtarlari Al
 
-1. https://supabase.com/dashboard/project/wwevvbwmrsjhfslkzucd/settings/api
-2. Şu 3 değeri kopyala:
+1. Supabase Dashboard'da yeni projeyi aç ve Project Settings → API bölümüne git.
+2. Şu değerleri kopyala:
+   - **Project ref** → `SUPABASE_PROJECT_REF`
    - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
    - **anon public key** → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - **service_role key** → `SUPABASE_SERVICE_ROLE_KEY` (sadece server)
-3. `.env.local` içine yapıştır.
+3. Account Settings → Access Tokens bölümünden bir personal access token üret:
+   - **Personal access token** → `SUPABASE_ACCESS_TOKEN`
+4. `.env.example` dosyasını `.env.local` olarak kopyalayıp değerleri doldur.
 
 ## Migration Akisi
 
-### Otomatik (production)
+### Management API ile
 ```bash
-git add supabase/
-git commit -m "feat(db): consolidate schema (0001→0002→0003)"
-git push origin main
+pnpm db:migrate
 ```
-GitHub bağlantısı sayesinde Supabase ~30sn içinde migration'i deploy eder.
-Dashboard'da görmek: Database → Migrations.
+Komut `.env.local` içindeki proje ref'i ve personal access token ile tüm
+migration dosyalarını ad sırasına göre uygular.
 
 ### Lokal gelistirme (opsiyonel)
 ```bash
 pnpm dlx supabase login
-pnpm dlx supabase link --project-ref wwevvbwmrsjhfslkzucd
+pnpm dlx supabase link --project-ref <project-ref>
 pnpm dlx supabase start                            # Docker gerekli
 pnpm dlx supabase migration new <kisa_isim>        # yeni migration iskeleti
 pnpm dlx supabase db diff -f <kisa_isim>           # Studio'dan diff yakala
@@ -72,7 +76,7 @@ pnpm dlx supabase db diff -f <kisa_isim>           # Studio'dan diff yakala
 Migration deploy olduktan sonra:
 ```bash
 pnpm dlx supabase gen types typescript \
-  --project-id wwevvbwmrsjhfslkzucd \
+  --project-id <project-ref> \
   --schema public \
   > src/lib/supabase/database.types.ts
 ```

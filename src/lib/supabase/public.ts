@@ -16,7 +16,11 @@ import { env } from '@/shared/config/env-public';
 
 let publicClient: SupabaseClient | null = null;
 
-export function getPublicClient(): SupabaseClient {
+export function getPublicClient(): SupabaseClient | null {
+  // Public content has local/static fallbacks.  Do not ask the Supabase SDK
+  // to construct a client with empty credentials in offline/demo mode.
+  if (!env.isSupabaseConfigured) return null;
+
   if (!publicClient) {
     publicClient = createClient(env.supabaseUrl, env.supabaseAnonKey, {
       auth: {

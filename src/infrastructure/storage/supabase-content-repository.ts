@@ -64,6 +64,7 @@ function rowToSport(r: SportRow): SportInfo {
 
 async function fetchAllSports(): Promise<readonly SportInfo[]> {
   const supabase = getPublicClient();
+  if (!supabase) return [];
   const { data, error } = await supabase
     .from('sports')
     .select(
@@ -115,6 +116,7 @@ function rowToBadge(r: BadgeMetadataRow): Badge {
 
 async function fetchAllBadgesMetadata(): Promise<readonly Badge[]> {
   const supabase = getPublicClient();
+  if (!supabase) return [];
   const { data, error } = await supabase
     .from('badges_metadata')
     .select('id, category, emoji, name, description, earned_for, display_order')
@@ -169,6 +171,7 @@ function rowToReference(r: ScienceReferenceRow): ScienceReference {
 
 async function fetchAllReferences(): Promise<readonly ScienceReference[]> {
   const supabase = getPublicClient();
+  if (!supabase) return [];
   const { data, error } = await supabase
     .from('science_references')
     .select('id, authors, year, title, journal, tags, url, display_order')
@@ -221,6 +224,7 @@ interface TrainingExerciseRow {
 
 async function fetchAllTrainingPrograms(): Promise<readonly TrainingProgram[]> {
   const supabase = getPublicClient();
+  if (!supabase) return [];
   const [{ data: progs, error: progErr }, { data: exs, error: exErr }] =
     await Promise.all([
       supabase
@@ -330,6 +334,7 @@ function rowToLesson(r: LessonInstructionRow): LessonInstruction {
 
 async function fetchAllLessonInstructions(): Promise<readonly LessonInstruction[]> {
   const supabase = getPublicClient();
+  if (!supabase) return [];
   const { data, error } = await supabase
     .from('lesson_instructions')
     .select(
