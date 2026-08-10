@@ -23,8 +23,6 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
-const PROJECT_REF = 'wwevvbwmrsjhfslkzucd';
-
 // .env.local'ı parse et (manuel — dotenv dependency'sine gerek yok)
 async function loadEnv() {
   try {
@@ -42,6 +40,21 @@ async function loadEnv() {
   }
 }
 
+function getProjectRef() {
+  const explicit = process.env.SUPABASE_PROJECT_REF?.trim();
+  if (explicit) return explicit;
+
+  const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const match = projectUrl?.match(/^https:\/\/([a-z0-9]+)\.supabase\.co\/?$/i);
+  if (match) return match[1];
+
+  console.error('❌ SUPABASE_PROJECT_REF eksik.');
+  console.error(
+    '   .env.local içine SUPABASE_PROJECT_REF=<project-ref> ekle veya geçerli NEXT_PUBLIC_SUPABASE_URL tanımla.',
+  );
+  process.exit(1);
+}
+
 async function runSql(query) {
   const token = process.env.SUPABASE_ACCESS_TOKEN;
   if (!token) {
@@ -50,8 +63,9 @@ async function runSql(query) {
     console.error('   Yeni token: https://supabase.com/dashboard/account/tokens');
     process.exit(1);
   }
+  const projectRef = getProjectRef();
   const res = await fetch(
-    `https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`,
+    `https://api.supabase.com/v1/projects/${projectRef}/database/query`,
     {
       method: 'POST',
       headers: {
