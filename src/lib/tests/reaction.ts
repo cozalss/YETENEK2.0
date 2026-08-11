@@ -46,6 +46,16 @@ export interface ReactionAnalysis {
   consistencyScore: number;
   /** Yaş normuna göre 0-100 hız skoru */
   ageNormScore: number;
+  /**
+   * İstatistiksel olarak yorumlanabilir mi (≥ MIN_VALID_TRIALS geçerli deneme).
+   *
+   * Bu alan eskiden yoktu: yetersiz denemede tüm skorlar 0 dönüyor ama çağıran
+   * bunu "gerçekten 0 puan aldı"dan ayırt edemiyordu ve sıfırlar oturuma
+   * "tamamlanmış test" olarak yazılıyordu.
+   */
+  valid: boolean;
+  /** Yanlış başlangıç elendikten sonra kalan geçerli deneme sayısı. */
+  validTrialCount: number;
 }
 
 const REACTION_NORMS_MS: Record<number, number> = {
@@ -108,6 +118,8 @@ export function analyzeReaction(
       worstMs: 0,
       consistencyScore: 0,
       ageNormScore: 0,
+      valid: false,
+      validTrialCount: valid.length,
     };
   }
 
@@ -143,5 +155,7 @@ export function analyzeReaction(
     worstMs,
     consistencyScore,
     ageNormScore,
+    valid: true,
+    validTrialCount: valid.length,
   };
 }

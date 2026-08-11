@@ -9,6 +9,7 @@
 
 import { NextResponse } from 'next/server';
 import { isAnthropicConfigured } from '@/lib/llm/anthropic';
+import { isVisionJudgeConfigured } from '@/infrastructure/validity/openai-vision-judge';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,16 @@ interface HealthPayload {
   features: {
     anthropicConfigured: boolean;
     fallbackReportAvailable: true;
+    /**
+     * Görsel geçerlilik hakemi yapılandırılmış mı (OPENAI_API_KEY).
+     * `false` bir arıza değil — kural hakemi tek başına çalışır.
+     */
+    visionJudgeConfigured: boolean;
+    /**
+     * Kural tabanlı hakem her zaman açık: cihazda, ücretsiz, çevrimdışı.
+     * Anahtar durumundan bağımsız olarak protokol denetimi yapılıyor.
+     */
+    ruleJudgeAvailable: true;
   };
 }
 
@@ -45,6 +56,8 @@ export function GET(): NextResponse<HealthPayload> {
     features: {
       anthropicConfigured: isAnthropicConfigured(),
       fallbackReportAvailable: true,
+      visionJudgeConfigured: isVisionJudgeConfigured(),
+      ruleJudgeAvailable: true,
     },
   };
   return NextResponse.json(payload, {

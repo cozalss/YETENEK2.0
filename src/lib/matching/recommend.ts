@@ -19,10 +19,12 @@
 import {
   SPORT_PROFILES,
   DIMENSION_KEYS,
-  type CharacterFavor,
   type SportProfile,
   type SportVector,
 } from './sportProfiles';
+// Tek Φ(z) implementasyonu. Bu dosyada ikinci bir kopya vardı (A&S 7.1.26,
+// clamp'siz) — iki yaklaşım aynı girdiye farklı persentil veriyordu.
+import { normalCdf } from '@/lib/stats/normalCdf';
 
 /**
  * Karakter 4 alt faktörü — `src/lib/character/score.ts`'in ürettiği
@@ -286,18 +288,51 @@ const HEIGHT_NORM_MEDIAN_CM: Record<number, { male: number; female: number }> =
 
 const HEIGHT_NORM_SD = 7;
 
+/**
+ * Norm tablosundan yaşa göre medyan okur — **komşu yaşlar arasında doğrusal
+ * interpolasyon** yapar.
+ *
+ * Eskiden "en yakın yaş"a yuvarlanıyordu. İki norm yaşına eşit uzaklıktaki
+ * yaşlar (BMI tablosunda 9, 11, 13) `Math.abs(b-age) < Math.abs(a-age)`
+ * karşılaştırması strict `<` olduğu için **her zaman küçük yaşa** düşüyordu:
+ * 9 yaşındaki bir çocuk 8 yaş normuyla ölçülüyor, sistematik olarak fazla
+ * kilolu görünüyordu. İnterpolasyon hem bu sapmayı hem de yuvarlamanın
+ * kendi basamak hatasını kaldırır.
+ *
+ * Tablo aralığının dışındaki yaşlar uçtaki değere sabitlenir (extrapolasyon
+ * yok — 6 yaşındaki bir çocuk için 8 yaş normundan öteye uydurma yapmayız).
+ */
+function interpolateNorm(
+  table: Record<number, { male: number; female: number }>,
+  ageYears: number,
+  sex: 'male' | 'female'
+): number {
+  const ages = Object.keys(table)
+    .map(Number)
+    .sort((a, b) => a - b);
+
+  if (ageYears <= ages[0]) return table[ages[0]][sex];
+  const last = ages[ages.length - 1];
+  if (ageYears >= last) return table[last][sex];
+
+  for (let i = 0; i < ages.length - 1; i++) {
+    const lo = ages[i];
+    const hi = ages[i + 1];
+    if (ageYears >= lo && ageYears <= hi) {
+      const w = (ageYears - lo) / (hi - lo);
+      return table[lo][sex] * (1 - w) + table[hi][sex] * w;
+    }
+  }
+  return table[last][sex];
+}
+
 export function estimateHeightPercentile(
   heightCm: number,
   ageYears: number,
   sex: 'male' | 'female'
 ): number {
-  const ages = Object.keys(HEIGHT_NORM_MEDIAN_CM).map(Number);
-  const closest = ages.reduce((a, b) =>
-    Math.abs(b - ageYears) < Math.abs(a - ageYears) ? b : a
-  );
-  const median = HEIGHT_NORM_MEDIAN_CM[closest][sex];
+  const median = interpolateNorm(HEIGHT_NORM_MEDIAN_CM, ageYears, sex);
   const z = (heightCm - median) / HEIGHT_NORM_SD;
-  // Normal dağılım CDF yaklaşımı (errör ≤ 0.005)
   return Math.round(normalCdf(z) * 100);
 }
 
@@ -321,30 +356,8 @@ export function estimateBmiPercentile(
     14: { male: 19, female: 20 },
     15: { male: 20.5, female: 20.5 },
   };
-  const ages = Object.keys(bmiNorm).map(Number);
-  const closest = ages.reduce((a, b) =>
-    Math.abs(b - ageYears) < Math.abs(a - ageYears) ? b : a
-  );
-  const median = bmiNorm[closest][sex];
+  const median = interpolateNorm(bmiNorm, ageYears, sex);
   const sd = 2.2;
   const z = (bmi - median) / sd;
   return Math.round(normalCdf(z) * 100);
-}
-
-/**
- * Normal CDF Φ(z) — Abramowitz & Stegun 7.1.26 yaklaşımı (|err| < 1.5e-7).
- * Φ(z) = (1 + erf(z/√2)) / 2; bu yüzden erf'in argümanı `z/√2`.
- */
-function normalCdf(z: number): number {
-  const sign = z < 0 ? -1 : 1;
-  const erfArg = Math.abs(z) / Math.SQRT2;
-  const t = 1.0 / (1.0 + 0.3275911 * erfArg);
-  const erf =
-    1 -
-    ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) *
-      t +
-      0.254829592) *
-      t *
-      Math.exp(-erfArg * erfArg);
-  return 0.5 * (1 + sign * erf);
 }

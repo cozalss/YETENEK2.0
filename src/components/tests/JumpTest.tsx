@@ -186,6 +186,10 @@ export function JumpTest({
         takeoffY: 0,
         apexY: 0,
         flightTimeMs: 0,
+        jumpHeightSigmaCm: null,
+        flightMethod: null,
+        cmPerUnitFromGravity: null,
+        ballisticFit: null,
         valid: false,
         reason: 'Analiz sırasında beklenmedik bir hata oluştu. Tekrar dene.',
       });

@@ -180,24 +180,38 @@ const LATERAL_HOP_NORMS: Record<number, { male: HopsNorm; female: HopsNorm }> = 
 export function lateralHopsPercentile(
   hopCount: number,
   ageYears: number,
-  sex: 'male' | 'female'
+  sex: 'male' | 'female',
+  durationMs: number = LATERAL_HOPS_DURATION_MS
 ): number {
   const ages = Object.keys(LATERAL_HOP_NORMS).map(Number);
   const closestAge = ages.reduce((a, b) =>
     Math.abs(b - ageYears) < Math.abs(a - ageYears) ? b : a
   );
   const { mean, sd } = LATERAL_HOP_NORMS[closestAge][sex];
-  return zScorePercentile(hopCount, mean, sd);
+
+  // Norm tablosu 15 saniyelik pencereye ait. Yakalama erken kesilirse ham
+  // hop sayısı doğrudan karşılaştırılamaz — kısa kayıt otomatik olarak düşük
+  // persentil verirdi. `enduranceJacks` bu ölçeklemeyi zaten yapıyordu;
+  // burada eksikti.
+  //
+  // Alt sınır: 5 saniyenin altındaki kayıtları ölçekleyip tam pencereymiş
+  // gibi göstermek uydurma olur — o kadar kısa kayıt zaten `valid: false`.
+  const durationS = Math.max(durationMs / 1000, 5);
+  const nominalS = LATERAL_HOPS_DURATION_MS / 1000;
+  const normalizedHops = hopCount * (nominalS / durationS);
+
+  return zScorePercentile(normalizedHops, mean, sd);
 }
 
 /**
  * 0-100 skor — persentil tabanlı (jump/broadJump ile tutarlı).
- * Backward-compat: imza aynı.
+ * Backward-compat: `durationMs` verilmezse nominal 15 sn varsayılır.
  */
 export function lateralHopsScore(
   hopCount: number,
   ageYears: number,
-  sex: 'male' | 'female'
+  sex: 'male' | 'female',
+  durationMs: number = LATERAL_HOPS_DURATION_MS
 ): number {
-  return lateralHopsPercentile(hopCount, ageYears, sex);
+  return lateralHopsPercentile(hopCount, ageYears, sex, durationMs);
 }

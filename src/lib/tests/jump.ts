@@ -32,8 +32,13 @@ import {
   smoothSeries,
 } from '@/lib/pose/extractKeypoints';
 import { POSE_LANDMARKS } from '@/types';
-
-const GRAVITY_M_PER_S2 = 9.81;
+import {
+  fitParabola,
+  solveFlightFromParabola,
+  flightTimeToHeightCm,
+  heightSigmaCm,
+  type FlightSolution,
+} from './kinematics';
 
 // Hip + ayak görünmeden ölçüm güvenilmez.
 const REQUIRED_LANDMARKS = [
@@ -71,6 +76,27 @@ export interface JumpAnalysis {
   apexY: number;
   /** Uçuş süresi (toe-off → landing). Tespit edilmediyse 0. */
   flightTimeMs: number;
+  /**
+   * Raporlanan yüksekliğin 1σ belirsizliği (cm). Ölçüm hatasız değildir;
+   * bu alan olmadan "32cm" ifadesi eksik bir iddiadır. Uçuş tespit
+   * edilemediyse null.
+   */
+  jumpHeightSigmaCm: number | null;
+  /**
+   * Uçuş süresi nasıl bulundu:
+   *   'parabolic' → serbest düşüş parabolünün taban çizgisi kökleri (fizik
+   *                 doğrulamalı, alt-kare hassasiyetinde)
+   *   'threshold' → eşik geçişi (geriye dönük uyum; kare ızgarasına bağlı)
+   */
+  flightMethod: 'parabolic' | 'threshold' | null;
+  /**
+   * Parabol eğriliğinden türeyen ölçek (cm / normalize birim). Çocuğun boyu
+   * veya world landmark gerekmeden yerçekiminden çıkar; kalibrasyon için
+   * bağımsız bir çapraz kontrol.
+   */
+  cmPerUnitFromGravity: number | null;
+  /** Balistik uyum kalitesi (R²). Yalnız 'parabolic' yöntemde dolu. */
+  ballisticFit: number | null;
   /** Yorumlama yapacak kadar veri var mıydı */
   valid: boolean;
   /** Validasyon başarısızsa sebep */
@@ -106,34 +132,98 @@ const MIN_FLIGHT_HEIGHT_CM = 5; // Daha azı yanlış-pozitif
 const HEIGHT_AGREEMENT_TOLERANCE = 0.2;
 
 /**
- * Bosco protokolü: uçuş süresinden sıçrama yüksekliği.
- *
- *   h (m) = (g × t²) / 8
- *
- * Ref: Bosco C, Luhtanen P, Komi PV (1983). "A simple method for measurement
- * of mechanical power in jumping". Eur J Appl Physiol 50: 273–282.
+ * Parabol fit'inin "bu gerçekten serbest düşüştü" sayılması için gereken
+ * asgari R². Gerçek bir sıçramada ayak bileği yörüngesi neredeyse kusursuz
+ * parabolik olur (R² > 0.99); topuk kaldırma, ağırlık aktarımı ve yavaş
+ * yükselme bu uyumu tutturamaz. Eşik 0.9'da tutuldu — gürültülü telefon
+ * yakalamasına pay bırakırken balistik olmayanı elemeye yeter.
  */
-function flightTimeToHeightCm(flightTimeMs: number): number {
-  const t = flightTimeMs / 1000;
-  return ((GRAVITY_M_PER_S2 * t * t) / 8) * 100;
-}
+const MIN_BALLISTIC_R_SQUARED = 0.9;
 
 interface FlightDetection {
   takeoffIdx: number;
   landingIdx: number;
   flightTimeMs: number;
+  /** Uçuş süresinin 1σ belirsizliği (ms). */
+  sigmaMs: number;
   /** Baseline ankle Y (ilk birkaç frame'in median'ı) */
   baselineAnkleY: number;
+  /** Süre nasıl bulundu — parabol kökü mü, eşik geçişi mi. */
+  method: 'parabolic' | 'threshold';
+  /** Parabol eğriliğinden çıkan ölçek; eşik yönteminde null. */
+  cmPerUnitFromGravity: number | null;
+  /** Balistik uyum R²; eşik yönteminde null. */
+  rSquared: number | null;
+}
+
+/**
+ * Parabol çözümünü iki geçişte hassaslaştırır.
+ *
+ * 1. **Kaba geçiş.** Eşik penceresinden `landingIdx` çıkarılarak (o kare zaten
+ *    yere basıyor) ilk fit yapılır ve kökler bulunur.
+ * 2. **Daraltılmış geçiş.** Bulunan köklerin *arasında* kalan kareler seçilip
+ *    yeniden fit edilir. Böylece yer temasına ait kareler tamamen dışarıda
+ *    kalır; eğrilik ve dolayısıyla hem süre hem ölçek düzelir.
+ *
+ * Daraltma yeterli örnek bırakmazsa kaba çözüm korunur — daha az veriyle
+ * yapılmış "daha hassas" bir fit, daha kötü bir tahmindir.
+ */
+function refineFlightSolution(
+  ts: readonly number[],
+  ys: readonly number[],
+  takeoffIdx: number,
+  landingIdx: number,
+  baselineY: number
+): FlightSolution | null {
+  const coarseEnd = Math.max(takeoffIdx + 1, landingIdx - 1);
+  const coarseTs = ts.slice(takeoffIdx, coarseEnd + 1);
+  const coarseYs = ys.slice(takeoffIdx, coarseEnd + 1);
+
+  const coarseFit = fitParabola(coarseTs, coarseYs);
+  if (!coarseFit) return null;
+  const coarse = solveFlightFromParabola(coarseFit, baselineY, coarseYs);
+  if (!coarse) return null;
+
+  // Köklerin kesin içinde kalan kareler — yer temasına ait olanlar elenir.
+  const innerTs: number[] = [];
+  const innerYs: number[] = [];
+  for (let i = 0; i < ts.length; i++) {
+    if (ts[i] > coarse.takeoffMs && ts[i] < coarse.landingMs) {
+      innerTs.push(ts[i]);
+      innerYs.push(ys[i]);
+    }
+  }
+  if (innerTs.length < 5) return coarse;
+
+  const fineFit = fitParabola(innerTs, innerYs);
+  if (!fineFit) return coarse;
+  const fine = solveFlightFromParabola(fineFit, baselineY, innerYs);
+  return fine ?? coarse;
+}
+
+/** Örneklerin medyan zaman aralığı (ms) — kare kuantizasyonu için. */
+function medianInterval(ts: readonly number[]): number {
+  if (ts.length < 2) return 1000 / 30;
+  const deltas: number[] = [];
+  for (let i = 1; i < ts.length; i++) deltas.push(ts[i] - ts[i - 1]);
+  deltas.sort((a, b) => a - b);
+  return deltas[Math.floor(deltas.length / 2)] || 1000 / 30;
 }
 
 /**
  * Ankle Y zaman serisinden uçuş fazını tespit eder.
  *
- *   1. İlk 25 sample'ın median'ı = baseline ayak yüksekliği (yere basıyor).
- *   2. Ankle Y < baseline - ANKLE_LIFT_THRESHOLD → toe-off (yukarı kalktı).
- *   3. Ankle Y >= baseline - 0.005 ve toe-off'tan sonra → landing.
+ * İki aşamalı:
  *
- * @returns Uçuş tespit edildiyse FlightDetection, edilmediyse null.
+ *   1. **Bölge bulma (eşik).** Kaba olarak uçuşun hangi kareler arasında
+ *      olduğunu bulur. Eşiğin hassas olması gerekmez — yalnız kuşatması yeterli.
+ *   2. **Kök çözümü (parabol).** Bölgenin *ham* örneklerine serbest düşüş
+ *      parabolü fit edilip taban çizgisi kökleri çözülür. Eşiğin getirdiği
+ *      sistematik kısalık ve kare ızgarası bağımlılığı tamamen kalkar; fizik
+ *      doğrulaması balistik olmayan hareketi eler.
+ *
+ * Parabol tutmazsa (adım fonksiyonu gibi dejenere sinyal, aşırı gürültü) eşik
+ * zamanlamasına düşülür ve σ kare kuantizasyonundan hesaplanır.
  */
 function detectFlightPhase(samples: HipSample[]): FlightDetection | null {
   // Type guard ile filtrele — `as number` yerine TS narrowing'i koru.
@@ -166,13 +256,60 @@ function detectFlightPhase(samples: HipSample[]): FlightDetection | null {
 
   if (takeoffIdx === -1 || landingIdx === -1) return null;
 
+  const ts = ankleSamples.map((s) => s.t);
+
+  // --- Aşama 2: parabol kökü ile hassaslaştırma -------------------------
+  // Ham (yumuşatılmamış) örnekleri kullan: en küçük kareler zaten gürültüyü
+  // bastırıyor ve artık standart sapması gerçek sensör gürültüsünü ölçüyor.
+  // Yumuşatılmış seri kullanılsaydı residualStd yapay olarak küçülür, σ yalan
+  // söylerdi.
+  //
+  // Pencere seçimi kritik: `landingIdx` zaten yere basılan ilk karedir, uçuşa
+  // ait değildir. Parabol dışı kareler fit'e girerse eğrilik yassılaşır, ölçek
+  // ve süre birlikte kayar. Bu yüzden önce kaba pencereyle bir kez çözülür,
+  // sonra bulunan köklerle pencere daraltılıp **yeniden** fit edilir.
+  const solution = refineFlightSolution(ts, ankleYs, takeoffIdx, landingIdx, baselineAnkleY);
+
+  if (
+    solution &&
+    solution.rSquared >= MIN_BALLISTIC_R_SQUARED &&
+    solution.flightTimeMs >= MIN_FLIGHT_TIME_MS &&
+    solution.flightTimeMs <= MAX_FLIGHT_TIME_MS
+  ) {
+    return {
+      takeoffIdx,
+      landingIdx,
+      flightTimeMs: solution.flightTimeMs,
+      sigmaMs: solution.sigmaMs,
+      baselineAnkleY,
+      method: 'parabolic',
+      cmPerUnitFromGravity: solution.cmPerUnitFromGravity,
+      rSquared: solution.rSquared,
+    };
+  }
+
+  // --- Geriye dönüş: eşik zamanlaması ----------------------------------
   const flightTimeMs = ankleSamples[landingIdx].t - ankleSamples[takeoffIdx].t;
 
   if (flightTimeMs < MIN_FLIGHT_TIME_MS || flightTimeMs > MAX_FLIGHT_TIME_MS) {
     return null;
   }
 
-  return { takeoffIdx, landingIdx, flightTimeMs, baselineAnkleY };
+  // Her iki kenar da bir kare aralığı içinde düzgün dağılmış → σ = Δt/√12.
+  // İki bağımsız kenar → √2 ile birleşir.
+  const dt = medianInterval(ts);
+  const sigmaMs = (Math.SQRT2 * dt) / Math.sqrt(12);
+
+  return {
+    takeoffIdx,
+    landingIdx,
+    flightTimeMs,
+    sigmaMs,
+    baselineAnkleY,
+    method: 'threshold',
+    cmPerUnitFromGravity: null,
+    rSquared: null,
+  };
 }
 
 function invalid(
@@ -189,6 +326,10 @@ function invalid(
     takeoffY: 0,
     apexY: 0,
     flightTimeMs: 0,
+    jumpHeightSigmaCm: null,
+    flightMethod: null,
+    cmPerUnitFromGravity: null,
+    ballisticFit: null,
     valid: false,
     reason,
     ...partial,
@@ -243,21 +384,31 @@ export function analyzeJump(samples: HipSample[]): JumpAnalysis {
   // Flight-time her zaman dene (varsa primary olur).
   const flight = detectFlightPhase(samples);
 
-  if (jumpUnits < MIN_JUMP_UNITS && !flight) {
+  // Kalça yörüngesi mantık kapıları yalnızca **fizik doğrulanmışsa** atlanır.
+  //
+  // Eskiden koşul `!flight` idi; `flight` ise sadece "ayak bileği eşiği geçti"
+  // demekti. Topuk kaldırmak bu eşiği geçmeye yetiyor, dolayısıyla üç kapı da
+  // devre dışı kalıyor ve topuk kaldırma geçerli bir sıçrama olarak
+  // raporlanıyordu. Artık kapılar ancak ayak bileği yörüngesi serbest düşüş
+  // parabolüne uyduğunda (R² ≥ eşik, ölçek yerçekimiyle tutarlı) atlanıyor —
+  // yani hareketin balistik olduğu bağımsız olarak kanıtlandığında.
+  const physicsVerified = flight?.method === 'parabolic';
+
+  if (jumpUnits < MIN_JUMP_UNITS && !physicsVerified) {
     return invalid(
       'Belirgin bir sıçrama algılanmadı. Çömelip patlayıcı bir şekilde zıplaman gerekiyor.',
       { jumpUnits, takeoffY, apexY }
     );
   }
 
-  if (upDurationMs < MIN_TAKEOFF_TO_APEX_MS && !flight) {
+  if (upDurationMs < MIN_TAKEOFF_TO_APEX_MS && !physicsVerified) {
     return invalid(
       'Hareket çok kısa süreli — gerçek sıçrama yerine titreşim olabilir.',
       { jumpUnits, takeoffY, apexY }
     );
   }
 
-  if (upDurationMs > MAX_TAKEOFF_TO_APEX_MS && !flight) {
+  if (upDurationMs > MAX_TAKEOFF_TO_APEX_MS && !physicsVerified) {
     return invalid(
       'Hareket çok yavaş. CMJ patlayıcı bir sıçrama; çömelip hızla yukarı çık.',
       { jumpUnits, takeoffY, apexY }
@@ -292,6 +443,15 @@ export function analyzeJump(samples: HipSample[]): JumpAnalysis {
     takeoffY,
     apexY,
     flightTimeMs,
+    // σ yalnızca uçuş süresi gerçekten ölçüldüğünde anlamlı. Hip-displacement
+    // fallback'inde (apex simetrisi varsayımı) belirsizlik modellenmiş değil —
+    // uydurulmuş bir σ vermek yerine null bırakılıyor.
+    jumpHeightSigmaCm: flight
+      ? heightSigmaCm(flight.flightTimeMs, flight.sigmaMs)
+      : null,
+    flightMethod: flight?.method ?? null,
+    cmPerUnitFromGravity: flight?.cmPerUnitFromGravity ?? null,
+    ballisticFit: flight?.rSquared ?? null,
     valid: true,
   };
 }

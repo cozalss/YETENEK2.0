@@ -208,7 +208,12 @@ export function LateralHopsTest({
         calibrationXRef.current
       );
       const score = analysis.valid
-        ? lateralHopsScore(analysis.hopCount, childAgeYears, childSex)
+        ? lateralHopsScore(
+            analysis.hopCount,
+            childAgeYears,
+            childSex,
+            analysis.durationMs
+          )
         : 0;
       const final = { ...analysis, score };
       setResult(final);

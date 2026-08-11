@@ -54,17 +54,45 @@ pnpm dev    # http://localhost:3000
 `.env.local` (dev) veya Vercel Project Settings (prod):
 
 ```bash
-# Gemini API — rapor üretimi (yoksa rule-based fallback)
-GEMINI_API_KEY=...
-GEMINI_MODEL=gemini-2.5-flash
-
 # Site URL — sitemap, OG, canonical
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 # Supabase — Auth + DB (yoksa landing + offline demo açık)
 NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJI...
+
+# Anthropic — AI rapor üretimi (yoksa rule-based fallback rapor)
+ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_MODEL=claude-sonnet-4-6
+
+# OpenAI — görsel geçerlilik hakemi (yoksa kural tabanlı hakem tek başına)
+OPENAI_API_KEY=sk-...
+OPENAI_VISION_MODEL=gpt-5.6
 ```
+
+Şablon için [`.env.example`](./.env.example) dosyasına bakın.
+
+**İki AI anahtarı da opsiyoneldir** ve farklı işler yapar:
+
+| Anahtar | Ne yapar | Yoksa ne olur |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Sonuç raporunu yazar | Kural tabanlı şablon rapor üretilir |
+| `OPENAI_API_KEY` | Hareket **kalitesini** denetler (kol savurma, uçuşta diz çekme, kısmi ROM) | Kural tabanlı hakem tek başına çalışır — protokol ihlallerinin çoğu (iki ayak üstünde denge, uçuş fazı olmayan sıçrama, genliksiz hop) yine yakalanır |
+
+Görsel hakem bir **bağımlılık değil, iyileştirmedir**: cihazda çalışan kural
+tabanlı hakem her koşulda devrede kalır. Ayrıntı:
+[`docs/ARCHITECTURE-V3.md`](./docs/ARCHITECTURE-V3.md).
+
+Anahtarların okunduğunu doğrulamak için:
+
+```bash
+curl -s http://localhost:3000/api/health | jq .features
+# { "anthropicConfigured": true, "visionJudgeConfigured": true, ... }
+```
+
+> `OPENAI_VISION_MODEL` kodda sabitlenmedi. Vision + strict structured outputs
+> desteği modelden modele değişiyor; env'den pin'leyip kurulumdan sonra bir
+> smoke-test ile doğrulayın.
 
 ### Supabase Kurulumu (Auth + Çocuk Profilleri)
 

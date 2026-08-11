@@ -29,6 +29,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
+      // `server-only` Next derleme zamanı koruyucusu; node ortamında
+      // çözümlenmiyor. Korumayı kaldırmak yerine testte boş modüle
+      // yönlendiriyoruz — derlemede gerçek kapı yerinde kalıyor.
+      'server-only': resolve(__dirname, 'test/stubs/server-only.ts'),
     },
   },
 });

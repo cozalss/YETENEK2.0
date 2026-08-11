@@ -46,6 +46,13 @@ export function recordBalance(
   session: Session,
   analysis: BalanceAnalysis
 ): Session {
+  // Diğer beş testte olan geçerlilik kapısı burada eksikti: yeterli kare
+  // toplanamadığında `analyzeLeg` skor 0 döner, o sıfırlar oturuma yazılır ve
+  // test "tamamlandı" sayılırdı. Sıfır denge skoru spor eşleştirmesine gerçek
+  // bir ölçümmüş gibi giriyordu. İki bacak da yeterli veri üretmeliyse yaz.
+  if (!analysis.right.hasEnoughData || !analysis.left.hasEnoughData) {
+    return session;
+  }
   let next: Session = {
     ...session,
     balance: {
@@ -67,6 +74,11 @@ export function recordReaction(
   session: Session,
   analysis: ReactionAnalysis
 ): Session {
+  // Yetersiz deneme (< MIN_VALID_TRIALS) istatistiksel olarak yorumlanamaz;
+  // eskiden sıfırlar oturuma yazılıyor ve "en yavaş refleks" gibi okunuyordu.
+  if (!analysis.valid) {
+    return session;
+  }
   const next: Session = {
     ...session,
     reaction: {

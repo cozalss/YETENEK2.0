@@ -219,7 +219,16 @@ export function CoordinationTest({ onComplete, onSkip }: Props) {
   useEffect(() => {
     if (phase !== 'analyze') return;
     try {
-      const analysis = analyzeCoordination(touchesRef.current);
+      // Canvas boyutları açıkça geçilmeli: `analyzeCoordination` hatayı
+      // köşegenin yüzdesine çevirerek cihaz bağımsız hale getiriyor, ama
+      // argümansız çağrıldığında 500×500 varsayılanını kullanıyordu — gerçek
+      // canvas 600×400. Köşegen 707 yerine 721 olduğu için normalizasyon
+      // sistematik olarak kayıyordu ve "cihaz bağımsız" iddiası tutmuyordu.
+      const analysis = analyzeCoordination(
+        touchesRef.current,
+        CANVAS_W,
+        CANVAS_H
+      );
       setResult(analysis);
       setPhase('result');
       if (analysis.valid) {

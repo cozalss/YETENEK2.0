@@ -18,7 +18,6 @@ import {
   CHARACTER_QUESTIONS,
   LIKERT_LABELS,
   type CharacterAnswers,
-  type CharacterFactor,
   type LikertValue,
 } from '@/lib/character/questions';
 import { scoreCharacter, type CharacterAnalysis } from '@/lib/character/score';
@@ -358,6 +357,3 @@ function FactorBar({
     </div>
   );
 }
-
-/** Reserved for future radar viz */
-type _ReservedFactor = CharacterFactor;

@@ -35,6 +35,19 @@ test.describe('Health endpoint', () => {
     expect(json.features.fallbackReportAvailable).toBe(true);
   });
 
+  test('/api/health kural hakemi her zaman açık, görsel hakem opsiyonel', async ({
+    request,
+  }) => {
+    const response = await request.get('/api/health');
+    const json = await response.json();
+    // Kural tabanlı geçerlilik hakemi anahtar durumundan bağımsız olarak
+    // devrede — protokol denetimi hiçbir koşulda kapanmamalı.
+    expect(json.features.ruleJudgeAvailable).toBe(true);
+    // Görsel hakem yapılandırmaya bağlı; sadece tipi garanti ediyoruz ki
+    // anahtarsız CI koşusunda da geçsin.
+    expect(typeof json.features.visionJudgeConfigured).toBe('boolean');
+  });
+
   test('/api/health version string döner', async ({ request }) => {
     const response = await request.get('/api/health');
     const json = await response.json();
