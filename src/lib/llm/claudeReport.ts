@@ -16,6 +16,11 @@ import {
   streamText,
 } from './anthropic';
 import { generateFallbackReport } from './fallbackReport';
+import {
+  checkGrounding,
+  describeGroundingFailure,
+  factsFromSession,
+} from '@/core/use-cases/ground-narrative';
 import { REPORT_SYSTEM_PROMPT, buildReportUserMessage } from './reportPrompt';
 
 export interface ReportResult {
@@ -62,6 +67,19 @@ export async function generateReport(
         reason: 'Claude boş içerik döndü.',
       };
     }
+
+    // Sayı-topraklama kapısı: metindeki her sayı ve spor adı oturumda
+    // bulunmak zorunda. Prompt'a "uydurma" yazmak bir dilek; bu bir kontrol.
+    // Reddedilen metin yayınlanmaz, kural tabanlı rapora düşülür.
+    const failure = checkGrounding(text, factsFromSession(session));
+    if (failure) {
+      return {
+        text: fallbackText(),
+        source: 'fallback',
+        reason: describeGroundingFailure(failure),
+      };
+    }
+
     return { text, source: 'claude' };
   } catch (err) {
     const reason = describeError(err);

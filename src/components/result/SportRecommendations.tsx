@@ -141,10 +141,34 @@ function SportCard({
                       border: '1px solid var(--color-line-strong)',
                     }
               }
+              title={
+                match.pTopK != null
+                  ? 'Ölçüm belirsizliği hesaba katıldığında bu sporun ilk 3 öneri arasında çıkma olasılığı'
+                  : 'Profil yakınlığı. Olasılık hesaplamak için en az 3 kalibre boyutun ölçülmesi gerekiyor.'
+              }
             >
               %{match.confidencePercent}
             </span>
           </div>
+          {/*
+            Etiket sayının GERÇEK anlamını söylüyor.
+
+            `pTopK` doluysa sayı Monte Carlo'dan gelen bir olasılıktır.
+            Doluysa değil de undefined ise, kanıt tabanı olasılık iddiası
+            için fazla ince demektir (yeterli boyut ölçülmemiş) ve gösterilen
+            sayı yalnız bir profil yakınlığıdır — "olasılık" demek yanlış
+            olurdu.
+
+            Wilson aralığı bilinçli olarak GÖSTERİLMİYOR: o aralık Monte
+            Carlo'nun örnekleme hatasını ölçer, çocuk hakkındaki belirsizliği
+            değil. Örneklem sayısını artırınca daralır ve hiçbir yeni bilgi
+            taşımaz; kullanıcıya "güven aralığı" diye sunmak yanıltıcıydı.
+          */}
+          <p className="mt-1 text-xs" style={{ color: 'var(--color-ink-3)' }}>
+            {match.pTopK != null
+              ? "ilk 3'te olma ihtimali"
+              : 'profil yakınlığı — olasılık için yeterli test yapılmadı'}
+          </p>
           <p
             className="mt-1 text-sm leading-relaxed"
             style={{ color: 'var(--color-ink-2)' }}

@@ -129,8 +129,26 @@ export const sportMatchSchema = z.object({
   // kabul ediyoruz (geriye dönük uyumluluk).
   anthroBonus: finiteNumber.min(0).max(1).default(0),
   finalScore: finiteNumber.min(0).max(1).default(0),
+  /**
+   * Kullanıcıya gösterilen yüzde. **Anlamı değişti:** eskiden
+   * `round(finalScore × 100)` idi ve istatistiksel karşılığı yoktu; artık
+   * "bu sporun ilk 3'te olma olasılığı" (Monte Carlo, bkz. `decide.ts`).
+   */
   confidencePercent: z.number().int().min(0).max(100),
   reason: z.string().max(300),
+
+  // ── Olasılıksal karar alanları (yeni) ──────────────────────────────────
+  // Eski kayıtlarda yok; opsiyonel bırakılıyor ki geçmiş oturumlar parse
+  // edilmeye devam etsin.
+  /**
+   * İlk 3'te olma olasılığı (0-1). **Yokluğu anlamlıdır:** kanıt tabanı
+   * olasılık iddiası için fazla inceyse (yeterli kalibre boyut ölçülmemiş)
+   * bu alan boş kalır ve `confidencePercent` yalnız profil yakınlığını
+   * gösterir. Tüketici bu ayrımı kullanıcıya yansıtmalı.
+   */
+  pTopK: finiteNumber.min(0).max(1).optional(),
+  /** Birinci olma olasılığı (0-1). Aynı koşulda boş kalır. */
+  pTopOne: finiteNumber.min(0).max(1).optional(),
 });
 
 /* ───────── Full session ───────── */

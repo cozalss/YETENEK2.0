@@ -26,6 +26,8 @@ import {
   frameToBroadJumpSample,
 } from '@/lib/tests/broadJump';
 import type { PoseFrame } from '@/types';
+import { useValidityGate } from '@/hooks/use-validity-gate';
+import { RejectionPanel } from '@/components/tests/shared/RejectionPanel';
 import { logger } from '@/shared/logger/logger';
 
 const log = logger.child('broad-jump-test');
@@ -85,6 +87,10 @@ export function BroadJumpTest({
 
   useEffect(() => () => cancelSpeech(), []);
 
+  const gate = useValidityGate({ test: 'broadJump' });
+  const gateCollect = gate.collect;
+  const gateEvaluate = gate.evaluate;
+
   const handleFrame = useCallback((frame: PoseFrame | null) => {
     if (phaseRef.current === 'idle' || phaseRef.current === 'countdown') {
       const next = checkJumpFraming(frame);
@@ -101,10 +107,13 @@ export function BroadJumpTest({
     if (!calibrationFrameRef.current) {
       calibrationFrameRef.current = frame;
     }
+    // Hakem ham iskelete bakıyor; indirgenmiş örnek uçuş fazını taşımıyor.
+    gateCollect(frame);
     samplesRef.current.push(sample);
-  }, []);
+  }, [gateCollect]);
 
   const start = () => {
+    gate.reset();
     samplesRef.current = [];
     calibrationFrameRef.current = null;
     captureActiveRef.current = false;
@@ -141,6 +150,24 @@ export function BroadJumpTest({
 
   useEffect(() => {
     if (phase !== 'analyze') return;
+    let cancelled = false;
+
+    void (async () => {
+      // Geçerlilik kapısı analizden ÖNCE: geçersiz yakalama hiç ölçülmemeli.
+      const allowed = await gateEvaluate();
+      if (cancelled) return;
+      if (!allowed) {
+        setPhase('result');
+        return;
+      }
+      runAnalysis();
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+
+    function runAnalysis() {
     try {
       let analysis = analyzeBroadJump(samplesRef.current);
       if (
@@ -179,8 +206,9 @@ export function BroadJumpTest({
       setScore(null);
       setPhase('result');
     }
+    }
     // onComplete kasten dışarıda — inline arrow ile çift kayıt olmasın.
-  }, [phase, childAgeYears, childSex, childHeightCm]);
+  }, [phase, childAgeYears, childSex, childHeightCm, gateEvaluate]);
 
   useEffect(() => {
     if (phase === 'result' && resultHeadingRef.current) {
@@ -236,7 +264,9 @@ export function BroadJumpTest({
         </>
       }
       sidebar={
-        phase === 'result' && result ? (
+        phase === 'result' && gate.rejection ? (
+          <RejectionPanel rejection={gate.rejection} onRetry={start} />
+        ) : phase === 'result' && result ? (
           <ResultCard
             result={result}
             score={score}

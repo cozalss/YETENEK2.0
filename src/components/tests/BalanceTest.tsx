@@ -27,13 +27,8 @@ import {
 } from '@/lib/tests/balance';
 import type { PoseFrame } from '@/types';
 import { logger } from '@/shared/logger/logger';
-import { ruleBasedValidityJudge } from '@/infrastructure/validity/rule-based-judge';
-import {
-  applyVerdict,
-  type AcceptedMeasurement,
-  type RejectedMeasurement,
-} from '@/core/use-cases/apply-verdict';
-import type { Result } from '@/core/types/result';
+import { useValidityGate } from '@/hooks/use-validity-gate';
+import { RejectionPanel } from '@/components/tests/shared/RejectionPanel';
 
 const log = logger.child('balance-test');
 
@@ -68,18 +63,14 @@ export function BalanceTest({ onComplete, childAgeYears }: Props) {
   });
   const [result, setResult] = useState<BalanceAnalysis | null>(null);
 
-  const [rejection, setRejection] = useState<RejectedMeasurement | null>(null);
+  // Her iki bacak da aynı kapıdan geçiyor: tek bacak duruşu doğrulanamazsa
+  // hangi bacakta olduğunun önemi yok, ölçüm geçersiz.
+  const gate = useValidityGate({ test: 'balance' });
+  const gateCollect = gate.collect;
+  const gateEvaluate = gate.evaluate;
 
   const rightSamplesRef = useRef<PostureSample[]>([]);
   const leftSamplesRef = useRef<PostureSample[]>([]);
-  // Ham kareler geçerlilik hakemi için ayrıca saklanıyor. `PostureSample`
-  // yalnız kalça ve omuz X'ini taşıyor — ayak bileği bilgisi indirgeme
-  // sırasında kayboluyor, dolayısıyla indirgenmiş veriyle "tek ayak üstünde
-  // miydi" sorusu yanıtlanamıyor. Bellek için 2'de 1 örnekleniyor: hakem
-  // duruş oranına bakıyor, tam kare hızına ihtiyacı yok.
-  const rightFramesRef = useRef<PoseFrame[]>([]);
-  const leftFramesRef = useRef<PoseFrame[]>([]);
-  const frameParityRef = useRef(0);
   const phaseRef = useRef<Phase>('idle');
   // Framing diff-guard — diğer test bileşenlerinde olduğu gibi, her
   // frame'de setFraming çağrısı yapılmasın. Statik framing 30 fps'de
@@ -117,12 +108,9 @@ export function BalanceTest({ onComplete, childAgeYears }: Props) {
     if (!frame) return;
 
     if (p === 'rightCapture' || p === 'leftCapture') {
-      frameParityRef.current++;
-      if (frameParityRef.current % 2 === 0) {
-        const target =
-          p === 'rightCapture' ? rightFramesRef.current : leftFramesRef.current;
-        target.push(frame);
-      }
+      // `PostureSample` yalnız kalça ve omuz X'ini taşıyor; ayak bileği
+      // indirgeme sırasında kayboluyor, o yüzden hakem ham kareyi görmeli.
+      gateCollect(frame);
     }
 
     const sample = frameToPostureSample(frame);
@@ -130,14 +118,12 @@ export function BalanceTest({ onComplete, childAgeYears }: Props) {
 
     if (p === 'rightCapture') rightSamplesRef.current.push(sample);
     else if (p === 'leftCapture') leftSamplesRef.current.push(sample);
-  }, []);
+  }, [gateCollect]);
 
   const start = () => {
+    gate.reset();
     rightSamplesRef.current = [];
     leftSamplesRef.current = [];
-    rightFramesRef.current = [];
-    leftFramesRef.current = [];
-    frameParityRef.current = 0;
     setResult(null);
     setCountdown(COUNTDOWN_SECONDS);
     setCaptureRemaining(CAPTURE_SECONDS);
@@ -213,18 +199,9 @@ export function BalanceTest({ onComplete, childAgeYears }: Props) {
       // Geçerlilik kapısı ölçümden ÖNCE. Testi yapmamış bir çocuğun verisi
       // hiç analiz edilmemeli — analiz edilip sonra atılırsa, aradaki her
       // adımda "geçerli sonuç" gibi görünür ve bir yerde sızar.
-      const gate = await judgeBalanceCapture(
-        rightFramesRef.current,
-        leftFramesRef.current
-      );
+      const allowed = await gateEvaluate();
       if (cancelled) return;
-
-      if (!gate.ok) {
-        log.info('denge denemesi reddedildi', {
-          reason: gate.error.reason,
-          violations: gate.error.violations.join(','),
-        });
-        setRejection(gate.error);
+      if (!allowed) {
         setPhase('result');
         return;
       }
@@ -236,7 +213,6 @@ export function BalanceTest({ onComplete, childAgeYears }: Props) {
           childAgeYears
         );
         if (cancelled) return;
-        setRejection(null);
         setResult(analysis);
         setPhase('result');
         onCompleteRef.current?.(analysis);
@@ -279,12 +255,9 @@ export function BalanceTest({ onComplete, childAgeYears }: Props) {
       setPhase('result');
     }
     // onComplete kasten dışarıda — bkz. JumpTest.tsx açıklaması.
-  }, [childAgeYears, phase]);
+  }, [childAgeYears, phase, gateEvaluate]);
 
-  const restart = () => {
-    setRejection(null);
-    start();
-  };
+
 
   return (
     <TestStage
@@ -350,10 +323,10 @@ export function BalanceTest({ onComplete, childAgeYears }: Props) {
             canStart={framing.ready}
             framing={framing}
           />
-        ) : phase === 'result' && rejection ? (
-          <RejectionPanel rejection={rejection} onRetry={restart} />
+        ) : phase === 'result' && gate.rejection ? (
+          <RejectionPanel rejection={gate.rejection} onRetry={start} />
         ) : phase === 'result' && result ? (
-          <ResultPanel result={result} onRetry={restart} />
+          <ResultPanel result={result} onRetry={start} />
         ) : (
           <PhaseStatusCard
             phase={phase}
@@ -363,75 +336,6 @@ export function BalanceTest({ onComplete, childAgeYears }: Props) {
         )
       }
     />
-  );
-}
-
-/**
- * İki bacağın yakalamasını da geçerlilik hakeminden geçirir.
- *
- * Reddetme mantığı ölçümden **önce** çalışıyor: geçersiz bir yakalama hiç
- * analiz edilmemeli. Analiz edilip sonra atılırsa, aradaki her adımda
- * "geçerli sonuç" gibi görünür ve bir gün bir yerden sızar.
- *
- * Hakem kural tabanlı olduğu için tarayıcıda, çevrimdışı ve ücretsiz çalışıyor;
- * çocuk anında geri bildirim alıyor.
- */
-async function judgeBalanceCapture(
-  rightFrames: PoseFrame[],
-  leftFrames: PoseFrame[]
-): Promise<Result<AcceptedMeasurement, RejectedMeasurement>> {
-  for (const frames of [rightFrames, leftFrames]) {
-    const judged = await ruleBasedValidityJudge.judge({ test: 'balance', frames });
-    if (!judged.ok) continue; // hakem karar veremedi → ölçüme izin ver
-    const gated = applyVerdict('balance', judged.value);
-    if (!gated.ok) return gated;
-  }
-  return {
-    ok: true,
-    value: { sigmaMultiplier: 1, warnings: [], verdict: ACCEPTED_VERDICT },
-  };
-}
-
-const ACCEPTED_VERDICT = {
-  performed: true,
-  protocolViolations: [],
-  techniqueScore: 100,
-  stanceConfirmed: true,
-  compensations: [],
-  judgeConfidence: 0.8,
-  source: 'rules',
-} as const;
-
-function RejectionPanel({
-  rejection,
-  onRetry,
-}: {
-  rejection: RejectedMeasurement;
-  onRetry: () => void;
-}) {
-  return (
-    <div
-      className="rounded-2xl border border-amber-300 bg-amber-50 p-5"
-      role="alert"
-    >
-      <h3 className="text-lg font-semibold text-amber-900">
-        Bu deneme sayılmadı
-      </h3>
-      <p className="mt-2 text-sm leading-relaxed text-amber-900">
-        {rejection.retryHint}
-      </p>
-      <p className="mt-3 text-xs text-amber-700">
-        Merak etme — yanlış yapılan bir testi kaydetmek yerine tekrar etmek
-        sonucun doğru olmasını sağlıyor.
-      </p>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="mt-4 w-full rounded-xl bg-amber-600 px-4 py-3 font-semibold text-white transition hover:bg-amber-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800"
-      >
-        Tekrar dene
-      </button>
-    </div>
   );
 }
 

@@ -12,6 +12,7 @@
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { sessionSummarySchema } from '@/core/schemas/session.schema';
 import { generateReport, generateReportStream } from '@/lib/llm/claudeReport';
 import type { SessionSummary } from '@/lib/session/store';
 import { logger } from '@/shared/logger/logger';
@@ -28,144 +29,20 @@ export const revalidate = 0;
 export const maxDuration = 30;
 
 // Session payload'ını runtime'da doğrula (client kötü niyetli veri gönderebilir).
-const childSchema = z.object({
-  name: z.string().min(1).max(60),
-  ageYears: z.number().int().min(4).max(18),
-  sex: z.enum(['male', 'female']),
-  heightCm: z.number().min(80).max(220).optional(),
-  weightKg: z.number().min(15).max(200).optional(),
-});
-
-const jumpSchema = z
-  .object({
-    jumpHeightCm: z.number().nullable(),
-    jumpUnits: z.number(),
-    flightTimeMs: z.number(),
-    score: z.number(),
-    method: z.enum(['flight-time', 'hip-displacement', 'consensus']).optional(),
-    consistent: z.boolean().optional(),
-  })
-  .optional();
-
-const balanceSchema = z
-  .object({
-    rightScore: z.number(),
-    leftScore: z.number(),
-    asymmetryPercent: z.number(),
-    asymmetryWarning: z.boolean(),
-    weakerSide: z.enum(['right', 'left']).nullable(),
-    averageScore: z.number(),
-  })
-  .optional();
-
-const reactionSchema = z
-  .object({
-    averageMs: z.number(),
-    bestMs: z.number(),
-    consistencyScore: z.number(),
-    ageNormScore: z.number(),
-  })
-  .optional();
-
-const broadJumpSchema = z
-  .object({
-    jumpDistanceCm: z.number().nullable(),
-    jumpUnits: z.number(),
-    score: z.number(),
-  })
-  .optional();
-
-const lateralHopsSchema = z
-  .object({
-    hopCount: z.number(),
-    frequencyHz: z.number(),
-    score: z.number(),
-    dataQuality: z.enum(['good', 'low']),
-  })
-  .optional();
-
-const coordinationSchema = z
-  .object({
-    trackingEvents: z.number(),
-    avgErrorPx: z.number(),
-    bestErrorPx: z.number(),
-    avgGapMs: z.number(),
-    score: z.number(),
-  })
-  .optional();
-
-const enduranceSchema = z
-  .object({
-    totalReps: z.number(),
-    decayPercent: z.number(),
-    durationMs: z.number(),
-    score: z.number(),
-  })
-  .optional();
-
-const testKeySchema = z.enum([
-  'jump',
-  'balance',
-  'reaction',
-  'broadJump',
-  'lateralHops',
-  'coordination',
-  'endurance',
-  'character',
-]);
-
-// Karakter (Likert) testi sonucu — Quick Flow'un 4. adımı.
-const characterFactorsSchema = z.object({
-  cooperation: z.number().min(0).max(100),
-  encouragement: z.number().min(0).max(100),
-  persistence: z.number().min(0).max(100),
-  fairPlay: z.number().min(0).max(100),
-});
-const characterSchema = z
-  .object({
-    teamAffinity: z.number().min(0).max(100),
-    factors: characterFactorsSchema.optional(),
-    averageScore: z.number().min(1).max(5),
-    band: z.enum(['individual', 'balanced', 'team']),
-    summary: z.string().max(400),
-    topFactor: z
-      .enum(['cooperation', 'encouragement', 'persistence', 'fairPlay'])
-      .optional(),
-    bottomFactor: z
-      .enum(['cooperation', 'encouragement', 'persistence', 'fairPlay'])
-      .optional(),
-  })
-  .optional();
-
-// String alanlar bilinçli olarak sınırlandırıldı — payload prompt'a doğrudan
-// enjekte edildiği için unbounded string'ler prompt-injection vektörü olur.
-const recommendationSchema = z.object({
-  sport: z.string().max(50),
-  description: z.string().max(300),
-  similarity: z.number(),
-  anthroBonus: z.number().optional(),
-  finalScore: z.number().optional(),
-  confidencePercent: z.number().min(0).max(100),
-  reason: z.string().max(300),
-});
-
+/**
+ * İstek gövdesi — **çekirdek şema yeniden kullanılıyor**.
+ *
+ * Burada 120 satırlık bir kopya şema vardı ve çekirdekten daha gevşekti:
+ * `.finite()` yoktu, skorlarda `.min(0).max(100)` yoktu, `completedTests`
+ * `.default([])` yerine `.optional()` idi. İki şema aynı nesneyi farklı
+ * doğruluyordu; drift zaten başlamıştı. `/api/chat` çekirdeği zaten yeniden
+ * kullanıyordu — bu route istisnaydı.
+ *
+ * `.passthrough()` bilinçli: istemci ileride yeni alan gönderirse istek
+ * reddedilmesin, ama bilinen alanların doğrulaması sıkı kalsın.
+ */
 const payloadSchema = z.object({
-  session: z.object({
-    child: childSchema,
-    jump: jumpSchema,
-    balance: balanceSchema,
-    reaction: reactionSchema,
-    broadJump: broadJumpSchema,
-    lateralHops: lateralHopsSchema,
-    coordination: coordinationSchema,
-    endurance: enduranceSchema,
-    character: characterSchema,
-    recommendations: z.array(recommendationSchema).max(20).optional(),
-    injuryWarnings: z.array(z.string().max(300)).max(10),
-    completedTests: z.array(testKeySchema).max(20).optional(),
-    startedAt: z.string().max(40),
-    completedAt: z.string().max(40).optional(),
-  }),
+  session: sessionSummarySchema.passthrough(),
 });
 
 // Basit IP bazlı rate limit (Map, sadece bu süreçte yaşar).
@@ -214,7 +91,10 @@ export async function POST(request: Request): Promise<NextResponse> {
   const parsed = payloadSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: 'Geçersiz session verisi.', issues: parsed.error.issues },
+      // Ham Zod `issues` dizisi dışarı verilmiyordu diye bir sebep yok:
+      // iç şema yapısını, alan adlarını ve doğrulama kurallarını sızdırıyor.
+      // Sunucuda log'lanıyor, istemciye yalnız kullanıcıya dönük mesaj gidiyor.
+      { error: 'Geçersiz session verisi.' },
       { status: 400 }
     );
   }

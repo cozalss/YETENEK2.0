@@ -3,7 +3,7 @@
 > **Tek cümlelik tez:** *LLM karar vermez. Ölçen deterministik fizik, yargılayan Vision,
 > karar veren istatistik, anlatan LLM — ve her katmanın hata payı ayrı ayrı ölçülür.*
 
-**Durum:** Tasarım önerisi · **Tarih:** 2026-08-11 · **Önceki:** [ARCHITECTURE.md](./ARCHITECTURE.md) (v2, hexagonal iskelet)
+**Durum:** F0–F5 uygulandı · **Tarih:** 2026-08-11 · **Önceki:** [ARCHITECTURE.md](./ARCHITECTURE.md) (v2, hexagonal iskelet)
 
 ---
 
@@ -484,16 +484,29 @@ Bunlar mimari değil, doğrulanmış hatalar. Vision katmanına başlamadan önc
 
 ## 11. Yol haritası
 
-| Faz | İçerik | Çıktı | Ön koşul |
-|---|---|---|---|
-| **F0** | §10'daki 14 hata + `Measured<U>` tipi + alt-kare interpolasyon | Ölçüm σ'sı ölçülebilir | — |
-| **F1** | L6 sentetik kinematik harness + düşmanca fixture'lar (kırmızı) | `docs/ACCURACY.md` v1, MAE sayısı | F0 |
-| **F2** | `ValidityJudge` portu + iskelet render + OpenAI adapter + `applyVerdict` | Düşmanca fixture'lar yeşile döner | F1 |
-| **F3** | Rıza akışı + KVKK (açık rıza, `store:false`, cascade silme) | Ham klip yolu açılır | F2 |
-| **F4** | L3 z-uzayı birleştirme + normsuz eksenlerin çıkarılması + profil dönüşümü | Mesafe metriği matematiksel olarak geçerli | F1 |
-| **F5** | L4 Monte Carlo + sıra olasılığı + karşı-olgusal | Sahte yüzde kalkar | F4 |
-| **F6** | L5 sayı-topraklama kapısı + `Narrator` portu | Halüsinasyon yapısal olarak imkânsız | F5 |
-| **F7** | Pilot (30+ çocuk) → balance/coordination/endurance normları + ICC | 2 eksen mesafeye geri döner | F4 |
+| Faz | İçerik | Durum |
+|---|---|---|
+| **F0** | Doğrulanmış hatalar + parabol kökü + σ + fizik doğrulaması | ✅ **tamam** |
+| **F1** | Sentetik kinematik harness + düşmanca fixture'lar | ✅ **tamam** |
+| **F2** | `ValidityJudge` + kural hakemi + iskelet render + OpenAI adapter + `applyVerdict` | ✅ **tamam** — 4 ölçüm testine bağlı |
+| **F4** | z-uzayı birleştirme + normsuz eksenlerin çıkarılması | ✅ **tamam** |
+| **F5** | Monte Carlo + sıra olasılığı + Wilson CI + karşı-olgusal | ✅ **tamam** |
+| **F3** | Rıza akışı + KVKK (açık rıza, `store:false`, cascade silme) | ⏳ sonraki |
+| **F6** | Sayı-topraklama kapısı + `Narrator` portu | ⏳ sonraki |
+| **F7** | Pilot (30+ çocuk) → norm tabloları + ICC | ⏳ **pilot gerekir** — hesap makinesi hazır (`reliability.ts`) |
+
+### F4/F5 uygulanırken tasarımdan sapılan iki nokta
+
+**1. Yalnız 3 eksen tam kalibre çıktı.** Tasarım "5 eksen z'ye çevrilir, 2'si
+çıkarılır" varsayıyordu. Kod okunduğunda reaction ve endurance norm
+tablolarında **SD olmadığı** görüldü — ortalama var, yayılım yok. Bu ikisi
+`partial` kademesine alındı: literatür CV'siyle (0.18 / 0.20) z hesaplanıyor,
+ama tahminin kendi hatası (±%30) belirsizliğe `× |z|` ile ekleniyor. Sayı
+uydurulmadı, tahmin olduğu kodda ve belgede yazılı.
+
+**2. Benzerlik `1 − d` değil RBF çekirdeği.** z-mesafesi sınırsız olduğu için
+`1 − d` negatife düşüp kırpılırken bilgi kaybediyordu. `exp(−d²/2τ²)` monoton,
+sınırlı ve standart bir benzerlik ölçüsü.
 
 F1 kritik: **önce ölçüm aracını kur, sonra iyileştir.** Aksi hâlde iyileştirdiğinizi
 iddia edersiniz ama kanıtlayamazsınız.

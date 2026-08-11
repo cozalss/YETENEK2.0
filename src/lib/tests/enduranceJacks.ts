@@ -167,6 +167,46 @@ const JACKS_NORMS_30S: Record<number, { male: number; female: number }> = {
   15: { male: 38, female: 32 },
 };
 
+/**
+ * Popülasyon içi değişkenlik katsayısı (SD / ortalama).
+ *
+ * **Tahmin, yayınlanmış değer değil.** Yukarıdaki tablo yalnızca ortalama
+ * veriyor ve zaten research-grade; doğrudan pediatrik jumping-jack yayını
+ * bulunamadı. Sayım tabanlı saha fitness testlerinde kişiler arası CV tipik
+ * olarak 0.18-0.22 aralığında (FitnessGram 2017 curl-up/push-up dağılımları).
+ * Üst orta değer alındı — belirsizliği olduğundan küçük göstermemek için.
+ *
+ * `zspace.ts` bunu `partial` sayar ve belirsizliğini şişirir. Pilot ölçümle
+ * gerçek SD geldiğinde silinecek.
+ */
+export const JACKS_CV_ESTIMATE = 0.2;
+
+/**
+ * Dayanıklılığın z-skoru. Tekrar sayısı 30 saniyelik pencereye ölçeklenir,
+ * sonra yaş+cinsiyet normuna göre standartlaştırılır.
+ *
+ * @returns z-skoru; geçersiz girdide null.
+ */
+export function enduranceZ(
+  totalReps: number,
+  durationMs: number,
+  ageYears: number,
+  sex: 'male' | 'female'
+): number | null {
+  if (!Number.isFinite(totalReps) || totalReps < 0) return null;
+  const durationS = Math.max(durationMs / 1000, 10);
+  const normalizedReps = totalReps * (30 / durationS);
+
+  const ages = Object.keys(JACKS_NORMS_30S).map(Number);
+  const closestAge = ages.reduce((a, b) =>
+    Math.abs(b - ageYears) < Math.abs(a - ageYears) ? b : a
+  );
+  const mean = JACKS_NORMS_30S[closestAge][sex];
+  const sd = mean * JACKS_CV_ESTIMATE;
+  if (sd <= 0) return null;
+  return (normalizedReps - mean) / sd;
+}
+
 export function enduranceScore(
   totalReps: number,
   durationMs: number,

@@ -25,6 +25,12 @@ import {
 // Tek Φ(z) implementasyonu. Bu dosyada ikinci bir kopya vardı (A&S 7.1.26,
 // clamp'siz) — iki yaklaşım aynı girdiye farklı persentil veriyordu.
 import { normalCdf } from '@/lib/stats/normalCdf';
+// Bonus hesapları tek kaynakta; `decide.ts` de aynılarını kullanıyor.
+import {
+  computeAnthroBonusFor,
+  computeCharacterSimilarityBoost,
+  computeTeamAffinityBoost as sharedTeamAffinityBoost,
+} from './bonuses';
 
 /**
  * Karakter 4 alt faktörü — `src/lib/character/score.ts`'in ürettiği
@@ -49,9 +55,25 @@ export interface SportMatch {
   anthroBonus: number;
   /** similarity + anthroBonus, 0-1 clamp */
   finalScore: number;
-  /** 0-100 yuvarlanmış kullanıcı görünür değer */
+  /**
+   * 0-100 kullanıcıya gösterilen değer.
+   *
+   * **Anlamı değişti:** eskiden `round(finalScore × 100)` — mesafenin kozmetik
+   * dönüşümü, istatistiksel karşılığı yok. Artık `decide.ts`'in ürettiği
+   * "ilk 3'te olma olasılığı". Eski `recommendSports` yolu hâlâ eski anlamı
+   * üretiyor; yeni yol `finalizeSession` üzerinden geçiyor.
+   */
   confidencePercent: number;
   reason: string;
+
+  // ── Olasılıksal alanlar — yalnız `decide.ts` yolunda dolu ──────────────
+  /**
+   * İlk 3'te olma olasılığı (0-1). Yokluğu "olasılık iddia edilemedi"
+   * anlamına gelir; `confidencePercent` o zaman profil yakınlığıdır.
+   */
+  pTopK?: number;
+  /** Birinci olma olasılığı (0-1). */
+  pTopOne?: number;
 }
 
 export interface AnthroContext {
@@ -100,13 +122,7 @@ function computeAnthroBonus(
   profile: SportProfile,
   ctx: AnthroContext | null
 ): number {
-  if (!ctx) return 0;
-  const heightFactor = ctx.heightPercentile / 100;
-  const leanFactor = 1 - ctx.bmiPercentile / 100;
-  const bonus =
-    profile.anthroFavor.heightAdvantage * heightFactor * 0.1 +
-    profile.anthroFavor.leanAdvantage * leanFactor * 0.1;
-  return Math.min(0.15, Math.max(0, bonus));
+  return computeAnthroBonusFor(profile, ctx);
 }
 
 /**
@@ -135,12 +151,8 @@ export interface RecommendOptions {
   teamAffinity?: number;
 }
 
-const CHARACTER_FACTOR_KEYS = [
-  'cooperation',
-  'encouragement',
-  'persistence',
-  'fairPlay',
-] as const;
+// NOT: `CHARACTER_FACTOR_KEYS` buradan kaldırıldı — tek tanımı `bonuses.ts`
+// içinde. Karakter hesabı oraya taşınınca bu kopya ölü koda dönüşmüştü.
 
 /**
  * Karakter benzerlik boost'u — biomotor matching ile aynı mantık:
@@ -156,22 +168,9 @@ function computeCharacterBoost(
   profile: SportProfile,
   factors: CharacterFactors | undefined
 ): number {
-  if (!factors) return 0;
-  const favor = profile.characterFavor;
-  if (!favor) return 0;
-  let sumSq = 0;
-  let weightSum = 0;
-  for (const key of CHARACTER_FACTOR_KEYS) {
-    const weight = favor[key];
-    const childUnit = factors[key] / 100;
-    const diff = childUnit - favor[key];
-    sumSq += weight * diff * diff;
-    weightSum += weight;
-  }
-  if (weightSum === 0) return 0;
-  const distance = Math.sqrt(sumSq / weightSum);
-  const similarity = Math.max(0, 1 - distance);
-  return (similarity - 0.5) * 0.2;
+  // Tek implementasyon `bonuses.ts` içinde — burada ikinci bir kopya
+  // tutmak, iki farklı davranışa dönüşmenin en kısa yoluydu.
+  return computeCharacterSimilarityBoost(profile, factors);
 }
 
 /**
@@ -182,12 +181,7 @@ function computeTeamAffinityBoost(
   profile: SportProfile,
   teamAffinity: number | undefined
 ): number {
-  if (teamAffinity == null) return 0;
-  const centered = (teamAffinity - 50) / 50;
-  const magnitude = 0.1;
-  if (profile.teamType === 'team') return centered * magnitude;
-  if (profile.teamType === 'individual') return -centered * magnitude;
-  return centered * magnitude * 0.5;
+  return sharedTeamAffinityBoost(profile, teamAffinity);
 }
 
 export function recommendSports(

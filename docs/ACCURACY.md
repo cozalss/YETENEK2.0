@@ -19,9 +19,10 @@ Bu ayrımı en başa koyuyoruz çünkü raporun değeri buna bağlı.
 |---|---|
 | **Algoritma hatası** — bilinen bir uçuş yörüngesinden yüksekliği geri kazanma | ✅ **Ölçüldü** (§2) |
 | **Geçerlilik denetimi** — yapılmamış testin reddedilmesi | ✅ **Ölçüldü** (§4) |
+| **Öneri motorunun ölçek geçerliliği** — eksenler karşılaştırılabilir mi | ✅ **Düzeltildi** (§6) |
 | MediaPipe poz tahmini hatası | ❌ Ölçülmedi — gerçek video gerekir |
-| Uçtan uca doğruluk (mezura ile karşılaştırma) | ❌ Ölçülmedi — pilot gerekir (Faz F7) |
-| Test-tekrar güvenilirliği (ICC) | ❌ Ölçülmedi — pilot gerekir |
+| Uçtan uca doğruluk (mezura ile karşılaştırma) | ❌ Ölçülmedi — pilot gerekir (F7). *Hesap makinesi hazır:* `reliability.ts` |
+| Test-tekrar güvenilirliği (ICC) | ❌ Ölçülmedi — pilot gerekir. *Hesap makinesi hazır:* `icc21()` |
 | Öneri kalibrasyonu ("%78 ilk 3'te" doğru mu?) | ❌ Ölçülemez — boylamsal sonuç verisi yok |
 
 > Aşağıdaki sayılar **algoritmanın kendi hatasıdır**. "Sistem sıçramayı ±0.4 cm
@@ -136,7 +137,132 @@ kontrol sağlıyor.
 
 ---
 
-## 6. Test envanteri
+## 6. Öneri motoru — ölçek geçerliliği (yeni)
+
+### Sorun neydi
+
+Eşleştirme 7 boyut arasında `√Σw(c−p)²` hesaplıyordu, ama boyutlar aynı ölçekte
+değildi: üçü z-persentil, ikisi doğrusal oran, ikisi keyfi eğri. Farklı ölçekli
+eksenler arasında Öklid mesafesi **tanımsızdır** — sıralama bu tanımsız sayıya
+dayanıyordu.
+
+Ayrıca `confidencePercent = round(finalScore × 100)` idi: olasılık modeli,
+kalibrasyon seti veya sonuç verisi olmadan üretilmiş bir yüzde.
+
+### Ne yapıldı
+
+Her eksen yaşa/cinsiyete göre **z-skoruna** çevrildi. Ama bu ancak norm tablosu
+hem ortalama hem yayılım veriyorsa mümkün — ve tablolarımızın hepsi vermiyor.
+Üç kademeli bir kayıt tutuluyor (`src/lib/matching/zspace.ts`):
+
+| Eksen | Kalibrasyon | Karara katılıyor mu |
+|---|---|---|
+| explosivePower | ortalama + SD yayınlanmış | ✅ tam ağırlıkla |
+| horizontalPower | ortalama + SD yayınlanmış | ✅ tam ağırlıkla |
+| agility | ortalama + SD yayınlanmış | ✅ tam ağırlıkla |
+| reaction | ortalama yayınlanmış, **SD tahmini** (CV≈0.18) | ⚠️ belirsizliği şişirilmiş |
+| endurance | ortalama research-grade, **SD tahmini** (CV≈0.20) | ⚠️ belirsizliği şişirilmiş |
+| **balance** | norm **yok** | ❌ **karara katılmıyor** |
+| **coordination** | norm **yok** | ❌ **karara katılmıyor** |
+
+> Kalibre edilmemiş bir ekseni mesafe metriğine sokmayı reddediyoruz. Denge ve
+> koordinasyon ölçülüyor ve kullanıcıya gösteriliyor, ama spor sıralamasına
+> girmiyor ve bu durum çıktıda `excludedByNorm` alanıyla açıkça raporlanıyor.
+
+SD'si tahmin edilen iki eksende tahminin kendi hatası (±%30) z belirsizliğine
+`× |z|` ile ekleniyor — yani ortalamaya yakın çocukta küçük, uçlarda büyük.
+Tahmin sessizce kesinlik gibi davranmıyor.
+
+### Çıktı artık bir olasılık
+
+`confidencePercent` yerini Monte Carlo'ya bıraktı (`src/core/use-cases/decide.ts`):
+her boyutun z değeri kendi σ'sıyla 2000 kez örnekleniyor, sporlar her seferinde
+yeniden sıralanıyor, ilk 3'e girme sayılıyor. Wilson %95 aralığıyla birlikte
+raporlanıyor.
+
+**Ölçülen iç tutarlılık** (`decide.test.ts`):
+
+| Özellik | Beklenen | Sonuç |
+|---|---|---|
+| İlk-3 olasılıkları toplamı | ≈ 3 | ✅ |
+| Birincilik olasılıkları toplamı | ≈ 1 | ✅ |
+| `pTopOne ≤ pTopK` | her spor için | ✅ |
+| Güven aralığı nokta tahmini kapsıyor | her spor için | ✅ |
+| Aynı ölçüm → aynı sonuç | determinizm | ✅ |
+| σ çarpanı ↑ → kesinlik ↓ | kusurlu teknikte | ✅ |
+
+**Ayrıştırma gücü.** Eski metriğin bilinen sorunu, medyan bir çocukta tüm
+sporların 55-75 bandına sıkışmasıydı (kendi testi bunu "over-matching" olarak
+kaydediyordu). Yeni modelde medyan çocukta bile en yüksek ve en düşük spor
+arasındaki ilk-3 olasılığı farkı **0.30'un üzerinde**.
+
+### Adversarial inceleme — düzeltilen dört kritik hata
+
+İlk uygulama bağımsız bir incelemeden geçirildi ve **dört kritik hata**
+bulundu. Hepsi ölçülerek doğrulandı ve düzeltildi; her biri için regresyon
+testi eklendi.
+
+| Bulgu | Ölçülen kanıt | Düzeltme |
+|---|---|---|
+| `confidencePercent` kötü eşleşmede **%100** veriyordu | Tek CMJ ölçümüyle Tenis ve Boks **%100**, similarity **0.32** | Olasılık için asgari 3 kalibre boyut + asgari 0.45 benzerlik şartı; yetersizse `pTopK: null` + gerekçe |
+| Bonuslar ölçümü **eziyordu** | Benzerlik yayılımı **0.19**, bonus aralığı **0.25** → %131 | Bonuslar yayılımın %35'iyle sınırlandı; sıra kayması 4 basamağa indi |
+| Bonuslar Monte Carlo'da **sıfır belirsizlik** taşıyordu | Sabit ofset olarak ekleniyordu — en az güvenilecek terime en yüksek kesinlik | Bonuslar da kendi σ'sıyla örnekleniyor |
+| Wilson aralığı **çocuğu değil CPU'yu** ölçüyordu | n=2000'de maks **4.38 puan**; doküman **13 puan** iddia ediyordu | `mcPrecision` olarak yeniden adlandırıldı, kullanıcıya gösterilmiyor |
+| `sigmaMultiplier` üretim yolunda **ölüydü** | `finalizeSession` hiç geçirmiyordu; teknik skoru 0 olan çocuk kusursuzla aynı çıktıyı veriyordu | Zincir bağlandı: %100 → %96 |
+
+Ayrıca düzeltilen veri bütünlüğü hataları:
+
+- **Başarısız yakalama gerçek ölçüm sayılıyordu.** `totalReps: 0` /
+  `hopCount: 0` `Number.isFinite` kontrolünü geçip z ≈ −5 üretiyordu; çocuk
+  "en alt persentil" olarak damgalanıyordu.
+- **σ doğrusal toplanıyordu.** Bağımsız belirsizlikler kareler toplamının
+  karekökü ile birleşir; doğrusal toplama `reaction` için z=1'de %41 şişirme
+  yapıyordu.
+- **Karakter modeli ters yönlüydü.** `characterFavor` hem ağırlık hem hedef
+  olarak kullanılıyordu: voleybol için sebat=70 diyen çocuk maksimum boost
+  alırken sebat=100 diyen daha düşük alıyordu. Artık hedef 1.0, `favor`
+  yalnız ağırlık.
+- **Karşı-olgusal döngüsü 2.0σ'ya hiç ulaşmıyordu** (float birikimi) ve
+  `zDelta: 0.30000000000000004` gibi değerler sızdırıyordu.
+- **`samples: 0` NaN üretiyordu** → NaN karşılaştırıcı → Zod reddi → tüm
+  oturum kaydının düşmesi.
+
+### Kapsam şeffaflığı
+
+Kalibresiz eksenleri çıkarmak sporları **eşit etkilemiyor**. Her öneri artık
+kendi `weightCoverage` oranını taşıyor:
+
+| Spor | Ölçülemeyen ağırlık |
+|---|---|
+| Cimnastik | **%38.6** (denge 1.0 + koordinasyon 0.95 — onu tanımlayan iki eksen) |
+| Masa Tenisi | %34.9 |
+| Badminton | %30.1 |
+| Atletizm | %19.8 |
+
+Bu oran raporlanmadan sıralamayı göstermek, "güç sporları kimliğini koruyor,
+teknik sporlar birbirine benziyor" gerçeğini gizlerdi.
+
+### Hâlâ ölçülmemiş olan
+
+Bu bölüm motorun **iç tutarlılığını** kanıtlıyor, **dış geçerliliğini** değil.
+"%78 ihtimalle ilk 3'te" iddiasının doğru olup olmadığı ancak boylamsal sonuç
+verisiyle (çocuk 2 yıl sonra hangi sporu yapıyor?) sınanabilir. O veri yok ve
+kod yazarak üretilemez.
+
+**Bilinen, düzeltilmemiş sınırlamalar:**
+
+- `zScorePercentile` [1,99] clamp'i kalibre eksenleri **z = 2.33'te**
+  tavanlıyor: 45, 50, 60 ve 80 cm sıçrayan çocuklar aynı z'yi alıyor. Elit
+  kuyruk ayırt edilemiyor — tam da yetenek taramasının hedeflediği bölge.
+- Tek boyut ölçüldüğünde ağırlık normalizasyonu ağırlığı **iptal ediyor**
+  (`√(w·d²/w) = |d|`), yani farklı ağırlıklı sporlar aynı mesafeyi alıyor.
+  Asgari-3-boyut kapısı en kötü hâli engelliyor ama kök neden duruyor.
+- Yaş şeması 4–18 kabul ediyor, norm tabloları 8–15 kapsıyor. Aradaki yaşlar
+  en yakın yaş normuyla, uyarısız ölçülüyor.
+
+---
+
+## 7. Test envanteri
 
 | Dosya | Test | Kapsam |
 |---|---|---|
@@ -145,13 +271,17 @@ kontrol sağlıyor.
 | `src/lib/eval/adversarial.test.ts` | 12 | 5 düşmanca senaryo + 2 yanlış-negatif kontrolü |
 | `src/core/use-cases/apply-verdict.test.ts` | 10 | Deterministik kapı, σ genişletme, sınır durumları |
 | `src/infrastructure/validity/composite-judge.test.ts` | 9 | Hakem birleştirme, görsel hakem düştüğünde dayanıklılık |
-| `src/infrastructure/validity/skeleton-render.test.ts` | 12 | Gizlilik sözleşmesi, anahtar kare seçimi |
+| `src/infrastructure/validity/skeleton-render.test.ts` | 13 | Gizlilik sözleşmesi, anahtar kare seçimi |
+| `src/lib/stats/probit.test.ts` | 20 | Φ⁻¹ doğruluğu, gidiş-dönüş, sınır davranışı |
+| `src/lib/matching/zspace.test.ts` | 28 | Norm kayıt defteri, z-mesafesi, gerçek spor davranışı |
+| `src/core/use-cases/decide.test.ts` | 21 | Monte Carlo tutarlılığı, determinizm, ayrıştırma |
+| `src/lib/eval/reliability.test.ts` | 17 | ICC(2,1), Cohen's κ, Bland-Altman |
 | *(mevcut testler)* | 78 | Ölçüm modülleri, eşleştirme, ders doğrulayıcıları |
-| **Toplam** | **151** | |
+| **Toplam** | **247** | |
 
 ---
 
-## 7. Sonraki ölçümler
+## 8. Sonraki ölçümler
 
 | Metrik | Gereken | Faz |
 |---|---|---|

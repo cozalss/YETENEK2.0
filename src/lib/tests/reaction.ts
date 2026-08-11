@@ -70,6 +70,41 @@ const REACTION_NORMS_MS: Record<number, number> = {
 };
 
 /**
+ * Popülasyon içi değişkenlik katsayısı (SD / ortalama).
+ *
+ * **Bu bir tahmindir, yayınlanmış bir tablo değeri değildir.** Elimizdeki norm
+ * tablosu yalnızca ortalama veriyor; z-skoru için yayılım gerekiyor. Pediatrik
+ * basit reaksiyon zamanı literatüründe kişiler arası SD tipik olarak
+ * ortalamanın %15-20'si aralığında raporlanıyor (Dykiert 2012, Front Psychol
+ * 3:53 — çocuk RT değişkenliği meta-analizi). Orta değer alındı.
+ *
+ * Sonucu `zspace.ts` içinde `partial` olarak işaretleniyor ve belirsizliği
+ * şişirilerek taşınıyor — yani bu tahmin sessizce kesinlik gibi davranmıyor.
+ * Pilot ölçümle gerçek SD geldiğinde bu sabit silinecek.
+ */
+export const REACTION_CV_ESTIMATE = 0.18;
+
+/**
+ * Reaksiyon süresinin z-skoru — **düşük süre iyi** olduğu için işaret ters
+ * çevriliyor: hızlı çocuk pozitif z alır, böylece diğer boyutlarla aynı yönde
+ * ("büyük = iyi") karşılaştırılabilir.
+ *
+ * @returns z-skoru; geçersiz girdide null.
+ */
+export function reactionZ(averageMs: number, ageYears: number): number | null {
+  if (!Number.isFinite(averageMs) || averageMs <= 0) return null;
+  const ages = Object.keys(REACTION_NORMS_MS).map(Number);
+  const closestAge = ages.reduce((a, b) =>
+    Math.abs(b - ageYears) < Math.abs(a - ageYears) ? b : a
+  );
+  const mean = REACTION_NORMS_MS[closestAge];
+  const sd = mean * REACTION_CV_ESTIMATE;
+  if (sd <= 0) return null;
+  // İşaret ters: ortalamadan HIZLI olmak pozitif z.
+  return (mean - averageMs) / sd;
+}
+
+/**
  * Touch hardware pipeline ek gecikmesi (sensor → driver → event loop).
  * Maehr 2020 (JMIR Serious Games) ve Brundin-Hartman 2019 — Android Chrome
  * üzerinde ölçülmüş ortalama ~25ms. Ölçülen RT'den düşülerek norma yakınsama.

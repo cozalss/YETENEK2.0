@@ -23,6 +23,8 @@ import {
   lateralHopsScore,
 } from '@/lib/tests/lateralHops';
 import type { PoseFrame } from '@/types';
+import { useValidityGate } from '@/hooks/use-validity-gate';
+import { RejectionPanel } from '@/components/tests/shared/RejectionPanel';
 import { logger } from '@/shared/logger/logger';
 
 const log = logger.child('lateral-hops-test');
@@ -99,6 +101,10 @@ export function LateralHopsTest({
 
   useEffect(() => () => cancelSpeech(), []);
 
+  const gate = useValidityGate({ test: 'lateralHops' });
+  const gateCollect = gate.collect;
+  const gateEvaluate = gate.evaluate;
+
   const handleFrame = useCallback((frame: PoseFrame | null) => {
     if (phaseRef.current === 'idle' || phaseRef.current === 'countdown') {
       const next = checkBalanceFraming(frame);
@@ -121,6 +127,8 @@ export function LateralHopsTest({
     if (!captureActiveRef.current) return;
     const sample = frameToLateralHopSample(frame);
     if (!sample) return;
+    // Hakem ham iskelete bakıyor; indirgenmiş örnek uçuş fazını taşımıyor.
+    gateCollect(frame);
     samplesRef.current.push(sample);
 
     const mid = calibrationXRef.current ?? sample.ankleX;
@@ -136,9 +144,10 @@ export function LateralHopsTest({
       setLiveHopCount(ls.count);
     }
     ls.lastSide = side;
-  }, []);
+  }, [gateCollect]);
 
   const start = () => {
+    gate.reset();
     samplesRef.current = [];
     calibrationXRef.current = null;
     captureActiveRef.current = false;
@@ -202,6 +211,24 @@ export function LateralHopsTest({
 
   useEffect(() => {
     if (phase !== 'analyze') return;
+    let cancelled = false;
+
+    void (async () => {
+      // Geçerlilik kapısı analizden ÖNCE: geçersiz yakalama hiç ölçülmemeli.
+      const allowed = await gateEvaluate();
+      if (cancelled) return;
+      if (!allowed) {
+        setPhase('result');
+        return;
+      }
+      runAnalysis();
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+
+    function runAnalysis() {
     try {
       const analysis = analyzeLateralHops(
         samplesRef.current,
@@ -236,8 +263,9 @@ export function LateralHopsTest({
       });
       setPhase('result');
     }
+    }
     // onComplete kasten dışarıda — inline arrow ile çift kayıt olmasın.
-  }, [phase, childAgeYears, childSex]);
+  }, [phase, childAgeYears, childSex, gateEvaluate]);
 
   useEffect(() => {
     if (phase === 'result' && resultHeadingRef.current) {
@@ -309,7 +337,9 @@ export function LateralHopsTest({
         </>
       }
       sidebar={
-        phase === 'result' && result ? (
+        phase === 'result' && gate.rejection ? (
+          <RejectionPanel rejection={gate.rejection} onRetry={start} />
+        ) : phase === 'result' && result ? (
           <ResultCard
             result={result}
             onRetry={start}

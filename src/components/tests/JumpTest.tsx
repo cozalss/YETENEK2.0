@@ -34,6 +34,8 @@ import {
   jumpScore,
 } from '@/lib/tests/jump';
 import type { PoseFrame } from '@/types';
+import { useValidityGate } from '@/hooks/use-validity-gate';
+import { RejectionPanel } from '@/components/tests/shared/RejectionPanel';
 
 type Phase = 'idle' | 'countdown' | 'capture' | 'analyze' | 'result';
 
@@ -94,6 +96,10 @@ export function JumpTest({
 
   useEffect(() => () => cancelSpeech(), []);
 
+  const gate = useValidityGate({ test: 'jump' });
+  const gateCollect = gate.collect;
+  const gateEvaluate = gate.evaluate;
+
   const handleFrame = useCallback((frame: PoseFrame | null) => {
     if (phaseRef.current === 'idle' || phaseRef.current === 'countdown') {
       const next = checkJumpFraming(frame);
@@ -105,15 +111,19 @@ export function JumpTest({
     }
     if (!frame) return;
     if (!captureActiveRef.current) return;
+    // Hakem ham iskelete bakıyor: `HipSample` yalnız kalça/ayak Y'sini
+    // taşıyor, "gövde ayakla birlikte yükseldi mi" sorusu orada yanıtlanamaz.
+    gateCollect(frame);
     const sample = frameToHipSample(frame);
     if (!sample) return;
     if (!calibrationFrameRef.current) {
       calibrationFrameRef.current = frame;
     }
     samplesRef.current.push(sample);
-  }, []);
+  }, [gateCollect]);
 
   const start = () => {
+    gate.reset();
     samplesRef.current = [];
     calibrationFrameRef.current = null;
     captureActiveRef.current = false;
@@ -151,6 +161,26 @@ export function JumpTest({
 
   useEffect(() => {
     if (phase !== 'analyze') return;
+    let cancelled = false;
+
+    void (async () => {
+      // Geçerlilik kapısı analizden ÖNCE: geçersiz bir yakalama hiç
+      // ölçülmemeli. Sonradan atılırsa aradaki her adımda geçerli sonuç gibi
+      // görünür ve bir gün bir yerden sızar.
+      const allowed = await gateEvaluate();
+      if (cancelled) return;
+      if (!allowed) {
+        setPhase('result');
+        return;
+      }
+      runAnalysis();
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+
+    function runAnalysis() {
     try {
       let analysis = analyzeJump(samplesRef.current);
       if (
@@ -196,10 +226,11 @@ export function JumpTest({
       setScore(null);
       setPhase('result');
     }
+    }
     // onComplete kasten dışarıda: inline arrow olarak gelirse her parent
     // render'ında deps değişir, analyze etkisi yeniden ateşler ve test
     // sonucu store'a iki kez yazılır. Ref ile sabitledik.
-  }, [phase, childAgeYears, childSex, childHeightCm]);
+  }, [phase, childAgeYears, childSex, childHeightCm, gateEvaluate]);
 
   useEffect(() => {
     if (phase === 'result' && resultHeadingRef.current) {
@@ -239,7 +270,9 @@ export function JumpTest({
         />
       }
       sidebar={
-        phase === 'result' && result ? (
+        phase === 'result' && gate.rejection ? (
+          <RejectionPanel rejection={gate.rejection} onRetry={start} />
+        ) : phase === 'result' && result ? (
           <ResultCard
             result={result}
             score={score}
