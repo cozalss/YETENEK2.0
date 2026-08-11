@@ -83,6 +83,20 @@ Görsel hakem bir **bağımlılık değil, iyileştirmedir**: cihazda çalışan
 tabanlı hakem her koşulda devrede kalır. Ayrıntı:
 [`docs/ARCHITECTURE-V3.md`](./docs/ARCHITECTURE-V3.md).
 
+**Anahtarı ekledikten sonra iki adım daha var:**
+
+1. Veli `/profile` sayfasından **rızayı açmalı**. Varsayılan kapalı — çocuğa
+   ait biyomekanik veri üçüncü tarafa gideceği için bu velinin bilerek
+   vereceği bir karar. Rıza yokken sistem tam çalışır, yalnız niteliksel
+   denetim yapılmaz.
+2. `OPENAI_VISION_MODEL` değerini bir kez **smoke-test edin**. Vision +
+   strict structured outputs desteği modelden modele değişiyor; varsayılan
+   doğrulanmadı.
+
+Cihazdan çıkan veri: en fazla 8 karenin 33 landmark koordinatı. Kamera
+görüntüsü, yüz ve arka plan **hiçbir zaman** çıkmaz — iskelet çizimi sunucuda
+yapılır (`/api/validity`).
+
 Anahtarların okunduğunu doğrulamak için:
 
 ```bash

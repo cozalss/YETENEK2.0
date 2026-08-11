@@ -14,6 +14,8 @@ import { supabaseLessonRepository } from '@/infrastructure/storage/supabase-less
 import { env } from '@/shared/config/env-public';
 import { signOutAction } from '@/app/auth/actions';
 import { ChildrenSection } from './ChildrenSection';
+import { VisionConsentCard } from '@/components/consent/VisionConsentCard';
+import { isVisionJudgeConfigured } from '@/infrastructure/validity/openai-vision-judge';
 
 interface PageProps {
   searchParams: Promise<{ error?: string; info?: string }>;
@@ -74,6 +76,11 @@ export default async function ProfilePage({ searchParams }: PageProps) {
   // Demo hesabı için metadata.displayName = 'Demo Veli' set edilmişti; gerçek
   // sign-up'tan gelen veliler için metadata.full_name dolu olur.
   const displayName = deriveProfileDisplayName(user.user_metadata, user.email);
+
+  // Görsel denetim sunucuda yapılandırılmış mı. Sunucu bileşeninde okunuyor
+  // çünkü anahtarın varlığı istemciye sızmamalı — yalnız "var/yok" bilgisi
+  // geçiyor, anahtarın kendisi değil.
+  const visionAvailable = isVisionJudgeConfigured();
 
   return (
     <main
@@ -143,8 +150,17 @@ export default async function ProfilePage({ searchParams }: PageProps) {
           enrollmentsByChild={enrollmentsByChild}
         />
 
+        {/*
+          Rıza kartı burada: veli hesabına ait bir tercih, teste özgü değil.
+          `available` sunucu tarafında anahtarın varlığından geliyor —
+          yapılandırılmamışsa veliye seçim sunmanın anlamı yok.
+        */}
+        <div className="mt-12">
+          <VisionConsentCard available={visionAvailable} />
+        </div>
+
         <section
-          className="mt-12 rounded-2xl border-2 p-5 text-sm"
+          className="mt-6 rounded-2xl border-2 p-5 text-sm"
           style={{
             background: 'rgba(168, 213, 186, 0.12)',
             borderColor: 'var(--field-mint)',

@@ -488,10 +488,10 @@ Bunlar mimari değil, doğrulanmış hatalar. Vision katmanına başlamadan önc
 |---|---|---|
 | **F0** | Doğrulanmış hatalar + parabol kökü + σ + fizik doğrulaması | ✅ **tamam** |
 | **F1** | Sentetik kinematik harness + düşmanca fixture'lar | ✅ **tamam** |
-| **F2** | `ValidityJudge` + kural hakemi + iskelet render + OpenAI adapter + `applyVerdict` | ✅ **tamam** — 4 ölçüm testine bağlı |
+| **F2** | `ValidityJudge` + kural hakemi + iskelet render + OpenAI adapter + `applyVerdict` | ✅ **tamam** — 4 ölçüm testine bağlı, `/api/validity` üzerinden görsel hakem devrede |
 | **F4** | z-uzayı birleştirme + normsuz eksenlerin çıkarılması | ✅ **tamam** |
 | **F5** | Monte Carlo + sıra olasılığı + Wilson CI + karşı-olgusal | ✅ **tamam** |
-| **F3** | Rıza akışı + KVKK (açık rıza, `store:false`, cascade silme) | ⏳ sonraki |
+| **F3** | Rıza akışı + KVKK (açık rıza, `store:false`, veri minimizasyonu) | ✅ **tamam** — iskelet yolu; ham klip yolu yazılmadı |
 | **F6** | Sayı-topraklama kapısı + `Narrator` portu | ⏳ sonraki |
 | **F7** | Pilot (30+ çocuk) → norm tabloları + ICC | ⏳ **pilot gerekir** — hesap makinesi hazır (`reliability.ts`) |
 
