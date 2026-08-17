@@ -41,7 +41,9 @@ interface Props {
   childHeightCm?: number;
   onComplete?: (
     analysis: BroadJumpAnalysis & {
-      score: number;
+      // `number | null`: mesafe hesaplanamadıysa skor da yok. Bunu tipte
+      // gizlemek, tüketicide null'ı `number` sanarak kaydetmeye yol açardı.
+      score: number | null;
       techniqueMultiplier?: number;
       judgeInjuryWarnings?: readonly string[];
     }
@@ -185,15 +187,16 @@ export function BroadJumpTest({
     ) {
     try {
       let analysis = analyzeBroadJump(samplesRef.current);
-      if (
-        analysis.valid &&
-        childHeightCm != null &&
-        calibrationFrameRef.current
-      ) {
+      // Kalibrasyon boy'a BAĞLANMAMALI. `getCmPerUnit` önce MediaPipe'ın
+      // world landmark'larını (metre cinsinden) deniyor ve boy gerektirmiyor;
+      // profil formu da kullanıcıya bunu vaat ediyor ("Boy verilmezse pose
+      // pipeline gerçek-metre kalibrasyonu yapar"). Koşul `childHeightCm !=
+      // null` iken o yol hiç çalışmıyor, mesafe null kalıyordu.
+      if (analysis.valid && calibrationFrameRef.current) {
         analysis = calibrateBroadJump(
           analysis,
           calibrationFrameRef.current,
-          childHeightCm
+          childHeightCm ?? null
         );
       }
       setResult(analysis);
@@ -203,14 +206,16 @@ export function BroadJumpTest({
           : null;
       setScore(computedScore);
       setPhase('result');
-      if (analysis.valid && computedScore != null) {
-        onCompleteRef.current?.({
-          ...analysis,
-          score: computedScore,
-          techniqueMultiplier,
-          judgeInjuryWarnings,
-        });
-      }
+      // KOŞULSUZ bildir (JumpTest ile aynı). Eskiden `computedScore != null`
+      // şartı vardı: mesafe hesaplanamadığında ekran "Atlama kaydedildi"
+      // diyor ama batarya bir sonraki teste HİÇ geçmiyordu — hata mesajı
+      // olmadan kalıcı çıkmaz. Geçersiz sonucu zaten tüketici eliyor.
+      onCompleteRef.current?.({
+        ...analysis,
+        score: computedScore,
+        techniqueMultiplier,
+        judgeInjuryWarnings,
+      });
     } catch (err) {
       log.error('analiz hatası', {
         cause: err instanceof Error ? err.message : String(err),

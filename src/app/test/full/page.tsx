@@ -369,7 +369,10 @@ function FullFlowInner() {
               childSex={child.sex}
               childHeightCm={child.heightCm}
               onComplete={(analysis) => {
-                if (!analysis.valid) return;
+                // Skor null olabilir (mesafe kalibre edilemedi). Cast'in
+                // yalan olmaması için burada eleniyor — test yine de
+                // tamamlanmış sayılıyor, kullanıcı çıkmazda kalmıyor.
+                if (!analysis.valid || analysis.score == null) return;
                 sessionStore.recordBroadJump(
                   analysis as BroadJumpAnalysis & { score: number },
                   analysis.techniqueMultiplier,

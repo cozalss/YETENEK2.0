@@ -86,3 +86,70 @@ describe('broadJumpPercentile', () => {
     );
   });
 });
+
+describe('iniş tespiti — inişten sonra hareket ölçümü bozmamalı', () => {
+  /**
+   * 6 sn yakalama: 1 sn hazırlık, ~0.5 sn uçuş, iniş, sonra çocuğun
+   * doğal davranışı. `endX` eskiden yakalamanın SON 15 karesiydi; bu
+   * senaryolarda gerçek atlamalar "yatay hareket yok" diye reddediliyordu.
+   */
+  function capture(opts: {
+    startX: number;
+    landX: number;
+    /** İnişten sonra çocuğun gittiği yer (geri yürüme / ekstra adım). */
+    afterX?: number;
+  }): BroadJumpSample[] {
+    const out: BroadJumpSample[] = [];
+    const step = 33;
+    let t = 0;
+    const push = (x: number) => {
+      out.push({ t, ankleX: x });
+      t += step;
+    };
+
+    for (let i = 0; i < 30; i++) push(opts.startX); // 1 sn hazır
+    for (let i = 0; i < 15; i++) {
+      push(opts.startX + ((opts.landX - opts.startX) * (i + 1)) / 15); // uçuş
+    }
+    for (let i = 0; i < 45; i++) push(opts.landX); // 1.5 sn inişte dur
+
+    if (opts.afterX != null) {
+      for (let i = 0; i < 20; i++) {
+        push(opts.landX + ((opts.afterX - opts.landX) * (i + 1)) / 20);
+      }
+      for (let i = 0; i < 70; i++) push(opts.afterX); // kalan süre orada
+    } else {
+      for (let i = 0; i < 90; i++) push(opts.landX);
+    }
+    return out;
+  }
+
+  it('inişte kalırsa mesafe ölçülür', () => {
+    const a = analyzeBroadJump(capture({ startX: 0.25, landX: 0.7 }));
+    expect(a.valid).toBe(true);
+    expect(a.jumpUnits).toBeCloseTo(0.45, 2);
+  });
+
+  it('çocuk başlangıca geri yürürse atlama YİNE geçerli sayılır', () => {
+    // Eski davranış: endX ≈ startX → jumpUnits ≈ 0 → "hareket algılanmadı".
+    const a = analyzeBroadJump(
+      capture({ startX: 0.25, landX: 0.7, afterX: 0.26 })
+    );
+    expect(a.valid).toBe(true);
+    expect(a.jumpUnits).toBeCloseTo(0.45, 2);
+  });
+
+  it('inişten sonra bir adım daha atarsa mesafe şişmez', () => {
+    const a = analyzeBroadJump(
+      capture({ startX: 0.25, landX: 0.7, afterX: 0.85 })
+    );
+    expect(a.valid).toBe(true);
+    // İniş 0.45'te; fazladan adım ölçüme karışmamalı.
+    expect(a.jumpUnits).toBeLessThan(0.55);
+  });
+
+  it('hiç atlamayan çocuk hâlâ reddedilir', () => {
+    const a = analyzeBroadJump(capture({ startX: 0.5, landX: 0.51 }));
+    expect(a.valid).toBe(false);
+  });
+});

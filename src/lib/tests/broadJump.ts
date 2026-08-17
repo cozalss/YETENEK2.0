@@ -70,6 +70,85 @@ export function frameToBroadJumpSample(
   return { t: frame.timestamp, ankleX: (la.x + ra.x) / 2 };
 }
 
+/**
+ * İniş konumunu bulur.
+ *
+ * Bu fonksiyon eskiden yoktu: `endX` yakalamanın **son** 15 karesinin
+ * ortalamasıydı. Yakalama penceresi 6 saniye, atlama ise ~1 saniye sürüyor;
+ * çocuk indikten sonra kalan 4-5 saniyede başlangıca doğru bir iki adım
+ * atarsa `endX` başlangıca yaklaşıyor, `jumpUnits` sıfıra iniyor ve gerçek
+ * bir atlama "belirgin yatay hareket algılanmadı" diye reddediliyordu.
+ *
+ * Modülün kendi dokümantasyonu zaten doğru davranışı tarif ediyordu
+ * (READY → LAUNCH → **LAND: ankle X tekrar stabilize, yeni konum**); burada
+ * uygulanan o.
+ *
+ * Yöntem: çocuk başlangıçtan anlamlı biçimde ayrıldıktan sonra serinin
+ * durduğu İLK yeri iniş kabul et ve o civarın ortalamasını al.
+ *
+ * "İlk duruş" olması önemli: en uzak noktayı aramak yanlış olurdu, çünkü
+ * çocuk indikten sonra bir adım daha atarsa en uzak nokta o adım olur ve
+ * mesafe şişer. İlk duruş ise inişin kendisidir; sonrasında ne yaptığı —
+ * geri yürümek de dahil — ölçüme karışmaz.
+ */
+function findLandingX(xs: number[], startX: number): number {
+  if (xs.length === 0) return startX;
+
+  // Kare başına hareket bunun altındaysa çocuk durmuş sayılır — 30 fps'te
+  // saniyede ~%9 kadraj, yani yürümenin belirgin altında.
+  const STILL_PER_FRAME = 0.003;
+  const STILL_RUN = 5;
+
+  // 1) Ayrılış: başlangıçtan gerçekten uzaklaştığı ilk kare. Eşik olarak
+  //    geçerlilik eşiğini kullanıyoruz — hazırlık fazındaki küçük salınım
+  //    "atlama başladı" sanılmasın.
+  let departIdx = -1;
+  for (let i = 0; i < xs.length; i++) {
+    if (Math.abs(xs[i] - startX) > MIN_JUMP_UNITS) {
+      departIdx = i;
+      break;
+    }
+  }
+  if (departIdx < 0) {
+    // Hiç ayrılmamış: son pencerenin ortalaması yeterli, zaten geçersiz
+    // sayılacak.
+    const tail = xs.slice(-END_WINDOW_FRAMES);
+    return tail.reduce((a, b) => a + b, 0) / tail.length;
+  }
+
+  // 2) Ayrılıştan sonra ilk duruş = iniş.
+  let still = 0;
+  let landIdx = -1;
+  for (let i = departIdx + 1; i < xs.length; i++) {
+    still = Math.abs(xs[i] - xs[i - 1]) < STILL_PER_FRAME ? still + 1 : 0;
+    if (still >= STILL_RUN) {
+      landIdx = i;
+      break;
+    }
+  }
+
+  // Hiç durmadıysa (sürekli hareket) en uzak noktaya düş.
+  if (landIdx < 0) {
+    let peakIdx = departIdx;
+    let peakDist = -1;
+    for (let i = departIdx; i < xs.length; i++) {
+      const d = Math.abs(xs[i] - startX);
+      if (d > peakDist) {
+        peakDist = d;
+        peakIdx = i;
+      }
+    }
+    landIdx = peakIdx;
+  }
+
+  // İniş civarının ortalaması — tek kare gürültüsüne dayanmasın.
+  const half = Math.floor(END_WINDOW_FRAMES / 2);
+  const lo = Math.max(0, landIdx - half);
+  const hi = Math.min(xs.length, landIdx + half + 1);
+  const win = xs.slice(lo, hi);
+  return win.reduce((a, b) => a + b, 0) / win.length;
+}
+
 export function analyzeBroadJump(
   samples: BroadJumpSample[]
 ): BroadJumpAnalysis {
@@ -91,9 +170,8 @@ export function analyzeBroadJump(
   );
 
   const startSlice = xs.slice(0, START_WINDOW_FRAMES);
-  const endSlice = xs.slice(-END_WINDOW_FRAMES);
   const startX = startSlice.reduce((a, b) => a + b, 0) / startSlice.length;
-  const endX = endSlice.reduce((a, b) => a + b, 0) / endSlice.length;
+  const endX = findLandingX(xs, startX);
   const jumpUnits = Math.abs(endX - startX);
 
   if (jumpUnits < MIN_JUMP_UNITS) {
