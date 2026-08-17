@@ -22,14 +22,8 @@ import {
   getPoseLandmarker,
   type DetectorTelemetry,
 } from '@/lib/pose/detector';
-import {
-  ONE_EURO_PRESETS,
-  PoseLandmarkFilter,
-} from '@/lib/pose/oneEuroFilter';
-import {
-  PoseQualityMonitor,
-  type QualitySnapshot,
-} from '@/lib/pose/quality';
+import { ONE_EURO_PRESETS, PoseLandmarkFilter } from '@/lib/pose/oneEuroFilter';
+import { PoseQualityMonitor, type QualitySnapshot } from '@/lib/pose/quality';
 import type { PoseFrame } from '@/types';
 import { PoseOverlay } from './PoseOverlay';
 import { sampleScene, type SceneSample } from '@/lib/pose/cmjReadiness';
@@ -166,7 +160,10 @@ async function openStream(width: number, height: number): Promise<MediaStream> {
       } catch (err) {
         lastErr = err;
         const name = err instanceof Error ? err.name : '';
-        if (name !== 'OverconstrainedError' && name !== 'ConstraintNotSatisfiedError') {
+        if (
+          name !== 'OverconstrainedError' &&
+          name !== 'ConstraintNotSatisfiedError'
+        ) {
           throw err;
         }
       }
@@ -260,8 +257,7 @@ function CameraStreamInner({
         let lastSceneAt = 0;
         let prevScenePixels: Uint8ClampedArray | null = null;
 
-        const hasRvfc =
-          typeof video.requestVideoFrameCallback === 'function';
+        const hasRvfc = typeof video.requestVideoFrameCallback === 'function';
 
         const process = (ts: number) => {
           if (cancelled || !video) return;
@@ -391,9 +387,7 @@ function CameraStreamInner({
       {showOverlay && (
         <PoseOverlay frameRef={latestFrameRef} width={width} height={height} />
       )}
-      {showTelemetry && telemetry && (
-        <TelemetryOverlay telemetry={telemetry} />
-      )}
+      {showTelemetry && telemetry && <TelemetryOverlay telemetry={telemetry} />}
       {!ready && !error && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white/80">
           <div className="text-sm">Kamera ve model yükleniyor…</div>
@@ -441,20 +435,31 @@ function CameraStreamInner({
  */
 export const CameraStream = memo(CameraStreamInner);
 
+/**
+ * Aktif kamera `<video>` elemanını döndürür. Kalibrasyon hook'u kareyi buradan
+ * örnekler. Sayfada tek bir CameraStream olduğu için `data-camera-stream`
+ * seçici güvenli (aynı kalıp unmount temizliğinde de kullanılıyor).
+ */
+export function getCameraVideoEl(): HTMLVideoElement | null {
+  if (typeof document === 'undefined') return null;
+  return document.querySelector<HTMLVideoElement>(
+    'video[data-camera-stream="true"]'
+  );
+}
+
 function TelemetryOverlay({ telemetry }: { telemetry: DetectorTelemetry }) {
   return (
     <div className="pointer-events-none absolute right-3 bottom-3 rounded-lg bg-black/70 px-3 py-2 font-mono text-[10px] leading-tight text-emerald-300 shadow-lg backdrop-blur-sm">
-      <div className="text-amber-300 uppercase tracking-widest">
+      <div className="tracking-widest text-amber-300 uppercase">
         {telemetry.modelTier} · {telemetry.delegate}
         {telemetry.hasWebGPU ? ' · WebGPU' : ''}
       </div>
       <div className="mt-0.5">
-        {telemetry.avgFps.toFixed(1)} fps · {telemetry.avgInferenceMs.toFixed(1)} ms
+        {telemetry.avgFps.toFixed(1)} fps ·{' '}
+        {telemetry.avgInferenceMs.toFixed(1)} ms
       </div>
       {telemetry.errorCount > 0 && (
-        <div className="mt-0.5 text-red-300">
-          {telemetry.errorCount} err
-        </div>
+        <div className="mt-0.5 text-red-300">{telemetry.errorCount} err</div>
       )}
     </div>
   );

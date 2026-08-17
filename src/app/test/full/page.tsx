@@ -32,13 +32,18 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { JumpTest } from '@/components/tests/JumpTest';
 import { BroadJumpTest } from '@/components/tests/BroadJumpTest';
+import { CalibrationSetup } from '@/components/camera/CalibrationSetup';
+import type { CalibrationBaseline } from '@/core/ports/camera-reference';
 import { BalanceTest } from '@/components/tests/BalanceTest';
 import { LateralHopsTest } from '@/components/tests/LateralHopsTest';
 import { ReactionTest } from '@/components/tests/ReactionTest';
 import { CoordinationTest } from '@/components/tests/CoordinationTest';
 import { EnduranceJacksTest } from '@/components/tests/EnduranceJacksTest';
 import { ProfileForm } from '@/components/flow/ProfileForm';
-import { PhaseHeader, FULL_FLOW_STEP_LABELS } from '@/components/flow/PhaseHeader';
+import {
+  PhaseHeader,
+  FULL_FLOW_STEP_LABELS,
+} from '@/components/flow/PhaseHeader';
 import { ResultScreen } from '@/components/result/ResultScreen';
 import {
   sessionStore,
@@ -59,6 +64,7 @@ import type { EnduranceJacksAnalysis } from '@/lib/tests/enduranceJacks';
 
 type Phase =
   | 'profile'
+  | 'calibration'
   | 'cmj'
   | 'broadJump'
   | 'balance'
@@ -129,6 +135,10 @@ function FullFlowInner() {
   const [done, setDone] = useState<DoneFlags>(EMPTY_DONE);
   const [finalSession, setFinalSession] = useState<SessionSummary | null>(null);
   const [childLoadError, setChildLoadError] = useState<string | null>(null);
+  // Batarya öncesi kilitlenen kamera kalibrasyonu. A4 kurulumu atlanırsa null
+  // kalır ve testler mevcut (boy-tabanlı) akışla çalışır.
+  const [calibrationBaseline, setCalibrationBaseline] =
+    useState<CalibrationBaseline | null>(null);
 
   // childId query param varsa: profile form'unu atla, child'ı API'den getir,
   // sessionStore'u başlat. Hata olursa form'a düşer ve mesaj gösterilir.
@@ -170,7 +180,7 @@ function FullFlowInner() {
         };
         sessionStore.start(identity);
         setChild(identity);
-        setPhase(PHASE_ORDER[0]);
+        setPhase('calibration');
       } catch {
         if (!cancelled) {
           setChildLoadError('Bağlantı hatası, tekrar dene.');
@@ -242,7 +252,7 @@ function FullFlowInner() {
   const handleProfileSubmit = (c: ChildIdentity) => {
     sessionStore.start(c);
     setChild(c);
-    setPhase(PHASE_ORDER[0]);
+    setPhase('calibration');
   };
 
   const advanceFrom = (key: keyof DoneFlags) => {
@@ -264,6 +274,7 @@ function FullFlowInner() {
     setChild(null);
     setDone(EMPTY_DONE);
     setFinalSession(null);
+    setCalibrationBaseline(null);
     setPhase('profile');
   };
 
@@ -326,6 +337,21 @@ function FullFlowInner() {
           </>
         )}
 
+        {phase === 'calibration' && child && (
+          <div className="mx-auto max-w-5xl">
+            <CalibrationSetup
+              onComplete={(baseline) => {
+                setCalibrationBaseline(baseline);
+                setPhase(PHASE_ORDER[0]);
+              }}
+              onSkip={() => {
+                setCalibrationBaseline(null);
+                setPhase(PHASE_ORDER[0]);
+              }}
+            />
+          </div>
+        )}
+
         {phase === 'cmj' && child && (
           <PhaseShell
             childName={child.name}
@@ -344,6 +370,7 @@ function FullFlowInner() {
               childAgeYears={child.ageYears}
               childSex={child.sex}
               childHeightCm={child.heightCm}
+              calibrationBaseline={calibrationBaseline}
               onComplete={(analysis) => {
                 if (!analysis.valid) return;
                 sessionStore.recordJump(

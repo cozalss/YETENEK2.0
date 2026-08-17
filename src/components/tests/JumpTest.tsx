@@ -55,13 +55,31 @@ import {
 import type { PoseFrame } from '@/types';
 import { useValidityGate, type GateOutcome } from '@/hooks/use-validity-gate';
 import { VisionBadge } from '@/components/tests/shared/VisionBadge';
+import { getCameraVideoEl } from '@/components/camera/CameraStream';
+import { AngleDriftChip } from '@/components/camera/AngleDriftChip';
+import { useCameraCalibration } from '@/hooks/use-camera-calibration';
+import { a4ReferenceDetector } from '@/infrastructure/calibration/a4-reference-detector';
+import type { CalibrationBaseline } from '@/core/ports/camera-reference';
+import type { DriftReading } from '@/lib/pose/cameraPose';
 
-type Phase = 'idle' | 'countdown' | 'capture' | 'analyze' | 'between' | 'result';
+type Phase =
+  | 'idle'
+  | 'countdown'
+  | 'capture'
+  | 'analyze'
+  | 'between'
+  | 'result';
 
 interface Props {
   childAgeYears?: number;
   childSex?: 'male' | 'female';
   childHeightCm?: number;
+  /**
+   * Batarya öncesi kurulumda kilitlenmiş kamera kalibrasyonu. Verilirse test
+   * sırasında açı drift'i buna göre ölçülür (hibrit: küçük → σ, büyük → tekrar).
+   * Yoksa özellik sessizce devre dışı — mevcut akış aynen çalışır.
+   */
+  calibrationBaseline?: CalibrationBaseline | null;
   onComplete?: (
     analysis: JumpAnalysis & {
       score: number | null;
@@ -106,7 +124,10 @@ interface AttemptOutcome {
 
 function shortAttemptLabel(a: AttemptOutcome): string {
   if (a.accepted && a.analysis.jumpHeightCm != null) {
-    return formatJumpHeightCm(a.analysis.jumpHeightCm, a.analysis.jumpHeightSigmaCm);
+    return formatJumpHeightCm(
+      a.analysis.jumpHeightCm,
+      a.analysis.jumpHeightSigmaCm
+    );
   }
   return 'sayılmadı';
 }
@@ -115,6 +136,7 @@ export function JumpTest({
   childAgeYears = 12,
   childSex = 'male',
   childHeightCm,
+  calibrationBaseline,
   onComplete,
 }: Props) {
   const [phase, setPhase] = useState<Phase>('idle');
@@ -168,6 +190,24 @@ export function JumpTest({
   const gateCollect = gate.collect;
   const gateEvaluate = gate.evaluate;
 
+  // Kamera açısı takibi — yalnız kurulumdan baseline geldiyse. A4 idle/kayıt
+  // fazlarında örneklenir; çocuk A4'ü kapatınca detection düşer, en son geçerli
+  // drift ref'te tutulur ve analiz anında gate'e verilir.
+  const calibrationActive =
+    calibrationBaseline != null &&
+    (phase === 'idle' || phase === 'countdown' || phase === 'capture');
+  const calib = useCameraCalibration({
+    getVideo: getCameraVideoEl,
+    active: calibrationActive,
+    detector: a4ReferenceDetector,
+    initialBaseline: calibrationBaseline ?? null,
+    trackDrift: true,
+  });
+  const driftRef = useRef<DriftReading | null>(null);
+  useEffect(() => {
+    if (calib.drift) driftRef.current = calib.drift;
+  }, [calib.drift]);
+
   const handleScene = useCallback((s: SceneSample | null) => {
     sceneRef.current = s;
   }, []);
@@ -209,6 +249,8 @@ export function JumpTest({
     gate.reset();
     samplesRef.current = [];
     calibrationFrameRef.current = null;
+    // Yeni deneme: eski drift okumasını at, güncel örneklemeyi bekle.
+    driftRef.current = null;
     captureActiveRef.current = false;
     setAttemptNumber(n);
     setCountdown(COUNTDOWN_SECONDS);
@@ -265,11 +307,14 @@ export function JumpTest({
       // görünür ve bir gün bir yerden sızar.
       const identity = { ageYears: childAgeYears, sex: childSex };
       const claimAnalysis = analyzeJump(samplesRef.current, identity);
-      const outcome = await gateEvaluate({
-        valid: claimAnalysis.valid,
-        primaryValue: claimAnalysis.jumpHeightCmFlight,
-        unit: 'cm',
-      });
+      const outcome = await gateEvaluate(
+        {
+          valid: claimAnalysis.valid,
+          primaryValue: claimAnalysis.jumpHeightCmFlight,
+          unit: 'cm',
+        },
+        driftRef.current
+      );
       if (cancelled) return;
       finishAttempt(outcome);
     })();
@@ -293,7 +338,8 @@ export function JumpTest({
             techniqueMultiplier: 1,
             judgeInjuryWarnings: [],
             visionApplied: outcome.visionApplied,
-            rejectionHint: outcome.rejection?.retryHint ?? 'Bu deneme sayılmadı.',
+            rejectionHint:
+              outcome.rejection?.retryHint ?? 'Bu deneme sayılmadı.',
           };
         } else {
           const identity = { ageYears: childAgeYears, sex: childSex };
@@ -488,6 +534,13 @@ export function JumpTest({
           {(phase === 'idle' || phase === 'countdown') && (
             <FramingBadge status={framing} />
           )}
+
+          {calibrationBaseline != null &&
+            (phase === 'idle' ||
+              phase === 'countdown' ||
+              phase === 'capture') && (
+              <AngleDriftChip drift={calib.drift} detected={calib.detected} />
+            )}
         </>
       }
       belowCameraSlot={
@@ -502,7 +555,7 @@ export function JumpTest({
           <AllAttemptsFailedPanel attempts={attempts} onRetry={start} />
         ) : phase === 'result' && best ? (
           <div>
-          <ResultCard
+            <ResultCard
               best={best}
               attempts={attempts}
               onRetry={start}
@@ -572,7 +625,10 @@ function CountdownOverlay({
   return (
     <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/45 backdrop-blur-[2px]">
       <div className="absolute top-4 left-4">
-        <AttemptPill attemptNumber={attemptNumber} plannedAttempts={plannedAttempts} />
+        <AttemptPill
+          attemptNumber={attemptNumber}
+          plannedAttempts={plannedAttempts}
+        />
       </div>
       <motion.div
         key={value}
@@ -601,7 +657,10 @@ function CapturePill({
   return (
     <>
       <div className="absolute top-4 left-4">
-        <AttemptPill attemptNumber={attemptNumber} plannedAttempts={plannedAttempts} />
+        <AttemptPill
+          attemptNumber={attemptNumber}
+          plannedAttempts={plannedAttempts}
+        />
       </div>
       <div className="absolute top-4 right-4 flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-2xl ring-1 ring-red-400/50">
         <span
@@ -755,15 +814,18 @@ function AllAttemptsFailedPanel({
         className="mt-3 text-sm leading-relaxed"
         style={{ color: 'var(--color-ink-2)' }}
       >
-        Merak etme — yanlış yapılan bir denemeyi kaydetmek yerine tekrar
-        etmek sonucun doğru olmasını sağlıyor.
+        Merak etme — yanlış yapılan bir denemeyi kaydetmek yerine tekrar etmek
+        sonucun doğru olmasını sağlıyor.
       </p>
       <ul className="mt-4 space-y-2">
         {attempts.map((a) => (
           <li
             key={a.index}
             className="rounded-xl border bg-white/60 p-3 text-xs leading-relaxed"
-            style={{ borderColor: 'rgba(44, 62, 107, 0.12)', color: 'var(--color-ink-2)' }}
+            style={{
+              borderColor: 'rgba(44, 62, 107, 0.12)',
+              color: 'var(--color-ink-2)',
+            }}
           >
             <span className="font-bold" style={{ color: 'var(--form-navy)' }}>
               Deneme {a.index + 1}:
@@ -840,7 +902,10 @@ function ResultCard({
           label="Sıçrama yüksekliği"
           value={
             result.jumpHeightCm != null
-              ? formatJumpHeightCm(result.jumpHeightCm, result.jumpHeightSigmaCm)
+              ? formatJumpHeightCm(
+                  result.jumpHeightCm,
+                  result.jumpHeightSigmaCm
+                )
               : `${(result.jumpUnits * 100).toFixed(1)} br`
           }
           accent
@@ -893,10 +958,16 @@ function ResultCard({
       )}
 
       {attempts.length > 1 && (
-        <div className="mt-5 border-t pt-4" style={{ borderColor: 'rgba(44, 62, 107, 0.18)' }}>
+        <div
+          className="mt-5 border-t pt-4"
+          style={{ borderColor: 'rgba(44, 62, 107, 0.18)' }}
+        >
           <p
             className="text-[10px] font-bold tracking-[0.2em] uppercase"
-            style={{ color: 'var(--color-ink-3)', fontFamily: 'var(--font-display)' }}
+            style={{
+              color: 'var(--color-ink-3)',
+              fontFamily: 'var(--font-display)',
+            }}
           >
             {attempts.length} Denemenin Dökümü
           </p>

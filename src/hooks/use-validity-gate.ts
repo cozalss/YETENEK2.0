@@ -38,6 +38,10 @@ import { mergeVerdicts } from '@/core/use-cases/merge-verdicts';
 import { ruleBasedValidityJudge } from '@/infrastructure/validity/rule-based-judge';
 import { selectKeyframes } from '@/infrastructure/validity/skeleton-render';
 import { isVisionConsentGranted } from '@/lib/consent/visionConsent';
+import {
+  driftToSigmaMultiplier,
+  type DriftReading,
+} from '@/lib/pose/cameraPose';
 import { logger } from '@/shared/logger/logger';
 import type { PoseFrame, TestType } from '@/types';
 
@@ -96,8 +100,14 @@ export interface ValidityGate {
   /**
    * Analizden **önce** çağrılır. `allowed: false` → deneme reddedildi,
    * `rejection` dolu.
+   *
+   * `drift` verilirse **hibrit** kamera-açısı politikası uygulanır: büyük
+   * sapma (ekran aç/kapa) denemeyi geçersiz kılar; küçük sapma σ'yı genişletir.
    */
-  readonly evaluate: (claim?: MeasurementClaim) => Promise<GateOutcome>;
+  readonly evaluate: (
+    claim?: MeasurementClaim,
+    drift?: DriftReading | null
+  ) => Promise<GateOutcome>;
   readonly rejection: RejectedMeasurement | null;
   readonly reset: () => void;
   /**
@@ -107,6 +117,32 @@ export interface ValidityGate {
   readonly sigmaMultiplier: number;
   /** Görsel denetim bu denemede gerçekten çalıştı mı — izlenebilirlik. */
   readonly visionApplied: boolean;
+}
+
+/**
+ * Kamera açısı büyük kaydığında üretilen reddetme. Cihazda deterministik
+ * olarak tespit edilir (baseline'a göre derece sapması) — bu yüzden
+ * `rejectedBy: 'rules'`.
+ */
+function driftRejection(drift: DriftReading): RejectedMeasurement {
+  const verdict: TestVerdict = {
+    performed: false,
+    protocolViolations: ['camera_moved'],
+    techniqueScore: 0,
+    stanceConfirmed: null,
+    compensations: [],
+    judgeConfidence: 1,
+    source: 'rules',
+    notes: `Kamera açısı baseline'dan ~${Math.round(drift.magnitudeDeg)}° kaydı.`,
+  };
+  return {
+    reason: 'protocol-violation',
+    violations: ['camera_moved'],
+    retryHint:
+      'Kamera açısı testin ortasında değişti (ekran ya da telefon oynadı). Kamerayı sabit bir yere dayayıp yeniden hizala, sonra tekrar dene.',
+    verdict,
+    rejectedBy: 'rules',
+  };
 }
 
 /** Sunucudan dönen kararı port tipine çevirir. */
@@ -166,119 +202,145 @@ export function useValidityGate(opts: UseValidityGateOptions): ValidityGate {
     setRejection(null);
   }, []);
 
-  const evaluate = useCallback(async (claim?: MeasurementClaim) => {
-    // --- Aşama 1: kural hakemi, cihazda ---------------------------------
-    const judged = await ruleBasedValidityJudge.judge({
-      test,
-      frames: framesRef.current,
-    });
+  const evaluate = useCallback(
+    async (claim?: MeasurementClaim, drift?: DriftReading | null) => {
+      // --- Hibrit kamera-açısı politikası: büyük sapma → geçersiz ----------
+      // Ekran/telefon test ortasında belirgin oynadıysa ölçümün geometrisi
+      // baseline'a ait değil; hakeme sormaya (ve ağa çıkmaya) gerek yok.
+      if (drift && drift.severity === 'major') {
+        const rejection = driftRejection(drift);
+        setRejection(rejection);
+        setSigmaMultiplier(1);
+        log.info('kamera açısı kaydı — deneme geçersiz', {
+          test,
+          magnitudeDeg: Math.round(drift.magnitudeDeg),
+        });
+        return {
+          allowed: false,
+          sigmaMultiplier: 1,
+          injuryWarnings: [] as const,
+          rejection,
+          visionApplied: false,
+        };
+      }
+      // Küçük sapma → σ'yı genişletecek çarpan (aşağıda kabul kollarında uygulanır).
+      const driftMult = drift ? driftToSigmaMultiplier(drift) : 1;
 
-    // Hakem karar veremediyse ölçümü bloklamıyoruz: "değerlendiremedim" ile
-    // "geçersiz" farklı şeyler.
-    const rulesVerdict: TestVerdict | null = judged.ok ? judged.value : null;
-    let verdict: TestVerdict | null = rulesVerdict;
-    let visionVerdict: TestVerdict | null = null;
-    let droppedFromVision: readonly ProtocolViolation[] = [];
-    let visionRan = false;
-
-    const ruleIsDecisive =
-      rulesVerdict != null &&
-      !rulesVerdict.performed &&
-      rulesVerdict.judgeConfidence >= SKIP_VISION_ABOVE_CONFIDENCE;
-
-    // --- Aşama 2: görsel hakem, rıza varsa -------------------------------
-    if (!ruleIsDecisive && isVisionConsentGranted()) {
-      const refined = await requestVisionVerdict(
+      // --- Aşama 1: kural hakemi, cihazda ---------------------------------
+      const judged = await ruleBasedValidityJudge.judge({
         test,
-        framesRef.current,
-        claim
-      );
-      if (refined) {
-        visionRan = true;
-        visionVerdict = refined;
-        setVisionApplied(true);
-        if (verdict) {
-          const merged = mergeVerdicts(verdict, refined);
-          verdict = merged.verdict;
-          droppedFromVision = merged.droppedFromVision;
-        } else {
-          verdict = refined;
+        frames: framesRef.current,
+      });
+
+      // Hakem karar veremediyse ölçümü bloklamıyoruz: "değerlendiremedim" ile
+      // "geçersiz" farklı şeyler.
+      const rulesVerdict: TestVerdict | null = judged.ok ? judged.value : null;
+      let verdict: TestVerdict | null = rulesVerdict;
+      let visionVerdict: TestVerdict | null = null;
+      let droppedFromVision: readonly ProtocolViolation[] = [];
+      let visionRan = false;
+
+      const ruleIsDecisive =
+        rulesVerdict != null &&
+        !rulesVerdict.performed &&
+        rulesVerdict.judgeConfidence >= SKIP_VISION_ABOVE_CONFIDENCE;
+
+      // --- Aşama 2: görsel hakem, rıza varsa -------------------------------
+      if (!ruleIsDecisive && isVisionConsentGranted()) {
+        const refined = await requestVisionVerdict(
+          test,
+          framesRef.current,
+          claim
+        );
+        if (refined) {
+          visionRan = true;
+          visionVerdict = refined;
+          setVisionApplied(true);
+          if (verdict) {
+            const merged = mergeVerdicts(verdict, refined);
+            verdict = merged.verdict;
+            droppedFromVision = merged.droppedFromVision;
+          } else {
+            verdict = refined;
+          }
         }
       }
-    }
 
-    const rejectedBy = inferRejectedBy(test, rulesVerdict, verdict);
+      const rejectedBy = inferRejectedBy(test, rulesVerdict, verdict);
 
-    log.info('geçerlilik kararı', {
-      test,
-      rules: rulesVerdict
-        ? {
-            performed: rulesVerdict.performed,
-            protocolViolations: rulesVerdict.protocolViolations,
-            judgeConfidence: rulesVerdict.judgeConfidence,
-            notes: rulesVerdict.notes,
-          }
-        : null,
-      visionCalled: visionRan,
-      vision: visionVerdict
-        ? {
-            performed: visionVerdict.performed,
-            protocolViolations: visionVerdict.protocolViolations,
-            judgeConfidence: visionVerdict.judgeConfidence,
-            techniqueScore: visionVerdict.techniqueScore,
-            notes: visionVerdict.notes,
-          }
-        : null,
-      droppedFromVision,
-      decision: verdict
-        ? {
-            performed: verdict.performed,
-            protocolViolations: verdict.protocolViolations,
-            source: verdict.source,
-          }
-        : null,
-      rejectedBy,
-    });
+      log.info('geçerlilik kararı', {
+        test,
+        rules: rulesVerdict
+          ? {
+              performed: rulesVerdict.performed,
+              protocolViolations: rulesVerdict.protocolViolations,
+              judgeConfidence: rulesVerdict.judgeConfidence,
+              notes: rulesVerdict.notes,
+            }
+          : null,
+        visionCalled: visionRan,
+        vision: visionVerdict
+          ? {
+              performed: visionVerdict.performed,
+              protocolViolations: visionVerdict.protocolViolations,
+              judgeConfidence: visionVerdict.judgeConfidence,
+              techniqueScore: visionVerdict.techniqueScore,
+              notes: visionVerdict.notes,
+            }
+          : null,
+        droppedFromVision,
+        decision: verdict
+          ? {
+              performed: verdict.performed,
+              protocolViolations: verdict.protocolViolations,
+              source: verdict.source,
+            }
+          : null,
+        rejectedBy,
+      });
 
-    if (verdict == null) {
+      if (verdict == null) {
+        setRejection(null);
+        setSigmaMultiplier(driftMult);
+        return {
+          allowed: true,
+          sigmaMultiplier: driftMult,
+          injuryWarnings: [] as const,
+          rejection: null,
+          visionApplied: visionRan,
+        };
+      }
+
+      const gated = applyVerdict(test, verdict);
+      if (!gated.ok) {
+        const rejection: RejectedMeasurement = {
+          ...gated.error,
+          rejectedBy,
+        };
+        setRejection(rejection);
+        return {
+          allowed: false,
+          sigmaMultiplier: 1,
+          injuryWarnings: [] as const,
+          rejection,
+          visionApplied: visionRan,
+        };
+      }
+
+      // Teknik cezası ile kamera-açısı cezası birleşir (ikisi de σ'yı genişletir).
+      const multiplier = gated.value.sigmaMultiplier * driftMult;
       setRejection(null);
-      setSigmaMultiplier(1);
+      setSigmaMultiplier(multiplier);
       return {
         allowed: true,
-        sigmaMultiplier: 1,
-        injuryWarnings: [] as const,
+        sigmaMultiplier: multiplier,
+        injuryWarnings: gated.value.injuryWarnings,
         rejection: null,
         visionApplied: visionRan,
       };
-    }
-
-    const gated = applyVerdict(test, verdict);
-    if (!gated.ok) {
-      const rejection: RejectedMeasurement = {
-        ...gated.error,
-        rejectedBy,
-      };
-      setRejection(rejection);
-      return {
-        allowed: false,
-        sigmaMultiplier: 1,
-        injuryWarnings: [] as const,
-        rejection,
-        visionApplied: visionRan,
-      };
-    }
-
-    const multiplier = gated.value.sigmaMultiplier;
-    setRejection(null);
-    setSigmaMultiplier(multiplier);
-    return {
-      allowed: true,
-      sigmaMultiplier: multiplier,
-      injuryWarnings: gated.value.injuryWarnings,
-      rejection: null,
-      visionApplied: visionRan,
-    };
-  }, [test]);
+    },
+    [test]
+  );
 
   return {
     collect,
@@ -355,7 +417,9 @@ function inferRejectedBy(
   merged: TestVerdict | null
 ): 'rules' | 'vision' | undefined {
   if (merged == null) return undefined;
-  const fatal = merged.protocolViolations.some((v) => isFatalViolation(test, v));
+  const fatal = merged.protocolViolations.some((v) =>
+    isFatalViolation(test, v)
+  );
   if (merged.performed && !fatal) return undefined;
   if (rules && !rules.performed) return 'rules';
   if (
