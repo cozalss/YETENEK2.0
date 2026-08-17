@@ -1,12 +1,17 @@
 /**
  * Reaksiyon analiz testleri.
  *
- * NOT: analyzeReaction MIN_VALID_TRIALS = 6 ister; ayrıca touch hardware
- * latency offset (25ms) uygulanır → raw 280ms → corrected 255ms.
+ * Touch hardware latency offset (25ms) uygulanır. Yaş normu laboratuvar
+ * basit-RT + 400ms görsel-dokunuş ofsetidir (12 yaş: 280+400=680ms).
  */
 
 import { describe, expect, it } from 'vitest';
-import { analyzeReaction, MIN_VALID_TRIALS, type ReactionTrial } from './reaction';
+import {
+  analyzeReaction,
+  MIN_VALID_TRIALS,
+  reactionZ,
+  type ReactionTrial,
+} from './reaction';
 
 function trials(reactionMs: number[]): ReactionTrial[] {
   return reactionMs.map((ms, index) => ({
@@ -18,7 +23,6 @@ function trials(reactionMs: number[]): ReactionTrial[] {
 
 /** 6 ms değeri (en az MIN_VALID_TRIALS) üretmek için kısaltma. */
 function rep6(values: number[]): number[] {
-  // Verilen değerlerden döngülü olarak en az 6 trial üret.
   const out: number[] = [];
   for (let i = 0; i < MIN_VALID_TRIALS; i++) out.push(values[i % values.length]);
   return out;
@@ -47,28 +51,38 @@ describe('analyzeReaction', () => {
     expect(r.bestMs).toBe(280);
   });
 
-  it('norm değeri (305ms raw → 280ms corrected = 12 yaş norm) → 50 puan civarı', () => {
-    // Raw 305ms × 6 trial; corrected 280ms = 12 yaş norm
-    const r = analyzeReaction(trials(rep6([305])), 12);
+  it('web-norm değeri (705ms raw → 680ms corrected = 12 yaş) → 50 puan civarı', () => {
+    const r = analyzeReaction(trials(rep6([705])), 12);
     expect(r.ageNormScore).toBeGreaterThan(45);
     expect(r.ageNormScore).toBeLessThan(55);
   });
 
   it('hızlı reaksiyon → yüksek skor', () => {
-    // Raw 225ms × 6 → corrected 200ms (12 yaş normdan hızlı)
-    const r = analyzeReaction(trials(rep6([225, 235, 245])), 12);
+    // Raw ~505ms → corrected ~480ms (12 yaş web-norm 680'den hızlı)
+    const r = analyzeReaction(trials(rep6([505, 515, 525])), 12);
     expect(r.ageNormScore).toBeGreaterThan(70);
   });
 
   it('yavaş reaksiyon → düşük skor', () => {
-    // Raw 425ms × 6 → corrected 400ms (12 yaş normdan yavaş)
-    const r = analyzeReaction(trials(rep6([425, 445, 435])), 12);
+    const r = analyzeReaction(trials(rep6([905, 925, 915])), 12);
     expect(r.ageNormScore).toBeLessThan(40);
   });
 
+  it('14 yaş ~703ms ham tarayıcı RT 0/100 basmaz', () => {
+    const r = analyzeReaction(
+      trials([637, 759, 627, 604, 828, 766]),
+      14
+    );
+    expect(r.valid).toBe(true);
+    expect(r.ageNormScore).toBeGreaterThan(30);
+    expect(r.ageNormScore).toBeLessThan(70);
+    expect(reactionZ(r.averageMs, 14)).not.toBeNull();
+    expect(reactionZ(r.averageMs, 14) as number).toBeGreaterThan(-2);
+  });
+
   it('tutarlılık skoru: dağınık denemeler düşürür', () => {
-    const tight = analyzeReaction(trials(rep6([305, 307, 306])), 12);
-    const loose = analyzeReaction(trials(rep6([225, 375, 305])), 12);
+    const tight = analyzeReaction(trials(rep6([705, 707, 706])), 12);
+    const loose = analyzeReaction(trials(rep6([505, 905, 705])), 12);
     expect(tight.consistencyScore).toBeGreaterThan(loose.consistencyScore);
   });
 

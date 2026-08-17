@@ -151,6 +151,15 @@ describe('istek şekli — Responses API sözleşmesi', () => {
     expect(prompt).toContain('Hiçbir ölçüm yapma');
     expect(prompt).toContain('TAHMİN ETME');
   });
+
+  it('CMJ promptu topuk/uçuş sormaz — o fizik katmanının işi', async () => {
+    const { calls, impl } = captureFetch(OK_RESPONSE);
+    await new OpenAiVisionValidityJudge(impl).judge({ test: 'jump', frames });
+    const input = body(calls[0].init).input as { content: { text?: string }[] }[];
+    const prompt = input[0].content.find((c) => c.text)?.text ?? '';
+    expect(prompt).not.toMatch(/topuk/i);
+    expect(prompt).toMatch(/KARAR VERME/);
+  });
 });
 
 describe('strict şema — OpenAI kısıtlarına uyum', () => {
@@ -204,6 +213,27 @@ describe('yanıt işleme ve hata yolları', () => {
     });
     if (!r.ok) throw new Error('unreachable');
     expect(r.value.protocolViolations).toHaveLength(0);
+  });
+
+  it('jump temas etiketini şema hijyeninde siler ve techniqueScore tabanlar', async () => {
+    const { impl } = captureFetch({
+      output_text: JSON.stringify({
+        performed: false,
+        protocolViolations: ['heel_raise_only'],
+        techniqueScore: 0,
+        stanceConfirmed: null,
+        compensations: [],
+        judgeConfidence: 0.95,
+        notes: 'Topuk.',
+      }),
+    });
+    const r = await new OpenAiVisionValidityJudge(impl).judge({
+      test: 'jump',
+      frames,
+    });
+    if (!r.ok) throw new Error('unreachable');
+    expect(r.value.protocolViolations).not.toContain('heel_raise_only');
+    expect(r.value.techniqueScore).toBeGreaterThanOrEqual(50);
   });
 
   it('output[] biçimindeki yanıtı da okur', async () => {

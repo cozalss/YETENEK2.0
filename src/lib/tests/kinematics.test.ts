@@ -9,9 +9,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   fitParabola,
+  fitParabolaRobust,
   solveFlightFromParabola,
   flightTimeToHeightCm,
   heightSigmaCm,
+  gravityConsistentCmPerUnit,
+  parabolaRSquared,
   HALF_GRAVITY_CM_PER_MS2,
 } from './kinematics';
 
@@ -197,5 +200,48 @@ describe('Bosco yüksekliği ve belirsizlik yayılımı', () => {
 
   it('belirsizlik uçuş süresiyle doğrusal büyür', () => {
     expect(heightSigmaCm(500, 20)).toBeCloseTo(2 * heightSigmaCm(500, 10), 6);
+  });
+});
+
+describe('gravityConsistentCmPerUnit ve parabolaRSquared', () => {
+  it('makul eğrilikten ölçek çıkarır', () => {
+    const cmPerUnit = 200;
+    const a = HALF_GRAVITY_CM_PER_MS2 / cmPerUnit;
+    expect(gravityConsistentCmPerUnit(a)).toBeCloseTo(cmPerUnit, 6);
+  });
+
+  it('doğrusal rampayı (a≈0) reddeder', () => {
+    expect(gravityConsistentCmPerUnit(1e-12)).toBeNull();
+    expect(gravityConsistentCmPerUnit(-1e-6)).toBeNull();
+  });
+
+  it('gürültüsüz parabolde R² ≈ 1', () => {
+    const ts = Array.from({ length: 20 }, (_, i) => 1000 + i * 33);
+    const [a, b, c] = [3e-6, -2.1e-3, 0.94];
+    const ys = ts.map((t) => a * t * t + b * t + c);
+    const fit = fitParabola(ts, ys)!;
+    expect(parabolaRSquared(fit, ys)).toBeGreaterThan(0.999);
+  });
+});
+
+describe('fitParabolaRobust — aykırı kare', () => {
+  it('tek kaçık örnekte yükseklik hatası düz OLS\'ten küçük kalır', () => {
+    const { ts, ys } = synthesizeFlight({
+      flightTimeMs: 400,
+      cmPerUnit: 200,
+      fps: 30,
+    });
+    const dirtyY = [...ys];
+    dirtyY[Math.floor(dirtyY.length / 2)] -= 0.08;
+
+    const ols = fitParabola(ts, dirtyY)!;
+    const robust = fitParabolaRobust(ts, dirtyY)!;
+    const olsSol = solveFlightFromParabola(ols, BASELINE_Y, dirtyY)!;
+    const robSol = solveFlightFromParabola(robust, BASELINE_Y, dirtyY)!;
+
+    const olsErr = Math.abs(olsSol.flightTimeMs - 400);
+    const robErr = Math.abs(robSol.flightTimeMs - 400);
+    expect(robErr).toBeLessThanOrEqual(olsErr);
+    expect(robErr).toBeLessThan(25);
   });
 });

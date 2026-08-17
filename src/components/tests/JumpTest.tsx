@@ -22,10 +22,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { CameraStream } from '@/components/camera/CameraStream';
-import { checkJumpFraming, type FramingStatus } from '@/lib/pose/framing';
+import { type FramingStatus } from '@/lib/pose/framing';
+import { checkCmjReadiness, type SceneSample } from '@/lib/pose/cmjReadiness';
 import { cancelSpeech, speak } from '@/lib/a11y/speech';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useDeviceTilt } from '@/hooks/use-device-tilt';
 import { logger } from '@/shared/logger/logger';
+import { getDetectorTelemetry } from '@/lib/pose/detector';
 
 const log = logger.child('jump-test');
 import { TestStage } from '@/components/tests/shared/TestStage';
@@ -38,13 +41,18 @@ import {
   type JumpAnalysis,
   analyzeJump,
   calibrateJumpHeight,
+  captureQualitySigmaMultiplier,
   formatJumpHeightCm,
   frameToHipSample,
   jumpScore,
   pickBestJumpAttempt,
 } from '@/lib/tests/jump';
+import {
+  historyConsistencyHint,
+  needsOutlierRetry,
+} from '@/lib/tests/jumpStats';
 import type { PoseFrame } from '@/types';
-import { useValidityGate } from '@/hooks/use-validity-gate';
+import { useValidityGate, type GateOutcome } from '@/hooks/use-validity-gate';
 import { VisionBadge } from '@/components/tests/shared/VisionBadge';
 
 type Phase = 'idle' | 'countdown' | 'capture' | 'analyze' | 'between' | 'result';
@@ -65,16 +73,20 @@ interface Props {
 const COUNTDOWN_SECONDS = 3;
 const CAPTURE_SECONDS = 5;
 /** Spor bilimi CMJ protokolü standardı: en-iyi-3 deneme. */
-const TOTAL_ATTEMPTS = 3;
+const BASE_ATTEMPTS = 3;
+/** Aykırı denemede koşullu ekstra — sabit 5'ten ucuz. */
+const MAX_ATTEMPTS = 4;
 /** "Deneme 2/3 hazırlanıyor" ekranının otomatik ilerlemeden önce kalma süresi. */
 const BETWEEN_ATTEMPTS_MS = 2200;
+const ORIENTATION_KEY = 'yetenek:cmj-orientation';
 
 const STEPS = [
-  'Telefonu / kamerayı yaklaşık 1.5 m yüksekliğe (sandalye, masa) koy. Yere koyma — kalça ve ayakların net görünsün.',
-  'Kameradan 2-3 metre uzakta dik dur; tüm vücudun (baştan ayağa) ekrana sığsın.',
-  'Sol-alt rozet "Hazır" yazana kadar pozisyonunu ayarla. Hazır olmadan başlatamazsın.',
-  '3 deneme yapacaksın; her birinde 3-2-1 geri sayımının ardından 5 saniyelik kayıt başlar.',
-  '1 saniye dik dur — sonra HIZLICA çömelip patlayıcı şekilde zıpla. En iyi denemen sonuç olarak kaydedilir.',
+  'Vücut hatlarını gösteren kıyafet giy (bol tişört iskeleti bozar). Sade, düz bir arka plan ve kaymaz zemin seç.',
+  'Telefonu duvara veya kitap yığınına yasla — elde tutma, yere koyma. Yaklaşık bel hizası (1.3–1.6 m).',
+  'Kameradan 2-3 metre uzakta dik dur; baştan ayağa tüm vücudun ve ayaklarının altında biraz zemin görünsün.',
+  'Ellerini beline koy ve orada tut. Kollarını savurmak sıçramayı şişirir; bu test kolsuz ölçüye kalibrlidir.',
+  'Sol-alt rozet "Hazır" yazana kadar pozisyonunu ayarla. 3 deneme; her birinde 3-2-1 ardından 5 saniyelik kayıt.',
+  '1 saniye dik dur — sonra HIZLICA çömelip patlayıcı şekilde zıpla. En iyi denemen kaydedilir.',
 ];
 
 /** Tek bir denemenin sonucu — hem "arada" ekranında hem final dökümde kullanılıyor. */
@@ -115,7 +127,15 @@ export function JumpTest({
     ready: false,
     hint: 'Pose tespit ediliyor…',
   });
+  const [plannedAttempts, setPlannedAttempts] = useState(BASE_ATTEMPTS);
+  const [historyHint, setHistoryHint] = useState<string | null>(null);
   const reducedMotion = useReducedMotion();
+  const tilt = useDeviceTilt(phase === 'idle' || phase === 'countdown');
+  const sceneRef = useRef<SceneSample | null>(null);
+  const tiltRef = useRef(tilt);
+  useEffect(() => {
+    tiltRef.current = tilt;
+  }, [tilt]);
 
   const samplesRef = useRef<HipSample[]>([]);
   const calibrationFrameRef = useRef<PoseFrame | null>(null);
@@ -126,6 +146,7 @@ export function JumpTest({
   // Kontrol akışı senkron karar vermek zorunda (state güncellemesi async'tir);
   // `attempts` state'i yalnız render için, karar burada verilir.
   const attemptsRef = useRef<AttemptOutcome[]>([]);
+  const plannedAttemptsRef = useRef(BASE_ATTEMPTS);
 
   // onComplete'i ref'te sabitle. Parent inline arrow olarak verirse her
   // render'da yeni reference olur → analyze effect deps'ini değiştirir →
@@ -142,31 +163,45 @@ export function JumpTest({
 
   useEffect(() => () => cancelSpeech(), []);
 
-  const gate = useValidityGate({ test: 'jump' });
+  const gate = useValidityGate({ test: 'jump', sampleEvery: 1 });
   const gateCollect = gate.collect;
   const gateEvaluate = gate.evaluate;
 
-  const handleFrame = useCallback((frame: PoseFrame | null) => {
-    if (phaseRef.current === 'idle' || phaseRef.current === 'countdown') {
-      const next = checkJumpFraming(frame);
-      const prev = lastFramingRef.current;
-      if (!prev || prev.ready !== next.ready || prev.hint !== next.hint) {
-        lastFramingRef.current = next;
-        setFraming(next);
+  const handleScene = useCallback((s: SceneSample | null) => {
+    sceneRef.current = s;
+  }, []);
+
+  const handleFrame = useCallback(
+    (frame: PoseFrame | null, raw: PoseFrame | null) => {
+      // Kadraj rozeti filtreli kareden: kullanıcıya gösterilen ipucu
+      // titremesin. Ölçüm ve hakem ise filtresiz kareden — One-Euro
+      // balistik tepeyi bastırıyor ve fit artığını yapay küçültüyor.
+      if (phaseRef.current === 'idle' || phaseRef.current === 'countdown') {
+        const next = checkCmjReadiness(frame, {
+          tiltOk: tiltRef.current.skipped ? null : tiltRef.current.ok,
+          scene: sceneRef.current,
+        });
+        const prev = lastFramingRef.current;
+        if (!prev || prev.ready !== next.ready || prev.hint !== next.hint) {
+          lastFramingRef.current = next;
+          setFraming(next);
+        }
       }
-    }
-    if (!frame) return;
-    if (!captureActiveRef.current) return;
-    // Hakem ham iskelete bakıyor: `HipSample` yalnız kalça/ayak Y'sini
-    // taşıyor, "gövde ayakla birlikte yükseldi mi" sorusu orada yanıtlanamaz.
-    gateCollect(frame);
-    const sample = frameToHipSample(frame);
-    if (!sample) return;
-    if (!calibrationFrameRef.current) {
-      calibrationFrameRef.current = frame;
-    }
-    samplesRef.current.push(sample);
-  }, [gateCollect]);
+      const measured = raw ?? frame;
+      if (!measured) return;
+      if (!captureActiveRef.current) return;
+      // Hakem ham iskelete bakıyor: `HipSample` yalnız kalça/ayak Y'sini
+      // taşıyor, "gövde ayakla birlikte yükseldi mi" sorusu orada yanıtlanamaz.
+      gateCollect(measured);
+      const sample = frameToHipSample(measured);
+      if (!sample) return;
+      if (!calibrationFrameRef.current) {
+        calibrationFrameRef.current = measured;
+      }
+      samplesRef.current.push(sample);
+    },
+    [gateCollect]
+  );
 
   /** Tek bir denemeyi (countdown → capture) başlatır — hem ilk deneme hem sıradaki. */
   const beginAttempt = useCallback((n: number) => {
@@ -187,6 +222,10 @@ export function JumpTest({
     setAttempts([]);
     setBest(null);
     setAllFailed(false);
+    setPlannedAttempts(BASE_ATTEMPTS);
+    plannedAttemptsRef.current = BASE_ATTEMPTS;
+    setHistoryHint(null);
+    rememberOrientation();
     beginAttempt(1);
   };
 
@@ -223,7 +262,8 @@ export function JumpTest({
       // Geçerlilik kapısı analizden ÖNCE: geçersiz bir yakalama hiç
       // ölçülmemeli. Sonradan atılırsa aradaki her adımda geçerli sonuç gibi
       // görünür ve bir gün bir yerden sızar.
-      const claimAnalysis = analyzeJump(samplesRef.current);
+      const identity = { ageYears: childAgeYears, sex: childSex };
+      const claimAnalysis = analyzeJump(samplesRef.current, identity);
       const outcome = await gateEvaluate({
         valid: claimAnalysis.valid,
         primaryValue: claimAnalysis.jumpHeightCmFlight,
@@ -237,36 +277,56 @@ export function JumpTest({
       cancelled = true;
     };
 
-    function finishAttempt(outcome: {
-      allowed: boolean;
-      sigmaMultiplier: number;
-      injuryWarnings: readonly string[];
-    }) {
+    function finishAttempt(outcome: GateOutcome) {
       let attempt: AttemptOutcome;
       try {
         if (!outcome.allowed) {
           attempt = {
             index: attemptsRef.current.length,
             accepted: false,
-            analysis: analyzeJump(samplesRef.current),
+            analysis: analyzeJump(samplesRef.current, {
+              ageYears: childAgeYears,
+              sex: childSex,
+            }),
             score: null,
             techniqueMultiplier: 1,
             judgeInjuryWarnings: [],
-            visionApplied: gate.visionApplied,
-            rejectionHint: gate.rejection?.retryHint ?? 'Bu deneme sayılmadı.',
+            visionApplied: outcome.visionApplied,
+            rejectionHint: outcome.rejection?.retryHint ?? 'Bu deneme sayılmadı.',
           };
         } else {
-          let analysis = analyzeJump(samplesRef.current);
-          if (
-            analysis.valid &&
-            childHeightCm != null &&
-            calibrationFrameRef.current
-          ) {
+          const identity = { ageYears: childAgeYears, sex: childSex };
+          let analysis = analyzeJump(samplesRef.current, identity);
+          if (analysis.valid && calibrationFrameRef.current) {
             analysis = calibrateJumpHeight(
               analysis,
               calibrationFrameRef.current,
-              childHeightCm
+              childHeightCm ?? null,
+              identity
             );
+          }
+          const tel = getDetectorTelemetry();
+          const captureMult = captureQualitySigmaMultiplier({
+            avgFps: tel.avgFps,
+            modelTier: tel.modelTier,
+          });
+          if (analysis.jumpHeightSigmaCm != null) {
+            analysis = {
+              ...analysis,
+              jumpHeightSigmaCm:
+                analysis.jumpHeightSigmaCm *
+                outcome.sigmaMultiplier *
+                captureMult,
+            };
+          }
+          if (tel.avgFps > 0 && tel.avgFps < 24) {
+            analysis = {
+              ...analysis,
+              captureNotes: [
+                ...analysis.captureNotes,
+                `Düşük kare hızı (~${tel.avgFps.toFixed(0)} fps) — belirsizlik arttı.`,
+              ],
+            };
           }
           const computedScore =
             analysis.valid && analysis.jumpHeightCm != null
@@ -279,7 +339,7 @@ export function JumpTest({
             score: computedScore,
             techniqueMultiplier: outcome.sigmaMultiplier,
             judgeInjuryWarnings: outcome.injuryWarnings,
-            visionApplied: gate.visionApplied,
+            visionApplied: outcome.visionApplied,
             rejectionHint: analysis.valid ? null : (analysis.reason ?? null),
           };
         }
@@ -304,6 +364,7 @@ export function JumpTest({
             flightMethod: null,
             cmPerUnitFromGravity: null,
             ballisticFit: null,
+            captureNotes: [],
             valid: false,
             reason: 'Analiz sırasında beklenmedik bir hata oluştu.',
           },
@@ -318,16 +379,31 @@ export function JumpTest({
       attemptsRef.current = [...attemptsRef.current, attempt];
       setAttempts(attemptsRef.current);
 
-      if (attemptsRef.current.length < TOTAL_ATTEMPTS) {
+      const done = attemptsRef.current.length;
+      const planned = plannedAttemptsRef.current;
+      if (
+        done === BASE_ATTEMPTS &&
+        planned < MAX_ATTEMPTS &&
+        needsOutlierRetry(attemptsRef.current)
+      ) {
+        plannedAttemptsRef.current = MAX_ATTEMPTS;
+        setPlannedAttempts(MAX_ATTEMPTS);
         setPhase('between');
         return;
       }
 
-      // Üçüncü (son) deneme bitti — 3'ün en iyisini seç.
+      if (done < plannedAttemptsRef.current) {
+        setPhase('between');
+        return;
+      }
+
       const winner = pickBestJumpAttempt(attemptsRef.current);
       if (winner) {
         setBest(winner);
         setAllFailed(false);
+        if (winner.analysis.jumpHeightCm != null) {
+          setHistoryHint(historyConsistencyHint(winner.analysis.jumpHeightCm));
+        }
         onCompleteRef.current?.({
           ...winner.analysis,
           score: winner.score,
@@ -343,7 +419,6 @@ export function JumpTest({
     // onComplete kasten dışarıda: inline arrow olarak gelirse her parent
     // render'ında deps değişir, analyze etkisi yeniden ateşler ve test
     // sonucu store'a iki kez yazılır. Ref ile sabitledik.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, childAgeYears, childSex, childHeightCm, gateEvaluate]);
 
   // Between -> sıradaki deneme (otomatik).
@@ -364,13 +439,19 @@ export function JumpTest({
     <TestStage
       cameraSlot={
         <>
-          <CameraStream onFrame={handleFrame} width={640} height={480} />
+          <CameraStream
+            onFrame={handleFrame}
+            onScene={handleScene}
+            width={640}
+            height={480}
+          />
 
           {phase === 'countdown' && (
             <CountdownOverlay
               value={countdown}
               reducedMotion={reducedMotion}
               attemptNumber={attemptNumber}
+              plannedAttempts={plannedAttempts}
             />
           )}
 
@@ -379,6 +460,7 @@ export function JumpTest({
               remaining={captureRemaining}
               reducedMotion={reducedMotion}
               attemptNumber={attemptNumber}
+              plannedAttempts={plannedAttempts}
             />
           )}
 
@@ -408,12 +490,13 @@ export function JumpTest({
           <AllAttemptsFailedPanel attempts={attempts} onRetry={start} />
         ) : phase === 'result' && best ? (
           <div>
-            <ResultCard
+          <ResultCard
               best={best}
               attempts={attempts}
               onRetry={start}
               hasCalibration={childHeightCm != null}
               headingRef={resultHeadingRef}
+              historyHint={historyHint}
             />
             <VisionBadge applied={best.visionApplied} />
           </div>
@@ -421,7 +504,7 @@ export function JumpTest({
           <InstructionsPanel
             eyebrow="Test 01 · Patlayıcı Güç"
             title="Sıçrama (CMJ)"
-            meta={`~30 sn · ${TOTAL_ATTEMPTS} deneme`}
+            meta={`~30 sn · ${plannedAttempts} deneme`}
             steps={STEPS}
             helper={!framing.ready ? framing.hint : undefined}
             cta={<StartCTA onStart={start} canStart={framing.ready} compact />}
@@ -435,7 +518,11 @@ export function JumpTest({
             }
           />
         ) : (
-          <PhaseStatusCard phase={phase} attemptNumber={attemptNumber} />
+          <PhaseStatusCard
+            phase={phase}
+            attemptNumber={attemptNumber}
+            plannedAttempts={plannedAttempts}
+          />
         )
       }
     />
@@ -445,10 +532,16 @@ export function JumpTest({
 // ─────────────────────────────────────────────────────────────────────────────
 // Camera-overlay parçaları
 
-function AttemptPill({ attemptNumber }: { attemptNumber: number }) {
+function AttemptPill({
+  attemptNumber,
+  plannedAttempts,
+}: {
+  attemptNumber: number;
+  plannedAttempts: number;
+}) {
   return (
     <span className="rounded-full bg-black/50 px-2.5 py-1 font-mono text-[10px] font-bold tracking-wider text-white/90 backdrop-blur-sm">
-      DENEME {attemptNumber}/{TOTAL_ATTEMPTS}
+      DENEME {attemptNumber}/{plannedAttempts}
     </span>
   );
 }
@@ -457,15 +550,17 @@ function CountdownOverlay({
   value,
   reducedMotion,
   attemptNumber,
+  plannedAttempts,
 }: {
   value: number;
   reducedMotion: boolean;
   attemptNumber: number;
+  plannedAttempts: number;
 }) {
   return (
     <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/45 backdrop-blur-[2px]">
       <div className="absolute top-4 left-4">
-        <AttemptPill attemptNumber={attemptNumber} />
+        <AttemptPill attemptNumber={attemptNumber} plannedAttempts={plannedAttempts} />
       </div>
       <motion.div
         key={value}
@@ -484,15 +579,17 @@ function CapturePill({
   remaining,
   reducedMotion,
   attemptNumber,
+  plannedAttempts,
 }: {
   remaining: number;
   reducedMotion: boolean;
   attemptNumber: number;
+  plannedAttempts: number;
 }) {
   return (
     <>
       <div className="absolute top-4 left-4">
-        <AttemptPill attemptNumber={attemptNumber} />
+        <AttemptPill attemptNumber={attemptNumber} plannedAttempts={plannedAttempts} />
       </div>
       <div className="absolute top-4 right-4 flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-2xl ring-1 ring-red-400/50">
         <span
@@ -549,9 +646,11 @@ function BetweenAttemptsOverlay({
 function PhaseStatusCard({
   phase,
   attemptNumber,
+  plannedAttempts,
 }: {
   phase: Phase;
   attemptNumber: number;
+  plannedAttempts: number;
 }) {
   const messages: Record<
     Phase,
@@ -559,14 +658,14 @@ function PhaseStatusCard({
   > = {
     idle: { eyebrow: '', title: '', body: '' },
     countdown: {
-      eyebrow: `Deneme ${attemptNumber}/${TOTAL_ATTEMPTS}`,
+      eyebrow: `Deneme ${attemptNumber}/${plannedAttempts}`,
       title: 'Hazırlanıyorsun',
-      body: 'Geri sayım bittiğinde hızlıca patlayıcı bir sıçrama yap. Dik dur, çömel, zıpla.',
+      body: 'Geri sayım bittiğinde hızlıca patlayıcı bir sıçrama yap. Eller belde, çömel, zıpla.',
     },
     capture: {
-      eyebrow: `Deneme ${attemptNumber}/${TOTAL_ATTEMPTS} · Kayıt aktif`,
+      eyebrow: `Deneme ${attemptNumber}/${plannedAttempts} · Kayıt aktif`,
       title: 'Sıçrayışın ölçülüyor',
-      body: 'Kalça hareketin saniyede 30 frame ile kaydediliyor. Zıpladıktan sonra yere indikten sonra dik dur.',
+      body: 'Ellerini belinde tut. Zıpladıktan sonra yere inince dik dur.',
     },
     analyze: {
       eyebrow: 'Hesaplanıyor',
@@ -576,7 +675,7 @@ function PhaseStatusCard({
     between: {
       eyebrow: 'Sırada',
       title: 'Bir sonraki denemeye geçiliyor',
-      body: `3 denemenin en iyisi kaydedilecek — biraz nefeslen, ${attemptNumber + 1}. deneme birazdan başlıyor.`,
+      body: `${plannedAttempts} denemenin en iyisi kaydedilecek — biraz nefeslen, ${attemptNumber + 1}. deneme birazdan başlıyor.`,
     },
     result: { eyebrow: '', title: '', body: '' },
   };
@@ -638,7 +737,7 @@ function AllAttemptsFailedPanel({
         className="text-xl font-black"
         style={{ color: 'var(--form-navy)', fontFamily: 'var(--font-display)' }}
       >
-        3 denemenin hiçbiri sayılmadı
+        {attempts.length} denemenin hiçbiri sayılmadı
       </h3>
       <p
         className="mt-3 text-sm leading-relaxed"
@@ -684,12 +783,14 @@ function ResultCard({
   onRetry,
   hasCalibration,
   headingRef,
+  historyHint,
 }: {
   best: AttemptOutcome;
   attempts: readonly AttemptOutcome[];
   onRetry: () => void;
   hasCalibration: boolean;
   headingRef?: React.RefObject<HTMLHeadingElement | null>;
+  historyHint?: string | null;
 }) {
   const { analysis: result, score } = best;
   return (
@@ -708,7 +809,7 @@ function ResultCard({
           fontFamily: 'var(--font-display)',
         }}
       >
-        Tamam · 01 · 3 denemenin en iyisi
+        Tamam · 01 · {attempts.length} denemenin en iyisi
       </p>
       <h3
         ref={headingRef}
@@ -756,13 +857,36 @@ function ResultCard({
         </p>
       )}
 
+      {result.captureNotes.length > 0 && (
+        <ul className="mt-3 space-y-1">
+          {result.captureNotes.map((n) => (
+            <li
+              key={n}
+              className="text-xs leading-relaxed"
+              style={{ color: 'var(--color-ink-3)' }}
+            >
+              {n}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {historyHint && (
+        <p
+          className="mt-3 text-xs leading-relaxed"
+          style={{ color: 'var(--form-navy)' }}
+        >
+          {historyHint}
+        </p>
+      )}
+
       {attempts.length > 1 && (
         <div className="mt-5 border-t pt-4" style={{ borderColor: 'rgba(44, 62, 107, 0.18)' }}>
           <p
             className="text-[10px] font-bold tracking-[0.2em] uppercase"
             style={{ color: 'var(--color-ink-3)', fontFamily: 'var(--font-display)' }}
           >
-            3 Denemenin Dökümü
+            {attempts.length} Denemenin Dökümü
           </p>
           <ul className="mt-2 space-y-1.5">
             {attempts.map((a) => (
@@ -851,4 +975,24 @@ function Stat({
       </dd>
     </div>
   );
+}
+
+function rememberOrientation(): void {
+  if (typeof window === 'undefined') return;
+  const current =
+    screen.orientation?.type ??
+    (window.innerHeight > window.innerWidth ? 'portrait' : 'landscape');
+  try {
+    sessionStorage.setItem(ORIENTATION_KEY, current);
+  } catch {
+    // private mode
+  }
+  const orientation = screen.orientation as
+    | (ScreenOrientation & { lock?: (t: string) => Promise<void> })
+    | undefined;
+  if (typeof orientation?.lock === 'function') {
+    void orientation.lock('portrait').catch(() => {
+      /* iOS Safari desteklemez — kapı kurulmaz */
+    });
+  }
 }

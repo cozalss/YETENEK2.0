@@ -10,28 +10,16 @@
  *   LAUNCH   → ankle X hızlı yer değişimi (yatay patlayış).
  *   LAND     → ankle X tekrar stabilize, yeni konum.
  *
- * ## Mesafe ölçümü — NEDEN worldLandmarks zorunlu
+ * ## Mesafe ölçümü — görüntü X × bacak ölçeği
  *
- * Eskiden mesafe `|ankleX_end − ankleX_start| (normalize) × cmPerUnit`
- * idi ve `cmPerUnit` **dikey** hip-ankle mesafesinden (worldLandmarks veya
- * boy) türetiliyordu. Bir eksende ölçülen bir ölçeği başka bir eksendeki
- * mesafeye uygulamak — kamera profilden çekilse bile — geometrik olarak
- * savunulamazdı; boy tabanlı fallback'te ayrıca çocuğun kamerayla arasındaki
- * mesafeye (derinlik) hiç bakmadan tek bir "boy = X piksel" varsayımı
- * yapılıyordu. Sonuç: ebeveyne "142 cm" gibi tek ondalıklı bir sayı, aslında
- * hangi hatayla üretildiği bilinmeyen bir tahmindi.
+ * MediaPipe `worldLandmarks` kalça orijinlidir: vücut öne gidince ayak–
+ * kalça ofseti değişir, yerde kat edilen mesafe görünmez. ΔworldX bu yüzden
+ * 1–8 cm gibi duruş farkı üretir (atlama değil).
  *
- * Artık mesafe SADECE worldLandmarks'tan (MediaPipe'ın ürettiği, kalça-
- * merkezli metrik 3D tahmini) hesaplanıyor: başlangıç ve iniş penceresindeki
- * dünya-X ortalaması arasındaki fark, doğrudan cm'e çevriliyor — eksen
- * karışıklığı yok, boy girilmesi gerekmiyor. Bu izleme o oturumda yeterince
- * güvenilir değilse (occlusion, kötü ışık, pencerenin yarısından azında
- * worldLandmarks var) `jumpDistanceCm` `null` kalır ve UI sayıyı hiç
- * göstermez — yaklaşık bir cm uydurmak yerine.
- *
- * Yan görünüm hâlâ öneriliyor (`BroadJumpTest` STEPS[0]) çünkü worldLandmarks
- * derinlik tahmini yandan daha stabil, ama zorunlu koşul worldLandmarks'ın
- * kendisi — kamera açısı pose'tan güvenilir doğrulanamıyor.
+ * Yan kamera protokolünde atlama görüntü düzleminde X'tir. Ölçek aynı karede
+ * bacak uzunluğundan gelir (`getCmPerUnit`: world hip–ankle / görüntü
+ * hip–ankle). Mesafe = `|endX − startX| × cmPerUnit`. 40 cm altı (veya
+ * ölçek yok) `null` — yaklaşık sayı uydurulmaz.
  *
  * Yaş normları (kaynak: Tomkinson 2018 BJSM 52:1445, Thomas 2020 EJTM 30(2):9050,
  * Ramírez-Vélez 2017 Nutrients 9:1167; <11 yaş için interp+pediatric pilot
@@ -40,7 +28,7 @@
 
 import type { PoseFrame } from '@/types';
 import { POSE_LANDMARKS } from '@/types';
-import { hasVisibleLandmarks, smoothSeries } from '@/lib/pose/extractKeypoints';
+import { hasVisibleLandmarks, getCmPerUnit, smoothSeries } from '@/lib/pose/extractKeypoints';
 import { zScorePercentile } from '@/lib/stats/normalCdf';
 
 const REQUIRED_LANDMARKS = [
@@ -55,9 +43,8 @@ export interface BroadJumpSample {
   ankleX: number; // ayak ortalaması X, normalize 0-1
   /**
    * Ayak ortalaması X, worldLandmarks'tan (metre, kalça-merkezli) — mevcutsa.
-   * Mesafe hesabı BUNDAN türetilir (bkz. `calibrateBroadJump`). Pose tespiti
-   * o karede zayıfsa (occlusion, kötü ışık) veya çağıran world tracking
-   * sağlamıyorsa `undefined`/`null` — uydurmak yerine eksik bırakılır.
+   * Mesafe hesabı bundan TÜRETİLMEZ (kalça orijini translasyonu gizler);
+   * yalnız tanı/telemetri için tutulur.
    */
   worldAnkleX?: number | null;
 }
@@ -68,11 +55,8 @@ export interface BroadJumpAnalysis {
   startX: number;
   endX: number;
   /**
-   * Başlangıç/iniş penceresindeki dünya-koordinat (worldLandmarks, metre)
-   * ankle X ortalaması. İkisi de doluysa `calibrateBroadJump` mesafeyi
-   * doğrudan bunların farkından hesaplar — normalize `startX`/`endX` yalnız
-   * ZAMANLAMA (ne zaman ayrıldı/indi) için kullanılır, metrik dönüşüm için
-   * değil (bkz. dosya başı doküman).
+   * Başlangıç/iniş penceresindeki dünya-koordinat ankle X. Mesafe için
+   * kullanılmaz; kalça-merkezli world X translasyonu ölçemez.
    */
   startWorldX: number | null;
   endWorldX: number | null;
@@ -83,6 +67,8 @@ export interface BroadJumpAnalysis {
 // 30cm normalize ≈ 0.08 birim (kişi çerçevenin %35'ini kaplarsa).
 // Bunun altı kayma/titreşim olarak değerlendirilir.
 const MIN_JUMP_UNITS = 0.06;
+/** 8-15 yaş standing long jump nadiren 40 cm altındadır — altı ölçek hatası. */
+const MIN_JUMP_DISTANCE_CM = 40;
 const START_WINDOW_FRAMES = 15;
 const END_WINDOW_FRAMES = 15;
 
@@ -275,22 +261,32 @@ export function analyzeBroadJump(
 }
 
 /**
- * Ölçülen mesafeyi cm'e çevirir — SADECE worldLandmarks'tan (bkz. dosya başı
- * doküman: bir eksende ölçülen ölçeği başka eksene uygulamak savunulamazdı).
+ * Ölçülen mesafeyi cm'e çevirir: görüntü `jumpUnits` × bacak ölçeği
+ * (`getCmPerUnit`). World ΔX kullanılmaz — kalça orijinli 3D translasyonu
+ * gizler ve 1–8 cm üretir.
  *
- * `startWorldX`/`endWorldX`'ten biri `null`sa (yetersiz 3D izleme) mesafe
- * hesaplanmaz — `jumpDistanceCm` `null` kalır. UI bunu yaklaşık bir sayı
- * göstermek yerine "mesafe ölçülemedi" olarak ele almalı.
+ * Ölçek yoksa veya sonuç 40 cm altındaysa `jumpDistanceCm` `null` kalır.
  */
 export function calibrateBroadJump(
-  analysis: BroadJumpAnalysis
+  analysis: BroadJumpAnalysis,
+  calibrationFrame: PoseFrame | null,
+  heightCm: number | null = null
 ): BroadJumpAnalysis {
   if (!analysis.valid) return analysis;
-  if (analysis.startWorldX == null || analysis.endWorldX == null) {
-    return analysis;
+  if (calibrationFrame == null) {
+    return { ...analysis, jumpDistanceCm: null };
   }
-  const jumpDistanceCm =
-    Math.abs(analysis.endWorldX - analysis.startWorldX) * 100;
+  const cmPerUnit = getCmPerUnit(calibrationFrame, heightCm);
+  if (cmPerUnit == null) {
+    return { ...analysis, jumpDistanceCm: null };
+  }
+  const jumpDistanceCm = analysis.jumpUnits * cmPerUnit;
+  if (
+    !Number.isFinite(jumpDistanceCm) ||
+    jumpDistanceCm < MIN_JUMP_DISTANCE_CM
+  ) {
+    return { ...analysis, jumpDistanceCm: null };
+  }
   return { ...analysis, jumpDistanceCm };
 }
 

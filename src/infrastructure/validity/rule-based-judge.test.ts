@@ -46,6 +46,8 @@ interface PoseOptions {
   readonly hipLift?: number;
   /** Gövdenin yanal kayması, vücut boyu oranı. */
   readonly lateralShift?: number;
+  /** Bileklerin kalçaya göre yükselmesi, vücut boyu oranı (kol savurma). */
+  readonly wristLift?: number;
 }
 
 /**
@@ -85,6 +87,10 @@ function makeFrame(t: number, o: PoseOptions): PoseFrame {
   put(POSE_LANDMARKS.RIGHT_KNEE, 0.05 * h, kneeY - lift);
   put(POSE_LANDMARKS.LEFT_ANKLE, -0.05 * h, GROUND_Y - both);
   put(POSE_LANDMARKS.RIGHT_ANKLE, 0.05 * h, GROUND_Y - lift - both);
+  // Eller belde (varsayılan). Kol savurma testi bilek Y'sini düşürür.
+  const wristLift = (o.wristLift ?? 0) * h;
+  put(POSE_LANDMARKS.LEFT_WRIST, -0.12 * h, hipY - wristLift);
+  put(POSE_LANDMARKS.RIGHT_WRIST, 0.12 * h, hipY - wristLift);
 
   return { timestamp: t, landmarks };
 }
@@ -222,5 +228,65 @@ describe('Kural hakemi — sıçrarken diz toplama (tuck)', () => {
       };
     });
     expect(await violations('jump', fs)).toEqual([]);
+  });
+});
+
+describe('Kural hakemi — kalça balistiği ayağı ezer', () => {
+  it('ayak yere yapışık olsa da kalça parabolü sıçramayı kabul eder', async () => {
+    // MediaPipe "yapışkan ayak": ayak bileği yerde kalır, kalça serbest düşüş
+    // parabolü çizer. Eski kod airborne===0 diye keserdi.
+    const fill = FILL_PHONE;
+    const childHeightCm = 150;
+    const g = 9.81 * 100 / 1_000_000; // cm/ms²
+    const flightStartMs = 1500;
+    const T = 400;
+    const v0 = (g * T) / 2;
+
+    const fs = frames(90, (i) => {
+      const tMs = (i * 1000) / FPS;
+      const t = tMs - flightStartMs;
+      let hipLift = 0;
+      if (t > 0 && t < T) {
+        const riseCm = v0 * t - 0.5 * g * t * t;
+        hipLift = riseCm / childHeightCm;
+      }
+      return { fill, hipLift, bothAnklesLift: 0 };
+    });
+
+    const r = await judge.judge({ test: 'jump', frames: fs });
+    expect(r.ok).toBe(true);
+    if (!r.ok) throw new Error('unreachable');
+    expect(r.value.performed).toBe(true);
+    expect(r.value.protocolViolations).toEqual([]);
+  });
+
+  it('hiç kıpırdamayan duruş no_flight_phase ile reddedilir', async () => {
+    const fs = frames(60, () => ({ fill: FILL_PHONE }));
+    expect(await violations('jump', fs)).toContain('no_flight_phase');
+  });
+});
+
+describe('Kural hakemi — kol savurma', () => {
+  it('eller belde sıçrama geçer', async () => {
+    const fs = frames(60, (i) => {
+      const airborne = i >= 30 && i < 42;
+      const up = airborne ? 0.08 : 0;
+      return { fill: FILL_PHONE, bothAnklesLift: up, hipLift: up };
+    });
+    expect(await violations('jump', fs)).toEqual([]);
+  });
+
+  it('kollar savrulunca arm_swing reddi', async () => {
+    const fs = frames(60, (i) => {
+      const airborne = i >= 30 && i < 42;
+      const up = airborne ? 0.08 : 0;
+      return {
+        fill: FILL_PHONE,
+        bothAnklesLift: up,
+        hipLift: up,
+        wristLift: airborne ? 0.45 : 0,
+      };
+    });
+    expect(await violations('jump', fs)).toContain('arm_swing');
   });
 });

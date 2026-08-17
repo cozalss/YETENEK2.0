@@ -19,8 +19,7 @@
  */
 
 import {
-  INVALIDATING_VIOLATIONS,
-  UNIVERSAL_INVALIDATING,
+  isFatalViolation,
   type Compensation,
   type ProtocolViolation,
   type TestVerdict,
@@ -63,6 +62,11 @@ export interface RejectedMeasurement {
   /** Çocuğa gösterilecek, ihlale özgü Türkçe ipucu. */
   readonly retryHint: string;
   readonly verdict: TestVerdict;
+  /**
+   * Kararı hangi hakem kesti. `applyVerdict` bunu doldurmaz — kapı
+   * birleştirme sonrası yazar. Yoksa UI kaynak satırını gizler.
+   */
+  readonly rejectedBy?: 'rules' | 'vision';
 }
 
 /** İhlal → çocuğa gösterilecek somut düzeltme. Genel "tekrar dene" değil. */
@@ -79,6 +83,8 @@ const RETRY_HINTS: Readonly<Record<ProtocolViolation, string>> = {
     'Sıçramak yerine adım attın. Çömelip iki ayağınla birlikte öne doğru zıpla.',
   heel_raise_only:
     'Sadece topuklarını kaldırdın. Çömelip bütün vücudunla patlayıcı bir şekilde yukarı zıpla.',
+  arm_swing:
+    'Kollarını savurdun. Ellerini beline koy, orada tut ve tekrar zıpla — bu test kolsuz ölçüye kalibrlidir.',
   non_ballistic:
     'Hareket sıçramaya benzemiyor — çok yavaş yükseldin. Hızlı ve patlayıcı bir zıplama dene.',
   insufficient_amplitude:
@@ -148,10 +154,7 @@ export function compensationsToWarnings(
 }
 
 function isInvalidating(test: TestType, v: ProtocolViolation): boolean {
-  return (
-    UNIVERSAL_INVALIDATING.includes(v) ||
-    INVALIDATING_VIOLATIONS[test].includes(v)
-  );
+  return isFatalViolation(test, v);
 }
 
 /**

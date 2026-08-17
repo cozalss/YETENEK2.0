@@ -3,6 +3,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import type { PoseFrame } from '@/types';
+import { POSE_LANDMARKS } from '@/types';
 import {
   analyzeBroadJump,
   broadJumpPercentile,
@@ -55,41 +57,103 @@ describe('analyzeBroadJump', () => {
   });
 });
 
-describe('calibrateBroadJump — mesafe SADECE worldLandmarks üzerinden', () => {
-  function jumpWithWorld(opts: {
-    startX: number;
-    endX: number;
-    worldStartX: number;
-    worldEndX: number;
-  }): BroadJumpSample[] {
-    return jump({ startX: opts.startX, endX: opts.endX }).map((s, i, arr) => ({
-      ...s,
-      // İlk yarı başlangıç penceresinde, ikinci yarı iniş penceresinde —
-      // `jump()` yardımcısı zaten anlık geçişli iki blok üretiyor.
-      worldAnkleX:
-        s.ankleX === arr[0].ankleX ? opts.worldStartX : opts.worldEndX,
+describe('calibrateBroadJump — görüntü ΔX × bacak ölçeği', () => {
+  function makeCalibFrame(opts: {
+    imageHipAnkle: number;
+    worldHipAnkleM: number;
+  }): PoseFrame {
+    const hipY = 0.5;
+    const ankleY = hipY + opts.imageHipAnkle;
+    const landmarks = Array.from({ length: 33 }, () => ({
+      x: 0.5,
+      y: 0.5,
+      z: 0,
+      visibility: 0.95,
     }));
+    landmarks[POSE_LANDMARKS.LEFT_HIP] = { x: 0.5, y: hipY, z: 0, visibility: 0.95 };
+    landmarks[POSE_LANDMARKS.RIGHT_HIP] = { x: 0.5, y: hipY, z: 0, visibility: 0.95 };
+    landmarks[POSE_LANDMARKS.LEFT_ANKLE] = {
+      x: 0.5,
+      y: ankleY,
+      z: 0,
+      visibility: 0.95,
+    };
+    landmarks[POSE_LANDMARKS.RIGHT_ANKLE] = {
+      x: 0.5,
+      y: ankleY,
+      z: 0,
+      visibility: 0.95,
+    };
+    const worldLandmarks = Array.from({ length: 33 }, () => ({
+      x: 0,
+      y: 0,
+      z: 0,
+    }));
+    worldLandmarks[POSE_LANDMARKS.LEFT_ANKLE] = {
+      x: 0,
+      y: opts.worldHipAnkleM,
+      z: 0,
+    };
+    worldLandmarks[POSE_LANDMARKS.RIGHT_ANKLE] = {
+      x: 0,
+      y: opts.worldHipAnkleM,
+      z: 0,
+    };
+    return { timestamp: 0, landmarks, worldLandmarks };
   }
 
-  it('worldLandmarks mevcutsa mesafe dünya-X farkından hesaplanır (dikey oran YOK)', () => {
-    const samples = jumpWithWorld({
-      startX: 0.3,
-      endX: 0.55,
-      worldStartX: 0.1,
-      worldEndX: 0.52, // 0.42m fark → 42cm
-    });
-    const analysis = calibrateBroadJump(analyzeBroadJump(samples));
+  it('görüntü ΔX × bacak ölçeği gerçekçi cm verir', () => {
+    // 0.45 image units × (0.45m / 0.30) = 0.45 × 150 = 67.5 cm
+    const samples = jump({ startX: 0.25, endX: 0.7 });
+    const analysis = analyzeBroadJump(samples);
     expect(analysis.valid).toBe(true);
-    expect(analysis.jumpDistanceCm).not.toBeNull();
-    expect(analysis.jumpDistanceCm).toBeCloseTo(42, 0);
+    const calibrated = calibrateBroadJump(
+      analysis,
+      makeCalibFrame({ imageHipAnkle: 0.3, worldHipAnkleM: 0.45 })
+    );
+    expect(calibrated.jumpDistanceCm).toBeGreaterThan(50);
+    expect(calibrated.jumpDistanceCm).toBeLessThan(90);
   });
 
-  it('worldLandmarks yoksa mesafe null kalır — yaklaşık sayı uydurulmaz', () => {
-    // `jump()` düz kullanımı worldAnkleX taşımıyor.
-    const samples = jump({ startX: 0.3, endX: 0.55 });
-    const analysis = calibrateBroadJump(analyzeBroadJump(samples));
+  it('küçük world ΔX büyük görüntü hareketini 1–8 cm yazmaz', () => {
+    const samples = jump({ startX: 0.25, endX: 0.7 }).map((s, _i, arr) => ({
+      ...s,
+      worldAnkleX: s.ankleX === arr[0].ankleX ? 0 : 0.08,
+    }));
+    const analysis = analyzeBroadJump(samples);
+    const calibrated = calibrateBroadJump(
+      analysis,
+      makeCalibFrame({ imageHipAnkle: 0.3, worldHipAnkleM: 0.45 })
+    );
+    expect(calibrated.jumpDistanceCm).not.toBeNull();
+    expect(calibrated.jumpDistanceCm).toBeGreaterThan(40);
+    expect(calibrated.jumpDistanceCm).not.toBeCloseTo(8, 0);
+  });
+
+  it('40 cm altı mesafe null — güvenilir değil', () => {
+    const samples = jump({ startX: 0.4, endX: 0.48 });
+    const analysis = analyzeBroadJump(samples);
     expect(analysis.valid).toBe(true);
-    expect(analysis.jumpDistanceCm).toBeNull();
+    const calibrated = calibrateBroadJump(
+      analysis,
+      makeCalibFrame({ imageHipAnkle: 0.4, worldHipAnkleM: 0.4 })
+    );
+    expect(calibrated.jumpDistanceCm).toBeNull();
+  });
+
+  it('ölçek yoksa mesafe null kalır — yaklaşık sayı uydurulmaz', () => {
+    const samples = jump({ startX: 0.25, endX: 0.7 });
+    const analysis = analyzeBroadJump(samples);
+    const emptyFrame: PoseFrame = {
+      timestamp: 0,
+      landmarks: Array.from({ length: 33 }, () => ({
+        x: 0.5,
+        y: 0.5,
+        visibility: 0.2,
+      })),
+    };
+    expect(calibrateBroadJump(analysis, emptyFrame, null).jumpDistanceCm).toBeNull();
+    expect(calibrateBroadJump(analysis, null).jumpDistanceCm).toBeNull();
   });
 });
 

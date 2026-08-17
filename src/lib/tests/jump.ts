@@ -28,17 +28,19 @@ import type { PoseFrame } from '@/types';
 import {
   getCmPerUnit,
   getHipCenter,
+  getShoulderCenter,
   hasVisibleLandmarks,
   smoothSeries,
 } from '@/lib/pose/extractKeypoints';
 import { POSE_LANDMARKS } from '@/types';
 import {
-  fitParabola,
+  fitParabolaRobust,
   solveFlightFromParabola,
   flightTimeToHeightCm,
   heightSigmaCm,
   type FlightSolution,
 } from './kinematics';
+import { MIN_SIGMA_CM, OUTLIER_SIGMA_K } from './jumpStats';
 
 // Hip + ayak görünmeden ölçüm güvenilmez.
 const REQUIRED_LANDMARKS = [
@@ -50,12 +52,30 @@ const REQUIRED_LANDMARKS = [
 
 export interface HipSample {
   t: number; // ms (frame timestamp)
-  y: number; // normalized image y kalça merkezi (0-1, daha küçük = daha yukarıda)
+  /**
+   * Dikey seri — gövde merkezi proxy'si (`0.6 × kalça + 0.4 × omuz`) veya
+   * omuz yoksa kalça. Bu gerçek bir biyomekanik kütle merkezi değil; gövde
+   * rijit olduğu için iki bağımsız jitter'ı düşüren bir araç. Diz bilinçli
+   * olarak dışarıda: uçuşta diz çekme onu yukarı kaydırır ve ölçümü şişirir.
+   */
+  y: number;
+  /** Ham kalça Y — yatay kayma ve bacak ölçeği için. */
+  hipY?: number;
+  hipX?: number;
   /** Ayak bileği Y (sol/sağ ortalaması). Flight-time tespiti için. */
   ankleY?: number;
+  /** Fit'e giren kareler için min(kalça, ayak) görünürlüğü. */
+  visibility?: number;
+  /** En bükük diz açısı (derece); çömelme derinliği için. */
+  kneeAngleDeg?: number;
 }
 
 export type HeightMethod = 'flight-time' | 'hip-displacement' | 'consensus';
+
+export type JumpIdentity = {
+  readonly ageYears: number;
+  readonly sex: 'male' | 'female';
+};
 
 export interface JumpAnalysis {
   /** Net hip Y delta — normalize birim cinsinden (cross-check için) */
@@ -97,6 +117,11 @@ export interface JumpAnalysis {
   cmPerUnitFromGravity: number | null;
   /** Balistik uyum kalitesi (R²). Yalnız 'parabolic' yöntemde dolu. */
   ballisticFit: number | null;
+  /**
+   * Test sırası yumuşak sinyaller — reddetmez, σ'yı genişletir. Veliye
+   * gösterilecek kısa notlar (yatay kayma, sığ çömelme, düşük fps).
+   */
+  captureNotes: readonly string[];
   /** Yorumlama yapacak kadar veri var mıydı */
   valid: boolean;
   /** Validasyon başarısızsa sebep */
@@ -121,15 +146,19 @@ const MIN_TAKEOFF_TO_APEX_MS = 100;
 // 0.015 = "çok hafif sıçrama" eşiği, üstünü kabul ediyoruz.
 const ANKLE_LIFT_THRESHOLD = 0.015;
 const MIN_FLIGHT_TIME_MS = 100; // 0.1s = ~12cm fiziksel limit
-const MAX_FLIGHT_TIME_MS = 1200; // 1.2s = ~177cm — kimse bu kadar zıplamaz, glitch
+// 0.7s ≈ 60 cm (Bosco). 8-15 yaş CMJ'de 60 cm elit; 1.2s/177cm glitch'e yol
+// açıyordu (eşik fallback ~1s uçuş → 125 cm "en iyi" seçiliyordu).
+const MAX_FLIGHT_TIME_MS = 700;
 const MIN_FLIGHT_HEIGHT_CM = 5; // Daha azı yanlış-pozitif
+/** Yaş tavanı: norm ortalama + bu kadar SD. 14 yaş erkek ≈ 60 cm. */
+const PLAUSIBLE_HEIGHT_SD = 4;
 
 // Cross-method tolerance — iki yöntem (flight-time + hip-displacement) %20'den
-// fazla farklıysa kullanıcı kalibrasyon hatası ya da kamera açısı yaşıyor;
-// `consistent: false` flag'lenir ve flight-time'a güvenilir. Eşik Donaldson
-// & Edge 2014'ten (J Sci Med Sport 17:670) uyarlandı: motion capture vs
-// flight-time CMJ ölçüm farkı tipik %5-15; %20 üstü = method drift.
+// fazla farklıysa VE mutlak fark 15 cm'i aşarsa deneme reddedilir. Eşik
+// Donaldson & Edge 2014'ten (J Sci Med Sport 17:670): motion capture vs
+// flight-time farkı tipik %5-15; %20 + 15 cm üstü = yanlış uçuş tespiti.
 const HEIGHT_AGREEMENT_TOLERANCE = 0.2;
+const HEIGHT_AGREEMENT_ABS_CM = 15;
 
 /**
  * Parabol fit'inin "bu gerçekten serbest düşüştü" sayılması için gereken
@@ -139,6 +168,22 @@ const HEIGHT_AGREEMENT_TOLERANCE = 0.2;
  * yakalamasına pay bırakırken balistik olmayanı elemeye yeter.
  */
 const MIN_BALLISTIC_R_SQUARED = 0.9;
+
+/**
+ * Force-plate sapması ölçülene kadar 0. Kamera tabanlı uçuş süresinin
+ * platforma göre tutarlı bir kayması vardır; ölçülmeden sabit uydurmak
+ * mevcut durumdan kötüdür. Pilot protokolü: `docs/BIAS_PILOT.md`.
+ */
+export const BIAS_CORRECTION_CM = 0;
+
+/** Fit'e giren karelerde kalça/ayak görünürlük tabanı — bulanık uçuş karelerini eker. */
+const FIT_MIN_VISIBILITY = 0.65;
+
+/** Yatay kayma: uçuşta kalça X aralığı bacak uzunluğunun bu oranını aşarsa σ şişer. */
+const HORIZONTAL_DRIFT_FRAC = 0.18;
+/** Çömelmede diz açısı (derece) — aşırı sığ / aşırı derin. */
+const SQUAT_SHALLOW_DEG = 145;
+const SQUAT_DEEP_DEG = 55;
 
 interface FlightDetection {
   takeoffIdx: number;
@@ -169,36 +214,38 @@ interface FlightDetection {
  * yapılmış "daha hassas" bir fit, daha kötü bir tahmindir.
  */
 function refineFlightSolution(
-  ts: readonly number[],
-  ys: readonly number[],
+  samples: ReadonlyArray<HipSample & { ankleY: number }>,
   takeoffIdx: number,
   landingIdx: number,
   baselineY: number
 ): FlightSolution | null {
   const coarseEnd = Math.max(takeoffIdx + 1, landingIdx - 1);
-  const coarseTs = ts.slice(takeoffIdx, coarseEnd + 1);
-  const coarseYs = ys.slice(takeoffIdx, coarseEnd + 1);
+  const window = samples.slice(takeoffIdx, coarseEnd + 1);
+  const visible = window.filter((s) => (s.visibility ?? 1) >= FIT_MIN_VISIBILITY);
+  const coarse = visible.length >= 5 ? visible : window;
+  const coarseTs = coarse.map((s) => s.t);
+  const coarseYs = coarse.map((s) => s.ankleY);
 
-  const coarseFit = fitParabola(coarseTs, coarseYs);
+  const coarseFit = fitParabolaRobust(coarseTs, coarseYs);
   if (!coarseFit) return null;
-  const coarse = solveFlightFromParabola(coarseFit, baselineY, coarseYs);
-  if (!coarse) return null;
+  const coarseSol = solveFlightFromParabola(coarseFit, baselineY, coarseYs);
+  if (!coarseSol) return null;
 
   // Köklerin kesin içinde kalan kareler — yer temasına ait olanlar elenir.
-  const innerTs: number[] = [];
-  const innerYs: number[] = [];
-  for (let i = 0; i < ts.length; i++) {
-    if (ts[i] > coarse.takeoffMs && ts[i] < coarse.landingMs) {
-      innerTs.push(ts[i]);
-      innerYs.push(ys[i]);
-    }
-  }
-  if (innerTs.length < 5) return coarse;
+  const inner = samples.filter(
+    (s) =>
+      s.t > coarseSol.takeoffMs &&
+      s.t < coarseSol.landingMs &&
+      (s.visibility ?? 1) >= FIT_MIN_VISIBILITY
+  );
+  if (inner.length < 5) return coarseSol;
 
-  const fineFit = fitParabola(innerTs, innerYs);
-  if (!fineFit) return coarse;
+  const innerTs = inner.map((s) => s.t);
+  const innerYs = inner.map((s) => s.ankleY);
+  const fineFit = fitParabolaRobust(innerTs, innerYs);
+  if (!fineFit) return coarseSol;
   const fine = solveFlightFromParabola(fineFit, baselineY, innerYs);
-  return fine ?? coarse;
+  return fine ?? coarseSol;
 }
 
 /** Örneklerin medyan zaman aralığı (ms) — kare kuantizasyonu için. */
@@ -263,12 +310,12 @@ function detectFlightPhase(samples: HipSample[]): FlightDetection | null {
   // bastırıyor ve artık standart sapması gerçek sensör gürültüsünü ölçüyor.
   // Yumuşatılmış seri kullanılsaydı residualStd yapay olarak küçülür, σ yalan
   // söylerdi.
-  //
-  // Pencere seçimi kritik: `landingIdx` zaten yere basılan ilk karedir, uçuşa
-  // ait değildir. Parabol dışı kareler fit'e girerse eğrilik yassılaşır, ölçek
-  // ve süre birlikte kayar. Bu yüzden önce kaba pencereyle bir kez çözülür,
-  // sonra bulunan köklerle pencere daraltılıp **yeniden** fit edilir.
-  const solution = refineFlightSolution(ts, ankleYs, takeoffIdx, landingIdx, baselineAnkleY);
+  const solution = refineFlightSolution(
+    ankleSamples,
+    takeoffIdx,
+    landingIdx,
+    baselineAnkleY
+  );
 
   if (
     solution &&
@@ -330,9 +377,10 @@ function invalid(
     flightMethod: null,
     cmPerUnitFromGravity: null,
     ballisticFit: null,
+    captureNotes: [],
+    ...partial,
     valid: false,
     reason,
-    ...partial,
   };
 }
 
@@ -349,7 +397,10 @@ function invalid(
  *   - Toplam hareket çok küçükse → ufak baş hareketi sayılır, reddedilir
  *   - Apex 100ms'den hızlı veya 700ms'den yavaş ulaşılmışsa → reddedilir
  */
-export function analyzeJump(samples: HipSample[]): JumpAnalysis {
+export function analyzeJump(
+  samples: HipSample[],
+  identity?: JumpIdentity
+): JumpAnalysis {
   if (samples.length < 30) {
     return invalid(
       'Yetersiz örnek. Vücudunun kameraya tam görünmesi gerekiyor.'
@@ -419,7 +470,7 @@ export function analyzeJump(samples: HipSample[]): JumpAnalysis {
   const fallbackFlightMs = upDurationMs * 2;
   const flightTimeMs = flight?.flightTimeMs ?? fallbackFlightMs;
   const jumpHeightCmFlight = flight
-    ? flightTimeToHeightCm(flight.flightTimeMs)
+    ? flightTimeToHeightCm(flight.flightTimeMs) + BIAS_CORRECTION_CM
     : null;
 
   // Flight-time çok düşük yükseklik veriyorsa, hip-displacement güçlü olsa
@@ -431,6 +482,29 @@ export function analyzeJump(samples: HipSample[]): JumpAnalysis {
       'Sıçrama algılandı ama çok küçük. Daha güçlü patlayıcı bir CMJ dene.',
       { jumpUnits, takeoffY, apexY }
     );
+  }
+
+  if (jumpHeightCmFlight != null && identity) {
+    const cap = maxPlausibleJumpHeightCm(identity.ageYears, identity.sex);
+    if (jumpHeightCmFlight > cap) {
+      return invalid(
+        'Uçuş süresi güvenilir değil — bu deneme sayılmadı. Tekrar dene.',
+        { jumpUnits, takeoffY, apexY, jumpHeightCmFlight, flightTimeMs }
+      );
+    }
+  }
+
+  const { notes: captureNotes, sigmaBoost } = softCaptureSignals(
+    samples,
+    flight?.takeoffIdx ?? takeoffIdx,
+    flight?.landingIdx ?? apexIdx
+  );
+
+  let jumpHeightSigmaCm = flight
+    ? heightSigmaCm(flight.flightTimeMs, flight.sigmaMs)
+    : null;
+  if (jumpHeightSigmaCm != null && sigmaBoost > 1) {
+    jumpHeightSigmaCm *= sigmaBoost;
   }
 
   return {
@@ -446,12 +520,11 @@ export function analyzeJump(samples: HipSample[]): JumpAnalysis {
     // σ yalnızca uçuş süresi gerçekten ölçüldüğünde anlamlı. Hip-displacement
     // fallback'inde (apex simetrisi varsayımı) belirsizlik modellenmiş değil —
     // uydurulmuş bir σ vermek yerine null bırakılıyor.
-    jumpHeightSigmaCm: flight
-      ? heightSigmaCm(flight.flightTimeMs, flight.sigmaMs)
-      : null,
+    jumpHeightSigmaCm,
     flightMethod: flight?.method ?? null,
     cmPerUnitFromGravity: flight?.cmPerUnitFromGravity ?? null,
     ballisticFit: flight?.rSquared ?? null,
+    captureNotes,
     valid: true,
   };
 }
@@ -459,7 +532,8 @@ export function analyzeJump(samples: HipSample[]): JumpAnalysis {
 /**
  * Hip displacement metoduyla sıçrama yüksekliğini cm'e çevirir + flight-time
  * sonucuyla cross-check eder. İki yöntem tutarlıysa flight-time birincil
- * kalır; tutarsızsa flag'lenir ve consensus (ortalama) raporlanır.
+ * kalır; hem oransal hem mutlak sapma büyükse deneme reddedilir (sahte
+ * ~1 s uçuş + gerçek ~30 cm kalça).
  *
  * Öncelik:
  *   1. flight-time varsa → birincil
@@ -469,7 +543,8 @@ export function analyzeJump(samples: HipSample[]): JumpAnalysis {
 export function calibrateJumpHeight(
   analysis: JumpAnalysis,
   calibrationFrame: PoseFrame,
-  heightCm: number | null
+  heightCm: number | null,
+  identity?: JumpIdentity
 ): JumpAnalysis {
   if (!analysis.valid) return analysis;
   const cmPerUnit = getCmPerUnit(calibrationFrame, heightCm);
@@ -478,24 +553,48 @@ export function calibrateJumpHeight(
 
   // Birincil yükseklik politikası:
   //   - flight-time varsa HER ZAMAN birincil (Bosco 1983 — perspektif bağımsız,
-  //     fiziksel olarak doğru). Hip-displacement sadece cross-check ve tutarlılık
-  //     flag'i için kullanılır.
+  //     fiziksel olarak doğru). Hip-displacement cross-check; büyük sapmada
+  //     reddedilir, sessizce 125 cm bırakılmaz.
   //   - flight-time yoksa hip-displacement fallback.
-  //
-  // Eski "consensus = ortalama" davranışı kaldırıldı çünkü hip-displacement
-  // kamera açısı/perspektif hatalarından doğrudan etkileniyor ve doğru
-  // flight-time ölçümünü bozuyordu.
   let primary: number | null = analysis.jumpHeightCmFlight;
   const method: HeightMethod =
     analysis.jumpHeightCmFlight != null ? 'flight-time' : 'hip-displacement';
   let consistent = true;
 
   if (primary != null && jumpHeightCmHip != null && primary > 0) {
-    const diff = Math.abs(primary - jumpHeightCmHip) / primary;
-    consistent = diff <= HEIGHT_AGREEMENT_TOLERANCE;
-    // primary değiştirilmiyor — flight-time kalır
+    const absDiff = Math.abs(primary - jumpHeightCmHip);
+    const relDiff = absDiff / primary;
+    consistent = relDiff <= HEIGHT_AGREEMENT_TOLERANCE;
+    if (!consistent && absDiff > HEIGHT_AGREEMENT_ABS_CM) {
+      return invalid(
+        'Uçuş süresi ile kalça hareketi uyuşmuyor — bu deneme sayılmadı. Tekrar dene.',
+        {
+          ...analysis,
+          jumpHeightCm: null,
+          jumpHeightCmHip,
+          method,
+          consistent: false,
+        }
+      );
+    }
   } else if (primary == null && jumpHeightCmHip != null) {
     primary = jumpHeightCmHip;
+  }
+
+  if (primary != null && identity) {
+    const cap = maxPlausibleJumpHeightCm(identity.ageYears, identity.sex);
+    if (primary > cap) {
+      return invalid(
+        'Uçuş süresi güvenilir değil — bu deneme sayılmadı. Tekrar dene.',
+        {
+          ...analysis,
+          jumpHeightCm: null,
+          jumpHeightCmHip,
+          method,
+          consistent,
+        }
+      );
+    }
   }
 
   return {
@@ -518,7 +617,7 @@ export function isJumpFrameUsable(frame: PoseFrame): boolean {
 /**
  * Frame'den HipSample üretir. Frame kullanılamaz ise null döner.
  *
- * AnkleY ortalaması da yakalanır — flight-time tespiti için kullanılır.
+ * Dikey seri gövde merkezi proxy'sidir (kalça+omuz); diz bilinçli dışarıda.
  */
 export function frameToHipSample(frame: PoseFrame): HipSample | null {
   if (!isJumpFrameUsable(frame)) return null;
@@ -528,7 +627,132 @@ export function frameToHipSample(frame: PoseFrame): HipSample | null {
   const rightAnkle = frame.landmarks[POSE_LANDMARKS.RIGHT_ANKLE];
   const ankleY =
     leftAnkle && rightAnkle ? (leftAnkle.y + rightAnkle.y) / 2 : undefined;
-  return { t: frame.timestamp, y: hip.y, ankleY };
+  const shoulder = getShoulderCenter(frame);
+  // 0.6 kalça + 0.4 omuz: rijit gövde varsayımı. Omuz görünmüyorsa kalça.
+  const y =
+    shoulder != null && (shoulder.visibility ?? 1) >= 0.5
+      ? 0.6 * hip.y + 0.4 * shoulder.y
+      : hip.y;
+  const visHips = Math.min(
+    frame.landmarks[POSE_LANDMARKS.LEFT_HIP]?.visibility ?? 1,
+    frame.landmarks[POSE_LANDMARKS.RIGHT_HIP]?.visibility ?? 1
+  );
+  const visAnkles = Math.min(
+    leftAnkle?.visibility ?? 1,
+    rightAnkle?.visibility ?? 1
+  );
+  return {
+    t: frame.timestamp,
+    y,
+    hipY: hip.y,
+    hipX: hip.x,
+    ankleY,
+    visibility: Math.min(visHips, visAnkles),
+    kneeAngleDeg: meanKneeAngleDeg(frame),
+  };
+}
+
+/** Gövde-diz-ayak açısı (derece). Landmark eksikse null. */
+function meanKneeAngleDeg(frame: PoseFrame): number | undefined {
+  const left = jointAngleDeg(
+    frame.landmarks[POSE_LANDMARKS.LEFT_HIP],
+    frame.landmarks[POSE_LANDMARKS.LEFT_KNEE],
+    frame.landmarks[POSE_LANDMARKS.LEFT_ANKLE]
+  );
+  const right = jointAngleDeg(
+    frame.landmarks[POSE_LANDMARKS.RIGHT_HIP],
+    frame.landmarks[POSE_LANDMARKS.RIGHT_KNEE],
+    frame.landmarks[POSE_LANDMARKS.RIGHT_ANKLE]
+  );
+  if (left == null && right == null) return undefined;
+  if (left == null) return right;
+  if (right == null) return left;
+  return (left + right) / 2;
+}
+
+function jointAngleDeg(
+  a: { x: number; y: number } | undefined,
+  b: { x: number; y: number } | undefined,
+  c: { x: number; y: number } | undefined
+): number | undefined {
+  if (!a || !b || !c) return undefined;
+  const abx = a.x - b.x;
+  const aby = a.y - b.y;
+  const cbx = c.x - b.x;
+  const cby = c.y - b.y;
+  const mag = Math.hypot(abx, aby) * Math.hypot(cbx, cby);
+  if (!(mag > 0)) return undefined;
+  const cos = Math.max(-1, Math.min(1, (abx * cbx + aby * cby) / mag));
+  return (Math.acos(cos) * 180) / Math.PI;
+}
+
+/**
+ * Test sırası yumuşak sinyaller — reddetmez.
+ *
+ * Yatay kayma ve aşırı sığ/derin çömelme ölçümü öldürmez; σ'yı genişletir
+ * ve sonuç kartında not olarak görünür.
+ */
+function softCaptureSignals(
+  samples: readonly HipSample[],
+  takeoffIdx: number,
+  landingIdx: number
+): { notes: string[]; sigmaBoost: number } {
+  const notes: string[] = [];
+  let sigmaBoost = 1;
+
+  const lo = Math.max(0, Math.min(takeoffIdx, landingIdx));
+  const hi = Math.min(samples.length - 1, Math.max(takeoffIdx, landingIdx));
+  const window = samples.slice(lo, hi + 1);
+  const xs = window.map((s) => s.hipX).filter((x): x is number => x != null);
+  const legs = samples
+    .slice(0, Math.min(25, samples.length))
+    .map((s) =>
+      s.hipY != null && s.ankleY != null ? s.ankleY - s.hipY : null
+    )
+    .filter((v): v is number => v != null && v > 0.05);
+  const leg =
+    legs.length > 0
+      ? [...legs].sort((a, b) => a - b)[Math.floor(legs.length / 2)]
+      : 0.4;
+
+  if (xs.length >= 4) {
+    const drift = Math.max(...xs) - Math.min(...xs);
+    if (drift > HORIZONTAL_DRIFT_FRAC * leg) {
+      notes.push('Sıçrama sırasında öne/yana kayma görüldü — yükseklik belirsizliği arttı.');
+      sigmaBoost *= 1.2;
+    }
+  }
+
+  const angles = samples
+    .map((s) => s.kneeAngleDeg)
+    .filter((v): v is number => v != null);
+  if (angles.length >= 8) {
+    const deepest = Math.min(...angles);
+    if (deepest > SQUAT_SHALLOW_DEG) {
+      notes.push('Çömelme sığ kaldı. Bir sonraki denemede biraz daha alçaktan patla.');
+      sigmaBoost *= 1.15;
+    } else if (deepest < SQUAT_DEEP_DEG) {
+      notes.push('Çömelme çok derindi. CMJ hızlı bir yüklenmedir, çömelip kalma.');
+      sigmaBoost *= 1.15;
+    }
+  }
+
+  return { notes, sigmaBoost };
+}
+
+/**
+ * Ulaşılan fps ve model katmanı σ'yı genişletir — istenen 60 fps değil,
+ * gerçek örnekleme hızı. Lite model + düşük fps = daha geniş belirsizlik.
+ */
+export function captureQualitySigmaMultiplier(opts: {
+  readonly avgFps: number;
+  readonly modelTier: string;
+}): number {
+  let m = 1;
+  if (opts.avgFps > 0 && opts.avgFps < 24) m *= 1.25;
+  else if (opts.avgFps > 0 && opts.avgFps < 45) m *= 1.1;
+  if (opts.modelTier === 'lite') m *= 1.15;
+  return m;
 }
 
 /**
@@ -556,6 +780,26 @@ const CMJ_NORMS: Record<number, { male: CmjNorm; female: CmjNorm }> = {
   15: { male: { mean: 37, sd: 7 }, female: { mean: 30, sd: 5.5 } },
 };
 
+function lookupCmjNorm(
+  ageYears: number,
+  sex: 'male' | 'female'
+): CmjNorm {
+  const ages = Object.keys(CMJ_NORMS).map(Number);
+  const closestAge = ages.reduce((a, b) =>
+    Math.abs(b - ageYears) < Math.abs(a - ageYears) ? b : a
+  );
+  return CMJ_NORMS[closestAge][sex];
+}
+
+/** Çocuk CMJ'si için fiziksel tavan (norm ortalama + 4 SD). */
+export function maxPlausibleJumpHeightCm(
+  ageYears: number,
+  sex: 'male' | 'female'
+): number {
+  const { mean, sd } = lookupCmjNorm(ageYears, sex);
+  return mean + PLAUSIBLE_HEIGHT_SD * sd;
+}
+
 import { zScorePercentile } from '@/lib/stats/normalCdf';
 
 /**
@@ -569,11 +813,7 @@ export function jumpPercentile(
   ageYears: number,
   sex: 'male' | 'female'
 ): number {
-  const ages = Object.keys(CMJ_NORMS).map(Number);
-  const closestAge = ages.reduce((a, b) =>
-    Math.abs(b - ageYears) < Math.abs(a - ageYears) ? b : a
-  );
-  const { mean, sd } = CMJ_NORMS[closestAge][sex];
+  const { mean, sd } = lookupCmjNorm(ageYears, sex);
   return zScorePercentile(jumpHeightCm, mean, sd);
 }
 
@@ -638,30 +878,62 @@ export function jumpHeightRangeCm(
 }
 
 /**
- * En-iyi-3 protokolü: birden fazla CMJ denemesi arasından en yükseğini
- * seçer. Spor bilimi standardı — tek deneme yorgunluk/ısınmamış kas/tesadüfi
- * teknik hatasını ortalamayla süzme şansı bırakmaz.
- *
- * Yalnızca geçerlilik kapısından geçmiş (`accepted`) VE analizi valid olan
- * denemeler aday sayılır; reddedilen bir deneme daha yüksek bir sayı
- * gösterse bile seçilmez — o sayı gerçek bir sıçramayı ölçmüyor olabilir.
- *
- * @returns Hiçbir deneme uygun değilse `null` (JumpTest bunu "3 denemenin
- *          hiçbiri sayılmadı" ekranı için kullanır).
+ * En-iyi-3 protokolü: kabul edilen denemeler arasından en yükseğini seçer.
+ * Medyandan `OUTLIER_SIGMA_K` sapani (ör. 31 / 26 / 125) elemezse glitch
+ * "en iyi" olurdu. Aykırılar elenir, kalanların max'ı alınır; hepsi
+ * aykırıysa medyan deneme seçilir.
  */
 export function pickBestJumpAttempt<
   T extends {
     accepted: boolean;
-    analysis: { valid: boolean; jumpHeightCm: number | null };
+    analysis: {
+      valid: boolean;
+      jumpHeightCm: number | null;
+      jumpHeightSigmaCm?: number | null;
+    };
   },
 >(attempts: readonly T[]): T | null {
   const candidates = attempts.filter(
     (a) => a.accepted && a.analysis.valid && a.analysis.jumpHeightCm != null
   );
   if (candidates.length === 0) return null;
-  return candidates.reduce((best, cur) =>
+
+  const pool =
+    candidates.length >= 3 ? excludeJumpHeightOutliers(candidates) : candidates;
+  const chosen = pool.length > 0 ? pool : medianJumpAttempt(candidates);
+  return chosen.reduce((best, cur) =>
     (cur.analysis.jumpHeightCm ?? 0) > (best.analysis.jumpHeightCm ?? 0)
       ? cur
       : best
   );
+}
+
+function excludeJumpHeightOutliers<
+  T extends {
+    analysis: {
+      jumpHeightCm: number | null;
+      jumpHeightSigmaCm?: number | null;
+    };
+  },
+>(candidates: readonly T[]): T[] {
+  const heights = candidates.map((a) => a.analysis.jumpHeightCm as number);
+  const sorted = [...heights].sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  const sigmas = candidates
+    .map((a) => a.analysis.jumpHeightSigmaCm)
+    .filter((s): s is number => s != null && s > 0);
+  const sigma = sigmas.length > 0 ? Math.max(...sigmas) : MIN_SIGMA_CM;
+  const threshold = OUTLIER_SIGMA_K * Math.max(sigma, MIN_SIGMA_CM);
+  return candidates.filter(
+    (a) => Math.abs((a.analysis.jumpHeightCm as number) - median) <= threshold
+  );
+}
+
+function medianJumpAttempt<
+  T extends { analysis: { jumpHeightCm: number | null } },
+>(candidates: readonly T[]): T[] {
+  const sorted = [...candidates].sort(
+    (a, b) => (a.analysis.jumpHeightCm ?? 0) - (b.analysis.jumpHeightCm ?? 0)
+  );
+  return [sorted[Math.floor(sorted.length / 2)]];
 }

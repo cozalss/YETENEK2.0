@@ -153,6 +153,74 @@ export function fitParabola(
   return { a, b, c, residualStd, n };
 }
 
+/** Artık eşiği — 2.5σ üstü kareler budanır. Tam RANSAC'tan ucuz, 6-24 örnekte daha kararlı. */
+const PRUNE_SIGMA = 2.5;
+/** Budamadan sonra fit için asgari kalan örnek. */
+const MIN_PRUNED_SAMPLES = 5;
+
+/**
+ * Aykırı kareye dayanıklı parabol fit'i.
+ *
+ * Düz en küçük kareler tek bir kaçık landmark'ı (bulanık uçuş karesi)
+ * bütün eğriliği kaydırır. Budanmış yeniden fit: kaba çözüm → |artık| >
+ * 2.5σ olanları at → yeniden fit. Kalan örnek yetmezse kaba çözüm korunur.
+ */
+export function fitParabolaRobust(
+  ts: readonly number[],
+  ys: readonly number[]
+): ParabolaFit | null {
+  const coarse = fitParabola(ts, ys);
+  if (!coarse) return null;
+  if (coarse.n < 8 || !(coarse.residualStd > 0)) return coarse;
+
+  const keptT: number[] = [];
+  const keptY: number[] = [];
+  const limit = PRUNE_SIGMA * coarse.residualStd;
+  for (let i = 0; i < ts.length; i++) {
+    const pred = coarse.a * ts[i] * ts[i] + coarse.b * ts[i] + coarse.c;
+    if (Math.abs(ys[i] - pred) <= limit) {
+      keptT.push(ts[i]);
+      keptY.push(ys[i]);
+    }
+  }
+  if (keptT.length < MIN_PRUNED_SAMPLES || keptT.length === ts.length) {
+    return coarse;
+  }
+  return fitParabola(keptT, keptY) ?? coarse;
+}
+
+/**
+ * Parabol eğriliğinin yerçekimiyle tutarlı olup olmadığı — taban çizgisinden
+ * bağımsız. Çocuk geri sayımda çömelmişse baseline kayar; eğrilik kaymaz.
+ *
+ * @returns cm / normalize-birim; eğrilik balistik değilse null.
+ */
+export function gravityConsistentCmPerUnit(a: number): number | null {
+  if (!(a > 0) || !Number.isFinite(a)) return null;
+  const cmPerUnit = HALF_GRAVITY_CM_PER_MS2 / a;
+  if (
+    !Number.isFinite(cmPerUnit) ||
+    cmPerUnit < MIN_PLAUSIBLE_CM_PER_UNIT ||
+    cmPerUnit > MAX_PLAUSIBLE_CM_PER_UNIT
+  ) {
+    return null;
+  }
+  return cmPerUnit;
+}
+
+/** Fit'in açıkladığı varyans oranı (R²). */
+export function parabolaRSquared(
+  fit: ParabolaFit,
+  ys: readonly number[]
+): number {
+  if (ys.length === 0) return 0;
+  const mean = ys.reduce((s, y) => s + y, 0) / ys.length;
+  let ssTot = 0;
+  for (const y of ys) ssTot += (y - mean) * (y - mean);
+  const ssRes = fit.residualStd * fit.residualStd * Math.max(1, fit.n - 3);
+  return ssTot > 0 ? Math.max(0, 1 - ssRes / ssTot) : 0;
+}
+
 export interface FlightSolution {
   /** Taban çizgisi kesişimlerinden gerçek uçuş süresi (ms). */
   readonly flightTimeMs: number;
@@ -188,21 +256,11 @@ export function solveFlightFromParabola(
 
   // Görüntü koordinatında yukarı = küçük Y. Uçuşta Y önce azalır sonra artar
   // → parabol yukarı açılır → a > 0 olmalı. Değilse balistik değil.
-  if (!(a > 0)) return null;
+  const cmPerUnit = gravityConsistentCmPerUnit(a);
+  if (cmPerUnit == null) return null;
 
   const disc = b * b - 4 * a * (c - baselineY);
   if (!(disc > 0)) return null;
-
-  // Fizik doğrulaması: eğrilik yerçekimiyle tutarlı bir ölçek vermeli.
-  // Balistik olmayan hareket burada elenir (bkz. MIN/MAX_PLAUSIBLE_CM_PER_UNIT).
-  const cmPerUnitFromGravity = HALF_GRAVITY_CM_PER_MS2 / a;
-  if (
-    !Number.isFinite(cmPerUnitFromGravity) ||
-    cmPerUnitFromGravity < MIN_PLAUSIBLE_CM_PER_UNIT ||
-    cmPerUnitFromGravity > MAX_PLAUSIBLE_CM_PER_UNIT
-  ) {
-    return null;
-  }
 
   const sqrtDisc = Math.sqrt(disc);
   const takeoffMs = (-b - sqrtDisc) / (2 * a);
@@ -216,19 +274,13 @@ export function solveFlightFromParabola(
   const sigmaMs =
     sqrtDisc > 0 ? (Math.SQRT2 * residualStd) / sqrtDisc : Number.POSITIVE_INFINITY;
 
-  const mean = ys.reduce((s, y) => s + y, 0) / ys.length;
-  let ssTot = 0;
-  for (const y of ys) ssTot += (y - mean) * (y - mean);
-  const ssRes = residualStd * residualStd * Math.max(1, fit.n - 3);
-  const rSquared = ssTot > 0 ? Math.max(0, 1 - ssRes / ssTot) : 0;
-
   return {
     flightTimeMs,
     takeoffMs,
     landingMs,
     sigmaMs,
-    cmPerUnitFromGravity,
-    rSquared,
+    cmPerUnitFromGravity: cmPerUnit,
+    rSquared: parabolaRSquared(fit, ys),
   };
 }
 

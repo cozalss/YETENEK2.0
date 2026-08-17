@@ -9,21 +9,19 @@
  *
  * ## Bu route olmadan ne oluyordu
  *
- * `CompositeValidityJudge` yazılmıştı ama hiçbir yerden çağrılmıyordu:
- * `openai-vision-judge.ts` `server-only` taşıdığı için tarayıcıdan import
- * edilemiyor, ve onu sunucuda açan bir uç nokta yoktu. Yani anahtar
- * eklenmiş olsa bile görsel hakem devreye girmiyordu — yazılmış ama
- * bağlanmamış bir katman.
+ * Görsel hakem `server-only` taşıdığı için tarayıcıdan import edilemiyordu
+ * ve onu sunucuda açan bir uç nokta yoktu. Yani anahtar eklenmiş olsa bile
+ * görsel hakem devreye girmiyordu — yazılmış ama bağlanmamış bir katman.
  *
  * ## Neden burada kural hakemi ÇALIŞMIYOR
  *
- * İlk uygulamada bu route `CompositeValidityJudge`'ı çağırıyordu, yani kural
- * hakemini bir kez daha koşturuyordu. Sonuç sessiz bir felçti: şema veri
- * minimizasyonu için en fazla 8 kare kabul ediyor, kural hakemi ise karar
- * verebilmek için ≥30 kare istiyor. Dolayısıyla sunucudaki kural hakemi her
- * seferinde `insufficient_data` + güven 0.9 dönüyor, composite bunu "kesin
- * karar" sayıp görsel çağrıyı **atlıyordu**. Görsel hakem üretimde hiç
- * çalışmayacaktı; gerçek bir çağrıyla yapılan smoke-test'te yakalandı.
+ * İlk uygulamada bu route kural hakemini bir kez daha koşturuyordu. Sonuç
+ * sessiz bir felçti: şema veri minimizasyonu için en fazla 8 kare kabul
+ * ediyor, kural hakemi ise karar verebilmek için ≥30 kare istiyor.
+ * Dolayısıyla sunucudaki kural hakemi her seferinde `insufficient_data` +
+ * güven 0.9 dönüyor, birleştirme bunu "kesin karar" sayıp görsel çağrıyı
+ * **atlıyordu**. Görsel hakem üretimde hiç çalışmayacaktı; gerçek bir
+ * çağrıyla yapılan smoke-test'te yakalandı.
  *
  * Doğrusu: kural aşaması istemcide, TAM kare seti üzerinde zaten koştu.
  * Burası yalnız görsel aşama. Birleştirme de istemcide yapılıyor
@@ -145,6 +143,15 @@ export async function POST(request: Request) {
         { status: 503 }
       );
     }
+
+    log.info('görsel karar', {
+      test,
+      performed: result.value.performed,
+      protocolViolations: result.value.protocolViolations,
+      techniqueScore: result.value.techniqueScore,
+      judgeConfidence: result.value.judgeConfidence,
+      notes: result.value.notes,
+    });
 
     return NextResponse.json(result.value, {
       status: 200,

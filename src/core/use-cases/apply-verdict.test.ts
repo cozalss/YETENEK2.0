@@ -53,6 +53,16 @@ describe('applyVerdict — reddetme dalları', () => {
     }
   });
 
+  it('kol savurma CMJ\'de ölümcül — eller belde ipucu', () => {
+    const r = applyVerdict(
+      'jump',
+      verdict({ protocolViolations: ['arm_swing'] })
+    );
+    expect(r.ok).toBe(false);
+    if (r.ok) throw new Error('unreachable');
+    expect(r.error.retryHint).toContain('bel');
+  });
+
   it('ihlal listesi boşken performed:false ise genel ipucuna düşer', () => {
     const r = applyVerdict('jump', verdict({ performed: false }));
     expect(r.ok).toBe(false);

@@ -31,6 +31,12 @@ export function RejectionPanel({ rejection, onRetry }: Props) {
       <p className="mt-2 text-sm leading-relaxed text-amber-900">
         {rejection.retryHint}
       </p>
+      {rejection.rejectedBy ? (
+        <p className="mt-1 text-xs text-amber-800/70">
+          Karar:{' '}
+          {rejection.rejectedBy === 'vision' ? 'görsel hakem' : 'kural hakemi'}
+        </p>
+      ) : null}
       <p className="mt-3 text-xs text-amber-700">
         Merak etme — yanlış yapılan bir testi kaydetmek yerine tekrar etmek
         sonucun doğru olmasını sağlıyor.

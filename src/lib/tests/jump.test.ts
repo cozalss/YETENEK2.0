@@ -18,7 +18,9 @@ import {
   jumpHeightRangeCm,
   jumpPercentile,
   jumpScore,
+  maxPlausibleJumpHeightCm,
   pickBestJumpAttempt,
+  BIAS_CORRECTION_CM,
   type HipSample,
 } from './jump';
 import { POSE_LANDMARKS } from '@/types';
@@ -165,6 +167,30 @@ describe('analyzeJump — flight-time tespiti', () => {
     expect(result.jumpHeightCmFlight).toBeLessThan(58);
   });
 
+  it('~1000ms uçuş 125 cm olarak raporlanmaz — tavan 700ms', () => {
+    const samples = synthesizeJumpSamples({
+      flightTimeMs: 1008,
+      jumpDelta: 0.08,
+      ankleLift: 0.1,
+    });
+    const result = analyzeJump(samples);
+    expect(result.jumpHeightCmFlight).toBeNull();
+    if (result.jumpHeightCm != null) {
+      expect(result.jumpHeightCm).toBeLessThan(70);
+    }
+  });
+
+  it('8 yaş tavanını aşan uçuş invalid', () => {
+    const samples = synthesizeJumpSamples({
+      flightTimeMs: 600,
+      jumpDelta: 0.18,
+      ankleLift: 0.1,
+    });
+    const result = analyzeJump(samples, { ageYears: 8, sex: 'male' });
+    expect(result.valid).toBe(false);
+    expect(result.reason).toMatch(/uçuş süresi güvenilir değil/i);
+  });
+
   it('ankleY yoksa flight-time düşer, hip-displacement metodu çalışır', () => {
     const samples = synthesizeJumpSamples({ flightTimeMs: 400 }).map((s) => ({
       t: s.t,
@@ -266,6 +292,44 @@ describe('calibrateJumpHeight — cross-check', () => {
     const calibrated = calibrateJumpHeight(analysis, frame, 150);
     expect(calibrated).toEqual(analysis);
   });
+
+  it('uçuş 44cm ve kalça ~8cm ise deneme reddedilir', () => {
+    const calibFrame = makePoseFrame({
+      [POSE_LANDMARKS.LEFT_HIP]: { x: 0.5, y: 0.55, visibility: 0.95 },
+      [POSE_LANDMARKS.RIGHT_HIP]: { x: 0.5, y: 0.55, visibility: 0.95 },
+      [POSE_LANDMARKS.LEFT_ANKLE]: { x: 0.5, y: 0.95, visibility: 0.95 },
+      [POSE_LANDMARKS.RIGHT_ANKLE]: { x: 0.5, y: 0.95, visibility: 0.95 },
+    });
+    calibFrame.worldLandmarks = Array.from({ length: 33 }, () => ({
+      x: 0,
+      y: 0,
+      z: 0,
+    }));
+    calibFrame.worldLandmarks[POSE_LANDMARKS.LEFT_HIP] = { x: 0, y: 0, z: 0 };
+    calibFrame.worldLandmarks[POSE_LANDMARKS.RIGHT_HIP] = { x: 0, y: 0, z: 0 };
+    calibFrame.worldLandmarks[POSE_LANDMARKS.LEFT_ANKLE] = {
+      x: 0,
+      y: 0.4,
+      z: 0,
+    };
+    calibFrame.worldLandmarks[POSE_LANDMARKS.RIGHT_ANKLE] = {
+      x: 0,
+      y: 0.4,
+      z: 0,
+    };
+
+    const samples = synthesizeJumpSamples({
+      flightTimeMs: 600,
+      jumpDelta: 0.08,
+      ankleLift: 0.1,
+    });
+    const analysis = analyzeJump(samples);
+    expect(analysis.valid).toBe(true);
+    expect(analysis.jumpHeightCmFlight).toBeGreaterThan(35);
+    const calibrated = calibrateJumpHeight(analysis, calibFrame, null);
+    expect(calibrated.valid).toBe(false);
+    expect(calibrated.reason).toMatch(/uyuşmuyor/i);
+  });
 });
 
 describe('jumpPercentile + jumpScore', () => {
@@ -346,7 +410,9 @@ describe('frameToHipSample + isJumpFrameUsable', () => {
     const sample = frameToHipSample(frame);
     expect(sample).not.toBeNull();
     expect(sample!.t).toBe(1234);
-    expect(sample!.y).toBeCloseTo(0.6, 5); // (0.55 + 0.65) / 2
+    expect(sample!.hipY).toBeCloseTo(0.6, 5); // (0.55 + 0.65) / 2
+    // y = 0.6×kalça + 0.4×omuz (varsayılan omuz y=0.5)
+    expect(sample!.y).toBeCloseTo(0.6 * 0.6 + 0.4 * 0.5, 5);
     expect(sample!.ankleY).toBeCloseTo(0.95, 5); // (0.92 + 0.98) / 2
   });
 
@@ -415,5 +481,55 @@ describe('pickBestJumpAttempt — en-iyi-3 seçimi', () => {
   it('tek geçerli deneme varsa o seçilir', () => {
     const attempts = [attempt(null, false), attempt(22)];
     expect(pickBestJumpAttempt(attempts)).toBe(attempts[1]);
+  });
+
+  it('medyandan sapan 125 cm deneme en iyi seçilmez', () => {
+    const attempts = [attempt(31), attempt(125), attempt(26)];
+    expect(pickBestJumpAttempt(attempts)).toBe(attempts[0]);
+  });
+});
+
+describe('maxPlausibleJumpHeightCm', () => {
+  it('14 yaş erkek ≈ 60 cm (34 + 4×6.5)', () => {
+    expect(maxPlausibleJumpHeightCm(14, 'male')).toBeCloseTo(60, 5);
+  });
+});
+
+describe('BIAS_CORRECTION_CM', () => {
+  it('ölçülene kadar 0 kalır — uydurulmuş sapma yok', () => {
+    expect(BIAS_CORRECTION_CM).toBe(0);
+  });
+});
+
+describe('gövde merkezi proxy — diz çekme şişirmez', () => {
+  it('uçuşta diz çekmek HipSample.y\'yi yukarı kaydırmaz', () => {
+    const hipY = 0.4;
+    const shoulderY = 0.13;
+    const base = makePoseFrame({
+      [POSE_LANDMARKS.LEFT_HIP]: { x: 0.46, y: hipY, visibility: 0.95 },
+      [POSE_LANDMARKS.RIGHT_HIP]: { x: 0.54, y: hipY, visibility: 0.95 },
+      [POSE_LANDMARKS.LEFT_SHOULDER]: { x: 0.44, y: shoulderY, visibility: 0.95 },
+      [POSE_LANDMARKS.RIGHT_SHOULDER]: { x: 0.56, y: shoulderY, visibility: 0.95 },
+      [POSE_LANDMARKS.LEFT_KNEE]: { x: 0.47, y: 0.7, visibility: 0.95 },
+      [POSE_LANDMARKS.RIGHT_KNEE]: { x: 0.53, y: 0.7, visibility: 0.95 },
+      [POSE_LANDMARKS.LEFT_ANKLE]: { x: 0.47, y: 0.9, visibility: 0.95 },
+      [POSE_LANDMARKS.RIGHT_ANKLE]: { x: 0.53, y: 0.9, visibility: 0.95 },
+    });
+    const tucked = makePoseFrame({
+      [POSE_LANDMARKS.LEFT_HIP]: { x: 0.46, y: hipY, visibility: 0.95 },
+      [POSE_LANDMARKS.RIGHT_HIP]: { x: 0.54, y: hipY, visibility: 0.95 },
+      [POSE_LANDMARKS.LEFT_SHOULDER]: { x: 0.44, y: shoulderY, visibility: 0.95 },
+      [POSE_LANDMARKS.RIGHT_SHOULDER]: { x: 0.56, y: shoulderY, visibility: 0.95 },
+      [POSE_LANDMARKS.LEFT_KNEE]: { x: 0.47, y: hipY + 0.02, visibility: 0.95 },
+      [POSE_LANDMARKS.RIGHT_KNEE]: { x: 0.53, y: hipY + 0.02, visibility: 0.95 },
+      [POSE_LANDMARKS.LEFT_ANKLE]: { x: 0.47, y: 0.9, visibility: 0.95 },
+      [POSE_LANDMARKS.RIGHT_ANKLE]: { x: 0.53, y: 0.9, visibility: 0.95 },
+    });
+    const a = frameToHipSample(base);
+    const b = frameToHipSample(tucked);
+    expect(a).not.toBeNull();
+    expect(b).not.toBeNull();
+    expect(a!.y).toBeCloseTo(b!.y, 6);
+    expect(a!.y).toBeCloseTo(0.6 * hipY + 0.4 * shoulderY, 6);
   });
 });

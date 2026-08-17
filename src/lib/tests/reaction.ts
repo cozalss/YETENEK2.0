@@ -58,7 +58,7 @@ export interface ReactionAnalysis {
   validTrialCount: number;
 }
 
-const REACTION_NORMS_MS: Record<number, number> = {
+const REACTION_LAB_NORMS_MS: Record<number, number> = {
   8: 330,
   9: 320,
   10: 305,
@@ -68,6 +68,20 @@ const REACTION_NORMS_MS: Record<number, number> = {
   14: 260,
   15: 250,
 };
+
+/**
+ * Laboratuvar basit-RT (Der & Deary 2006 ölçeği) tarayıcı görsel-dokunuş
+ * paradigmına göre ~400 ms yavaş. 25 ms dokunuş ofseti bunu kapatmıyor;
+ * 14 yaş 703 ms ham süre laboratuvar 260 ms normuna göre 0/100 basıyordu.
+ */
+const WEB_VISUAL_TOUCH_OVERHEAD_MS = 400;
+
+const REACTION_NORMS_MS: Record<number, number> = Object.fromEntries(
+  Object.entries(REACTION_LAB_NORMS_MS).map(([age, ms]) => [
+    Number(age),
+    ms + WEB_VISUAL_TOUCH_OVERHEAD_MS,
+  ])
+) as Record<number, number>;
 
 /**
  * Popülasyon içi değişkenlik katsayısı (SD / ortalama).

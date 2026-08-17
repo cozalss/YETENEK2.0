@@ -369,6 +369,7 @@ function FullFlowInner() {
             <BroadJumpTest
               childAgeYears={child.ageYears}
               childSex={child.sex}
+              childHeightCm={child.heightCm}
               onComplete={(analysis) => {
                 // Skor null olabilir (mesafe kalibre edilemedi). Cast'in
                 // yalan olmaması için burada eleniyor — test yine de

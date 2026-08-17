@@ -35,6 +35,10 @@ export function getShoulderCenter(frame: PoseFrame): Keypoint | null {
     x: (left.x + right.x) / 2,
     y: (left.y + right.y) / 2,
     z: left.z != null && right.z != null ? (left.z + right.z) / 2 : undefined,
+    visibility:
+      left.visibility != null && right.visibility != null
+        ? Math.min(left.visibility, right.visibility)
+        : undefined,
   };
 }
 

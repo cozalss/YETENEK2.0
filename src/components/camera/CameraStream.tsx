@@ -2,7 +2,7 @@
  * Camera + MediaPipe pose detection loop.
  *
  * Renders the user's webcam feed mirrored, runs pose detection in a
- * requestAnimationFrame loop, and forwards each PoseFrame to the parent.
+ * requestVideoFrameCallback loop (rAF fallback), and forwards each PoseFrame.
  *
  * StrictMode safety:
  * In React 18/19 dev, effects fire twice (mount → unmount → mount). A naive
@@ -32,14 +32,33 @@ import {
 } from '@/lib/pose/quality';
 import type { PoseFrame } from '@/types';
 import { PoseOverlay } from './PoseOverlay';
+import { sampleScene, type SceneSample } from '@/lib/pose/cmjReadiness';
 
 interface Props {
-  onFrame?: (frame: PoseFrame | null) => void;
+  /**
+   * Her karede çağrılır.
+   *
+   * @param frame One-Euro'dan geçmiş kare — **gösterim** için. Jitter'ı
+   *   bastırır ama balistik bir olayın tepesini de bastırır.
+   * @param raw   Filtresiz kare — **ölçüm** için. Serbest düşüş fit'i buna
+   *   bakmalı: One-Euro 30 fps'te ~155 ms zaman sabitli bir alçak geçiren
+   *   ve 400 ms'lik bir uçuşun tepesini yuvarlıyor. Dahası fit artığı
+   *   (`residualStd`) filtrelenmiş seride yapay olarak küçülüyor, yani
+   *   raporlanan σ gerçek belirsizliği değil filtrenin düzgünlüğünü ölçüyor.
+   *   Varyans ölçen testler (denge, hops) filtreli seriyi kullanmaya devam
+   *   edebilir — orada yumuşatma bir kazanç.
+   */
+  onFrame?: (frame: PoseFrame | null, raw: PoseFrame | null) => void;
   /**
    * Per-frame pose kalite değişiminde tetiklenir. UI badge için kullanılır.
    * Polite — sadece category değişimi yansımalı (caller debounce edebilir).
    */
   onQuality?: (q: QualitySnapshot) => void;
+  /**
+   * Idle sahne kalitesi (parlaklık + kare farkı). Saniyede bir.
+   * Test öncesi ışık/titreme kapısı bunu okur.
+   */
+  onScene?: (s: SceneSample | null) => void;
   width?: number;
   height?: number;
   showOverlay?: boolean;
@@ -117,26 +136,42 @@ async function openStream(width: number, height: number): Promise<MediaStream> {
   if (activeStream && activeStream.active) return activeStream;
 
   pendingRequest = (async () => {
-    try {
-      // Try 1: with facingMode hint (best for phones).
-      return await navigator.mediaDevices.getUserMedia({
+    const attempts: MediaStreamConstraints[] = [
+      {
         video: {
           width: { ideal: width },
           height: { ideal: height },
           facingMode: 'user',
+          frameRate: { ideal: 60 },
         },
         audio: false,
-      });
-    } catch (err) {
-      // Many Windows webcams don't expose facingMode; retry without it.
-      if (err instanceof Error && err.name === 'OverconstrainedError') {
-        return await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: width }, height: { ideal: height } },
-          audio: false,
-        });
+      },
+      {
+        video: {
+          width: { ideal: width },
+          height: { ideal: height },
+          frameRate: { ideal: 60 },
+        },
+        audio: false,
+      },
+      {
+        video: { width: { ideal: width }, height: { ideal: height } },
+        audio: false,
+      },
+    ];
+    let lastErr: unknown;
+    for (const constraints of attempts) {
+      try {
+        return await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (err) {
+        lastErr = err;
+        const name = err instanceof Error ? err.name : '';
+        if (name !== 'OverconstrainedError' && name !== 'ConstraintNotSatisfiedError') {
+          throw err;
+        }
       }
-      throw err;
     }
+    throw lastErr;
   })();
 
   try {
@@ -158,6 +193,7 @@ function releaseStream(): void {
 function CameraStreamInner({
   onFrame,
   onQuality,
+  onScene,
   width = 640,
   height = 480,
   showOverlay = true,
@@ -199,6 +235,8 @@ function CameraStreamInner({
   useEffect(() => {
     let cancelled = false;
     let rafId: number | null = null;
+    let rvfcId: number | null = null;
+    let videoEl: HTMLVideoElement | null = null;
 
     async function start() {
       try {
@@ -208,54 +246,74 @@ function CameraStreamInner({
 
         const video = videoRef.current;
         if (!video) return;
+        videoEl = video;
         video.srcObject = stream;
         await video.play();
 
-        const landmarker = await getPoseLandmarker();
+        await getPoseLandmarker();
         if (cancelled) return;
 
         setReady(true);
 
         let lastTimestamp = -1;
         let lastTelemetrySecond = -1;
-        const loop = () => {
+        let lastSceneAt = 0;
+        let prevScenePixels: Uint8ClampedArray | null = null;
+
+        const hasRvfc =
+          typeof video.requestVideoFrameCallback === 'function';
+
+        const process = (ts: number) => {
           if (cancelled || !video) return;
-          // MediaPipe rejects equal/decreasing timestamps in VIDEO mode.
-          const ts = performance.now();
           if (ts === lastTimestamp) {
-            rafId = requestAnimationFrame(loop);
+            schedule();
             return;
           }
           lastTimestamp = ts;
 
           if (video.readyState >= 2 /* HAVE_CURRENT_DATA */) {
-            const rawFrame = detectPose(landmarker, video, ts);
+            const rawFrame = detectPose(video, ts);
             const filter = filterRef.current;
             const monitor = qualityRef.current;
-            // Refs render body'de lazy-init ediliyor; null olabilmesi için
-            // remount + state reset gerekir. Yine de defensive: null ise
-            // kareyi atla (telemetry corrupt etmektense güvenli no-op).
             if (!filter || !monitor) {
-              rafId = requestAnimationFrame(loop);
+              schedule();
               return;
             }
             const frame = rawFrame ? filter.apply(rawFrame) : null;
             const quality = monitor.observe(frame);
-            // setState YOK — ref'e yaz, PoseOverlay kendi rAF loop'unda
-            // bu ref'i okuyup canvas'a çizer.
             latestFrameRef.current = frame;
-            onFrame?.(frame);
+            onFrame?.(frame, rawFrame);
             onQuality?.(quality);
+
+            if (ts - lastSceneAt >= 1000) {
+              lastSceneAt = ts;
+              const sampled = sampleScene(video, prevScenePixels);
+              if (sampled) {
+                prevScenePixels = sampled.pixels;
+                onScene?.(sampled.sample);
+              }
+            }
           }
-          // Telemetri (FPS, latency) saniyede bir yakala (re-render minimum).
           const second = Math.floor(ts / 1000);
           if (second !== lastTelemetrySecond) {
             lastTelemetrySecond = second;
             setTelemetry(getDetectorTelemetry());
           }
-          rafId = requestAnimationFrame(loop);
+          schedule();
         };
-        rafId = requestAnimationFrame(loop);
+
+        const schedule = () => {
+          if (cancelled || !video) return;
+          if (hasRvfc) {
+            rvfcId = video.requestVideoFrameCallback((_now, meta) => {
+              process(meta.mediaTime * 1000);
+            });
+          } else {
+            rafId = requestAnimationFrame(() => process(performance.now()));
+          }
+        };
+
+        schedule();
       } catch (err) {
         if (cancelled) return;
         setError(translateError(err));
@@ -266,10 +324,14 @@ function CameraStreamInner({
 
     return () => {
       cancelled = true;
-      if (rafId) cancelAnimationFrame(rafId);
-      // We do NOT release the module-level activeStream here — StrictMode
-      // would tear down the only stream we just created. The stream lives
-      // until the component fully unmounts (page nav) or retry() is called.
+      if (rafId != null) cancelAnimationFrame(rafId);
+      if (
+        rvfcId != null &&
+        videoEl &&
+        typeof videoEl.cancelVideoFrameCallback === 'function'
+      ) {
+        videoEl.cancelVideoFrameCallback(rvfcId);
+      }
     };
     // onFrame is intentionally excluded — parent must memoize.
     // eslint-disable-next-line react-hooks/exhaustive-deps

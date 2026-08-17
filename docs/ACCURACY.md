@@ -7,7 +7,13 @@
 > EVAL_REPORT=1 pnpm vitest run src/lib/eval/jump-accuracy.test.ts
 > ```
 
-**Son güncelleme:** 2026-08-11 · **Harness:** `src/lib/eval/synthesize.ts` + `jump-accuracy.test.ts`
+**Son güncelleme:** 2026-08-17 · **Harness:** `src/lib/eval/synthesize.ts` + `jump-accuracy.test.ts`
+
+> **Bu sayılar sentetiktir.** Bilinen bir uçuş yörüngesinden yüksekliği geri
+> kazanmayı ölçerler — matematiği doğrularlar, gerçek dünyayı değil. İnsan /
+> force-plate doğrulaması yapılmamıştır. Uçtan uca sapma için
+> [`docs/BIAS_PILOT.md`](./BIAS_PILOT.md). "Sistem ±0.4 cm ölçüyor" demek
+> yanlıştır; doğrusu: "poz verisi doğruysa algoritma bu kadar hata ekliyor".
 
 ---
 
@@ -270,7 +276,7 @@ kod yazarak üretilemez.
 | `src/lib/eval/jump-accuracy.test.ts` | 12 | MAE/bias matrisi, σ dürüstlüğü, öz-kalibrasyon |
 | `src/lib/eval/adversarial.test.ts` | 12 | 5 düşmanca senaryo + 2 yanlış-negatif kontrolü |
 | `src/core/use-cases/apply-verdict.test.ts` | 10 | Deterministik kapı, σ genişletme, sınır durumları |
-| `src/infrastructure/validity/composite-judge.test.ts` | 9 | Hakem birleştirme, görsel hakem düştüğünde dayanıklılık |
+| `src/core/use-cases/merge-verdicts.test.ts` | 9 | Hakem birleştirme, yetki alanı, görsel hakem düştüğünde dayanıklılık |
 | `src/infrastructure/validity/skeleton-render.test.ts` | 13 | Gizlilik sözleşmesi, anahtar kare seçimi |
 | `src/lib/stats/probit.test.ts` | 20 | Φ⁻¹ doğruluğu, gidiş-dönüş, sınır davranışı |
 | `src/lib/matching/zspace.test.ts` | 28 | Norm kayıt defteri, z-mesafesi, gerçek spor davranışı |

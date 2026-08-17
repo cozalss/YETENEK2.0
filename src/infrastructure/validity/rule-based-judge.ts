@@ -31,6 +31,11 @@ import {
   type ValidityJudge,
 } from '@/core/ports/validity-judge';
 import { ok, type Result } from '@/core/types/result';
+import {
+  fitParabola,
+  gravityConsistentCmPerUnit,
+  parabolaRSquared,
+} from '@/lib/tests/kinematics';
 import { POSE_LANDMARKS, type PoseFrame, type TestType } from '@/types';
 
 /** Analiz için gereken asgari kare sayısı. */
@@ -96,11 +101,16 @@ const MIN_TOUCHDOWN_EPISODE_MS = 400;
  */
 const SINGLE_LEG_MIN_RATIO = 0.7;
 
-/**
- * Gerçek bir sıçramada kalçanın yükselmesi gereken asgari mesafe, bacak
+/** Gerçek bir sıçramada kalçanın yükselmesi gereken asgari mesafe, bacak
  * oranı. Bunun altı "gövde yerinde kaldı" demektir.
  */
 const MIN_JUMP_HIP_RISE_FRAC = 0.04;
+
+/** Kol savurma: bilek kalçaya göre bacak boyunun bu oranından fazla yükselirse ihlal. Cömert — doğal denge savurması değil, tam savurma. */
+const ARM_SWING_FRAC = 0.28;
+
+/** Kalça parabolünün "bu gerçekten serbest düşüştü" sayılması için R². */
+const MIN_HIP_BALLISTIC_R_SQUARED = 0.9;
 
 /** Yanal hop için asgari genlik (X standart sapması), bacak oranı. */
 const MIN_LATERAL_AMPLITUDE_FRAC = 0.08;
@@ -141,6 +151,7 @@ const REQUIRED_IN_FRAME: Partial<Record<TestType, readonly number[]>> = {
   jump: [
     POSE_LANDMARKS.LEFT_HIP, POSE_LANDMARKS.RIGHT_HIP,
     POSE_LANDMARKS.LEFT_ANKLE, POSE_LANDMARKS.RIGHT_ANKLE,
+    POSE_LANDMARKS.LEFT_WRIST, POSE_LANDMARKS.RIGHT_WRIST,
   ],
   broadJump: [
     POSE_LANDMARKS.LEFT_HIP, POSE_LANDMARKS.RIGHT_HIP,
@@ -341,6 +352,136 @@ function detectAirborneFrames(
   return airborne;
 }
 
+interface HipSeries {
+  readonly t: number[];
+  readonly y: number[];
+}
+
+function extractHipY(frames: readonly PoseFrame[]): HipSeries {
+  const t: number[] = [];
+  const y: number[] = [];
+  for (const f of frames) {
+    const okL = visible(f, POSE_LANDMARKS.LEFT_HIP);
+    const okR = visible(f, POSE_LANDMARKS.RIGHT_HIP);
+    if (!okL && !okR) continue;
+    const hips = [
+      okL ? lm(f, POSE_LANDMARKS.LEFT_HIP).y : null,
+      okR ? lm(f, POSE_LANDMARKS.RIGHT_HIP).y : null,
+    ].filter((v): v is number => v != null);
+    const hipY = hips.reduce((s, v) => s + v, 0) / hips.length;
+    const okSL = visible(f, POSE_LANDMARKS.LEFT_SHOULDER);
+    const okSR = visible(f, POSE_LANDMARKS.RIGHT_SHOULDER);
+    let yVal = hipY;
+    if (okSL || okSR) {
+      const shoulders = [
+        okSL ? lm(f, POSE_LANDMARKS.LEFT_SHOULDER).y : null,
+        okSR ? lm(f, POSE_LANDMARKS.RIGHT_SHOULDER).y : null,
+      ].filter((v): v is number => v != null);
+      const shoulderY = shoulders.reduce((s, v) => s + v, 0) / shoulders.length;
+      yVal = 0.6 * hipY + 0.4 * shoulderY;
+    }
+    t.push(f.timestamp);
+    y.push(yVal);
+  }
+  return { t, y };
+}
+
+interface HipMotion {
+  readonly hipRise: number;
+  readonly ankleRise: number;
+  readonly hipBarelyMoved: boolean;
+}
+
+function measureHipAnkleRise(
+  frames: readonly PoseFrame[],
+  scale: number
+): HipMotion | null {
+  const hipY: number[] = [];
+  const ankleY: number[] = [];
+  for (const f of frames) {
+    const hipOk =
+      visible(f, POSE_LANDMARKS.LEFT_HIP) || visible(f, POSE_LANDMARKS.RIGHT_HIP);
+    const ankleOk =
+      visible(f, POSE_LANDMARKS.LEFT_ANKLE) ||
+      visible(f, POSE_LANDMARKS.RIGHT_ANKLE);
+    if (!hipOk || !ankleOk) continue;
+    const hL = visible(f, POSE_LANDMARKS.LEFT_HIP)
+      ? lm(f, POSE_LANDMARKS.LEFT_HIP).y
+      : null;
+    const hR = visible(f, POSE_LANDMARKS.RIGHT_HIP)
+      ? lm(f, POSE_LANDMARKS.RIGHT_HIP).y
+      : null;
+    const aL = visible(f, POSE_LANDMARKS.LEFT_ANKLE)
+      ? lm(f, POSE_LANDMARKS.LEFT_ANKLE).y
+      : null;
+    const aR = visible(f, POSE_LANDMARKS.RIGHT_ANKLE)
+      ? lm(f, POSE_LANDMARKS.RIGHT_ANKLE).y
+      : null;
+    const hips = [hL, hR].filter((v): v is number => v != null);
+    const ankles = [aL, aR].filter((v): v is number => v != null);
+    hipY.push(hips.reduce((s, v) => s + v, 0) / hips.length);
+    ankleY.push(ankles.reduce((s, v) => s + v, 0) / ankles.length);
+  }
+  if (hipY.length < MIN_FRAMES) return null;
+
+  const hipBase = median(hipY.slice(0, Math.min(25, hipY.length)));
+  const ankleBase = median(ankleY.slice(0, Math.min(25, ankleY.length)));
+  const hipRise = hipBase - Math.min(...hipY);
+  const ankleRise = ankleBase - Math.min(...ankleY);
+  return {
+    hipRise,
+    ankleRise,
+    hipBarelyMoved: hipRise < MIN_JUMP_HIP_RISE_FRAC * scale,
+  };
+}
+
+/**
+ * Kalça Y'sinin tepe çevresi yerçekimiyle tutarlı bir parabol mü?
+ *
+ * Yapışkan ayak / uçuş karelerinin visibility yüzünden silinmesi durumunda
+ * ayak bileği "havalanmadı" der; kalça yörüngesi hâlâ balistikse hareket
+ * sıçramadır. Eğrilik testi taban çizgisinden bağımsızdır.
+ */
+function hipBallisticEvidence(
+  frames: readonly PoseFrame[],
+  scale: number,
+  hipRise: number
+): boolean {
+  if (hipRise < MIN_JUMP_HIP_RISE_FRAC * scale) return false;
+
+  const { t, y } = extractHipY(frames);
+  if (t.length < 5) return false;
+
+  const hipBase = median(y.slice(0, Math.min(25, y.length)));
+  let apexIdx = 0;
+  for (let i = 1; i < y.length; i++) {
+    if (y[i] < y[apexIdx]) apexIdx = i;
+  }
+
+  const peakRise = hipBase - y[apexIdx];
+  if (peakRise <= 0) return false;
+  const inAir = 0.25 * peakRise;
+
+  let left = apexIdx;
+  while (left > 0 && hipBase - y[left - 1] > inAir) left--;
+  let right = apexIdx;
+  while (right < y.length - 1 && hipBase - y[right + 1] > inAir) right++;
+
+  // Parabol fit en az 5 nokta ister. Pencere daralırsa tepe etrafını aç.
+  if (right - left + 1 < 5) {
+    left = Math.max(0, apexIdx - 3);
+    right = Math.min(y.length - 1, apexIdx + 3);
+  }
+  if (right - left + 1 < 5) return false;
+
+  const ts = t.slice(left, right + 1);
+  const ys = y.slice(left, right + 1);
+  const fit = fitParabola(ts, ys);
+  if (!fit) return false;
+  if (gravityConsistentCmPerUnit(fit.a) == null) return false;
+  return parabolaRSquared(fit, ys) >= MIN_HIP_BALLISTIC_R_SQUARED;
+}
+
 function verdict(partial: Partial<TestVerdict>): TestVerdict {
   return {
     performed: true,
@@ -410,6 +551,47 @@ function judgeBalance(frames: readonly PoseFrame[]): TestVerdict {
   });
 }
 
+function detectArmSwing(
+  frames: readonly PoseFrame[],
+  scale: number
+): boolean {
+  const deltas: number[] = [];
+  for (const f of frames) {
+    const hipOk =
+      visible(f, POSE_LANDMARKS.LEFT_HIP) || visible(f, POSE_LANDMARKS.RIGHT_HIP);
+    const wristOk =
+      visible(f, POSE_LANDMARKS.LEFT_WRIST) &&
+      visible(f, POSE_LANDMARKS.RIGHT_WRIST);
+    if (!hipOk || !wristOk) continue;
+    const hips = [
+      visible(f, POSE_LANDMARKS.LEFT_HIP) ? lm(f, POSE_LANDMARKS.LEFT_HIP).y : null,
+      visible(f, POSE_LANDMARKS.RIGHT_HIP) ? lm(f, POSE_LANDMARKS.RIGHT_HIP).y : null,
+    ].filter((v): v is number => v != null);
+    const wrists = [
+      lm(f, POSE_LANDMARKS.LEFT_WRIST).y,
+      lm(f, POSE_LANDMARKS.RIGHT_WRIST).y,
+    ];
+    const hipY = hips.reduce((s, v) => s + v, 0) / hips.length;
+    const wristY = (wrists[0] + wrists[1]) / 2;
+    // Görüntü Y aşağı pozitif: bilek yükselince wristY küçülür, d büyür.
+    deltas.push(hipY - wristY);
+  }
+  if (deltas.length < MIN_FRAMES) return false;
+  const baseline = median(deltas.slice(0, Math.min(20, deltas.length)));
+  const peak = Math.max(...deltas);
+  return peak - baseline > ARM_SWING_FRAC * scale;
+}
+
+function armSwingVerdict(): TestVerdict {
+  return verdict({
+    performed: false,
+    protocolViolations: ['arm_swing'],
+    techniqueScore: 0,
+    judgeConfidence: 0.85,
+    notes: 'Bilekler kalçaya göre belirgin yükseldi — kol savurma.',
+  });
+}
+
 function judgeJump(frames: readonly PoseFrame[]): TestVerdict {
   if (frames.length < MIN_FRAMES) {
     return verdict({
@@ -420,46 +602,39 @@ function judgeJump(frames: readonly PoseFrame[]): TestVerdict {
   }
 
   const scale = bodyScale(frames);
+  const swing = detectArmSwing(frames, scale);
+  const motion = measureHipAnkleRise(frames, scale);
+  if (!motion) {
+    return verdict({ judgeConfidence: 0.3, notes: 'Kalça izlenemedi.' });
+  }
+
+  // 1. Kalça parabolü ayağı ezer — yapışkan ayak / kaybolan uçuş kareleri.
+  if (hipBallisticEvidence(frames, scale, motion.hipRise)) {
+    if (swing) return armSwingVerdict();
+    return verdict({
+      judgeConfidence: 0.85,
+      notes: 'Kalça yörüngesi balistik; ayak izlemesi yok sayılsın.',
+    });
+  }
+
   const airborne = detectAirborneFrames(frames, scale);
-  if (airborne === 0) {
+
+  // 2. Ne ayak havalandı ne gövde yükseldi — kıpırdamama.
+  if (airborne === 0 && motion.hipBarelyMoved) {
     return verdict({
       performed: false,
       protocolViolations: ['no_flight_phase'],
       techniqueScore: 0,
       judgeConfidence: 0.9,
-      notes: 'Ayaklar hiçbir karede yerden kesilmedi.',
+      notes: 'Ayaklar hiçbir karede yerden kesilmedi ve gövde yükselmedi.',
     });
   }
 
-  // Gövde gerçekten yükseldi mi? Hilede ayak kalkar, kalça yerinde kalır.
-  const hipY: number[] = [];
-  const ankleY: number[] = [];
-  for (const f of frames) {
-    if (!visible(f, POSE_LANDMARKS.LEFT_HIP) || !visible(f, POSE_LANDMARKS.LEFT_ANKLE)) continue;
-    hipY.push((lm(f, POSE_LANDMARKS.LEFT_HIP).y + lm(f, POSE_LANDMARKS.RIGHT_HIP).y) / 2);
-    ankleY.push((lm(f, POSE_LANDMARKS.LEFT_ANKLE).y + lm(f, POSE_LANDMARKS.RIGHT_ANKLE).y) / 2);
-  }
-  if (hipY.length < MIN_FRAMES) {
-    return verdict({ judgeConfidence: 0.3, notes: 'Kalça izlenemedi.' });
-  }
-
-  const hipBase = median(hipY.slice(0, Math.min(25, hipY.length)));
-  const ankleBase = median(ankleY.slice(0, Math.min(25, ankleY.length)));
-  const hipRise = hipBase - Math.min(...hipY);
-  const ankleRise = ankleBase - Math.min(...ankleY);
-
+  // 3. Ayak kalktı, gövde yerinde — parmak ucu / topuk kaldırma.
   // Kural eskiden ORANA bakıyordu (`hipRise / ankleRise < 0.5`) ve bu yanlıştı:
   // gerçek bir sıçramada çocuk havada dizlerini toplarsa ayak bileği gövdeden
-  // çok daha fazla yükselir, oran düşer ve DOĞRU bir sıçrama "topuk kaldırma"
-  // diye reddedilirdi. Çocuklar bunu sürekli yapıyor.
-  //
-  // Ayırt edici olan oran değil, kalçanın MUTLAK yükselişi: gövdesi
-  // desteklenirken ayaklarını çeken biri kalçasını hiç kaldırmaz, gerçekten
-  // sıçrayan ise kalçasını en az sıçrama yüksekliği kadar kaldırır. Eşik
-  // bacak boyuna göre — ~150 cm bir çocukta ≈ 3 cm, gürültünün belirgin
-  // üstünde ama en mütevazı sıçramanın bile altında.
-  const hipBarelyMoved = hipRise < MIN_JUMP_HIP_RISE_FRAC * scale;
-  if (ankleRise > AIRBORNE_LIFT_FRAC * scale && hipBarelyMoved) {
+  // çok daha fazla yükselir. Ayırt edici olan kalçanın MUTLAK yükselişi.
+  if (motion.ankleRise > AIRBORNE_LIFT_FRAC * scale && motion.hipBarelyMoved) {
     return verdict({
       performed: false,
       protocolViolations: ['heel_raise_only'],
@@ -469,6 +644,19 @@ function judgeJump(frames: readonly PoseFrame[]): TestVerdict {
     });
   }
 
+  // 4. Ayak izlemesi uçuş göstermedi ama kalça yükseldi ve balistik
+  // doğrulanamadı. Hakem reddetmez — "protokol ihlal edildi mi" belirsiz;
+  // ölçülebilirlik kararını analyzeJump verir.
+  if (airborne === 0) {
+    if (swing) return armSwingVerdict();
+    return verdict({
+      judgeConfidence: 0.45,
+      notes:
+        'Ayak izlemesi uçuş göstermedi; kalça yükseldi ama balistik doğrulanamadı. Ölçüm katmanı karar verir.',
+    });
+  }
+
+  if (swing) return armSwingVerdict();
   return verdict({ judgeConfidence: 0.8 });
 }
 
@@ -481,14 +669,31 @@ function judgeBroadJump(frames: readonly PoseFrame[]): TestVerdict {
     });
   }
 
-  const airborne = detectAirborneFrames(frames, bodyScale(frames));
-  if (airborne === 0) {
+  const scale = bodyScale(frames);
+  const motion = measureHipAnkleRise(frames, scale);
+  if (motion && hipBallisticEvidence(frames, scale, motion.hipRise)) {
+    return verdict({
+      judgeConfidence: 0.85,
+      notes: 'Kalça yörüngesi balistik; ayak izlemesi yok sayılsın.',
+    });
+  }
+
+  const airborne = detectAirborneFrames(frames, scale);
+  if (airborne === 0 && (motion == null || motion.hipBarelyMoved)) {
     return verdict({
       performed: false,
       protocolViolations: ['no_flight_phase', 'stepped_not_jumped'],
       techniqueScore: 0,
       judgeConfidence: 0.9,
       notes: 'Yatay yer değiştirme var ama uçuş fazı yok — yürüyüş.',
+    });
+  }
+
+  if (airborne === 0) {
+    return verdict({
+      judgeConfidence: 0.45,
+      notes:
+        'Ayak izlemesi uçuş göstermedi; kalça yükseldi ama balistik doğrulanamadı. Ölçüm katmanı karar verir.',
     });
   }
 
@@ -509,23 +714,22 @@ function judgeLateralHops(frames: readonly PoseFrame[]): TestVerdict {
   // hop'ta ~0.05.
   const scale = bodyScale(frames);
   const amplitude = standardDeviation(centerX);
-  const violations: ProtocolViolation[] = [];
   if (amplitude < MIN_LATERAL_AMPLITUDE_FRAC * scale) {
-    violations.push('insufficient_amplitude');
+    return verdict({
+      performed: false,
+      protocolViolations: ['insufficient_amplitude'],
+      techniqueScore: 0,
+      judgeConfidence: 0.85,
+      notes: `Yanal genlik ${amplitude.toFixed(4)} birim — titreme.`,
+    });
   }
 
   const airborne = detectAirborneFrames(frames, scale);
   if (airborne === 0) {
-    violations.push('no_flight_phase');
-  }
-
-  if (violations.length > 0) {
     return verdict({
-      performed: false,
-      protocolViolations: violations,
-      techniqueScore: 0,
-      judgeConfidence: 0.85,
-      notes: `Yanal genlik ${amplitude.toFixed(4)} birim, havada geçen kare ${airborne}.`,
+      judgeConfidence: 0.55,
+      notes:
+        'Yanal genlik yeterli; ayak izlemesi uçuş göstermedi. Ölçüm katmanı karar verir.',
     });
   }
 

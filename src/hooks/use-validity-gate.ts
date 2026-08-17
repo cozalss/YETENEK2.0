@@ -10,11 +10,11 @@
  *      uçuş fazı olmayan sıçrama, genliksiz hop. Kesin bir ihlal bulursa
  *      orada durur — ağa hiç çıkmaz, çocuk anında geri bildirim alır.
  *
- *   2. **Görsel hakem (sunucu, rıza gerektirir).** Yalnız kural hakeminin
- *      göremediği niteliksel sorunlar için: kol savurma, uçuşta diz çekme,
- *      kısmi hareket açıklığı. Rıza yoksa, ağ yoksa, anahtar yoksa veya
- *      servis düşerse **atlanır** — sistem kural kararıyla çalışmaya devam
- *      eder.
+ *   2. **Görsel hakem (sunucu, rıza gerektirir).** Sahne/protokol ihlalleri
+ *      (yanlış egzersiz, birden fazla kişi, tutunma) ve nitel teknik
+ *      (kol savurma, uçuşta diz çekme). Temas/zamanlama ("ayak yerden
+ *      kesildi mi") onun yetki alanı değildir — o etiketle veto edemez.
+ *      Rıza yoksa, ağ yoksa, anahtar yoksa veya servis düşerse **atlanır**.
  *
  * ## Veri minimizasyonu
  *
@@ -28,10 +28,11 @@ import {
   applyVerdict,
   type RejectedMeasurement,
 } from '@/core/use-cases/apply-verdict';
-import type {
-  MeasurementClaim,
-  ProtocolViolation,
-  TestVerdict,
+import {
+  isFatalViolation,
+  type MeasurementClaim,
+  type ProtocolViolation,
+  type TestVerdict,
 } from '@/core/ports/validity-judge';
 import { mergeVerdicts } from '@/core/use-cases/merge-verdicts';
 import { ruleBasedValidityJudge } from '@/infrastructure/validity/rule-based-judge';
@@ -81,8 +82,13 @@ export interface GateOutcome {
    * alanından değil: `setState` senkron değil, `await evaluate()` sonrası
    * `gate.sigmaMultiplier` hâlâ önceki render'ın değerini taşır. State alanı
    * yalnız render'da göstermek için var.
+   *
+   * Aynı tuzak `rejection` ve `visionApplied` için de geçerlidir — karar
+   * akışında bu alandaki kopyaları kullanın.
    */
   readonly sigmaMultiplier: number;
+  readonly rejection: RejectedMeasurement | null;
+  readonly visionApplied: boolean;
 }
 
 export interface ValidityGate {
@@ -122,7 +128,7 @@ function toVerdict(raw: unknown): TestVerdict | null {
       : [],
     judgeConfidence:
       typeof r.judgeConfidence === 'number' ? r.judgeConfidence : 0.5,
-    source: 'composite',
+    source: 'vision',
     notes: typeof r.notes === 'string' ? r.notes : undefined,
   };
 }
@@ -169,12 +175,16 @@ export function useValidityGate(opts: UseValidityGateOptions): ValidityGate {
 
     // Hakem karar veremediyse ölçümü bloklamıyoruz: "değerlendiremedim" ile
     // "geçersiz" farklı şeyler.
-    let verdict: TestVerdict | null = judged.ok ? judged.value : null;
+    const rulesVerdict: TestVerdict | null = judged.ok ? judged.value : null;
+    let verdict: TestVerdict | null = rulesVerdict;
+    let visionVerdict: TestVerdict | null = null;
+    let droppedFromVision: readonly ProtocolViolation[] = [];
+    let visionRan = false;
 
     const ruleIsDecisive =
-      verdict != null &&
-      !verdict.performed &&
-      verdict.judgeConfidence >= SKIP_VISION_ABOVE_CONFIDENCE;
+      rulesVerdict != null &&
+      !rulesVerdict.performed &&
+      rulesVerdict.judgeConfidence >= SKIP_VISION_ABOVE_CONFIDENCE;
 
     // --- Aşama 2: görsel hakem, rıza varsa -------------------------------
     if (!ruleIsDecisive && isVisionConsentGranted()) {
@@ -184,21 +194,78 @@ export function useValidityGate(opts: UseValidityGateOptions): ValidityGate {
         claim
       );
       if (refined) {
+        visionRan = true;
+        visionVerdict = refined;
         setVisionApplied(true);
-        verdict = verdict ? mergeVerdicts(verdict, refined) : refined;
+        if (verdict) {
+          const merged = mergeVerdicts(verdict, refined);
+          verdict = merged.verdict;
+          droppedFromVision = merged.droppedFromVision;
+        } else {
+          verdict = refined;
+        }
       }
     }
+
+    const rejectedBy = inferRejectedBy(test, rulesVerdict, verdict);
+
+    log.info('geçerlilik kararı', {
+      test,
+      rules: rulesVerdict
+        ? {
+            performed: rulesVerdict.performed,
+            protocolViolations: rulesVerdict.protocolViolations,
+            judgeConfidence: rulesVerdict.judgeConfidence,
+            notes: rulesVerdict.notes,
+          }
+        : null,
+      visionCalled: visionRan,
+      vision: visionVerdict
+        ? {
+            performed: visionVerdict.performed,
+            protocolViolations: visionVerdict.protocolViolations,
+            judgeConfidence: visionVerdict.judgeConfidence,
+            techniqueScore: visionVerdict.techniqueScore,
+            notes: visionVerdict.notes,
+          }
+        : null,
+      droppedFromVision,
+      decision: verdict
+        ? {
+            performed: verdict.performed,
+            protocolViolations: verdict.protocolViolations,
+            source: verdict.source,
+          }
+        : null,
+      rejectedBy,
+    });
 
     if (verdict == null) {
       setRejection(null);
       setSigmaMultiplier(1);
-      return { allowed: true, sigmaMultiplier: 1, injuryWarnings: [] };
+      return {
+        allowed: true,
+        sigmaMultiplier: 1,
+        injuryWarnings: [] as const,
+        rejection: null,
+        visionApplied: visionRan,
+      };
     }
 
     const gated = applyVerdict(test, verdict);
     if (!gated.ok) {
-      setRejection(gated.error);
-      return { allowed: false, sigmaMultiplier: 1, injuryWarnings: [] };
+      const rejection: RejectedMeasurement = {
+        ...gated.error,
+        rejectedBy,
+      };
+      setRejection(rejection);
+      return {
+        allowed: false,
+        sigmaMultiplier: 1,
+        injuryWarnings: [] as const,
+        rejection,
+        visionApplied: visionRan,
+      };
     }
 
     const multiplier = gated.value.sigmaMultiplier;
@@ -208,6 +275,8 @@ export function useValidityGate(opts: UseValidityGateOptions): ValidityGate {
       allowed: true,
       sigmaMultiplier: multiplier,
       injuryWarnings: gated.value.injuryWarnings,
+      rejection: null,
+      visionApplied: visionRan,
     };
   }, [test]);
 
@@ -223,7 +292,9 @@ export function useValidityGate(opts: UseValidityGateOptions): ValidityGate {
 
 /**
  * Görsel kararı ister. Başarısız olursa `null` döner ve çağıran kural
- * kararıyla devam eder — görsel katman hiçbir koşulda ölçümü bloklamaz.
+ * kararıyla devam eder. Görsel katman yalnız kendi yetki alanındaki
+ * sahne/protokol ihlallerinde ölçümü bloklar; temas etiketleri birleştirmede
+ * düşer.
  */
 async function requestVisionVerdict(
   test: TestType,
@@ -276,4 +347,22 @@ async function requestVisionVerdict(
   } finally {
     clearTimeout(timer);
   }
+}
+
+function inferRejectedBy(
+  test: TestType,
+  rules: TestVerdict | null,
+  merged: TestVerdict | null
+): 'rules' | 'vision' | undefined {
+  if (merged == null) return undefined;
+  const fatal = merged.protocolViolations.some((v) => isFatalViolation(test, v));
+  if (merged.performed && !fatal) return undefined;
+  if (rules && !rules.performed) return 'rules';
+  if (
+    rules &&
+    rules.protocolViolations.some((v) => isFatalViolation(test, v))
+  ) {
+    return 'rules';
+  }
+  return 'vision';
 }

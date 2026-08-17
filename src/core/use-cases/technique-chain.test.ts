@@ -42,6 +42,7 @@ function jumpAnalysis(): JumpAnalysis & { score: number } {
     flightMethod: 'parabolic',
     cmPerUnitFromGravity: 180,
     ballisticFit: 0.99,
+    captureNotes: [],
     valid: true,
     score: 62,
   };

@@ -38,6 +38,7 @@ type Phase = 'idle' | 'countdown' | 'capture' | 'analyze' | 'result';
 interface Props {
   childAgeYears?: number;
   childSex?: 'male' | 'female';
+  childHeightCm?: number | null;
   onComplete?: (
     analysis: BroadJumpAnalysis & {
       // `number | null`: mesafe hesaplanamadıysa skor da yok. Bunu tipte
@@ -62,6 +63,7 @@ const STEPS = [
 export function BroadJumpTest({
   childAgeYears = 12,
   childSex = 'male',
+  childHeightCm,
   onComplete,
 }: Props) {
   const [phase, setPhase] = useState<Phase>('idle');
@@ -76,6 +78,7 @@ export function BroadJumpTest({
   const reducedMotion = useReducedMotion();
 
   const samplesRef = useRef<BroadJumpSample[]>([]);
+  const calibrationFrameRef = useRef<PoseFrame | null>(null);
   const captureActiveRef = useRef(false);
   const phaseRef = useRef<Phase>('idle');
   const lastFramingRef = useRef<FramingStatus | null>(null);
@@ -93,31 +96,47 @@ export function BroadJumpTest({
 
   useEffect(() => () => cancelSpeech(), []);
 
-  const gate = useValidityGate({ test: 'broadJump' });
+  const gate = useValidityGate({ test: 'broadJump', sampleEvery: 1 });
   const gateCollect = gate.collect;
   const gateEvaluate = gate.evaluate;
 
-  const handleFrame = useCallback((frame: PoseFrame | null) => {
-    if (phaseRef.current === 'idle' || phaseRef.current === 'countdown') {
-      const next = checkJumpFraming(frame);
-      const prev = lastFramingRef.current;
-      if (!prev || prev.ready !== next.ready || prev.hint !== next.hint) {
-        lastFramingRef.current = next;
-        setFraming(next);
+  const handleFrame = useCallback(
+    (frame: PoseFrame | null, raw: PoseFrame | null) => {
+      // Rozet filtreli kareden (titremesin), ölçüm filtresiz kareden
+      // (One-Euro balistik tepeyi bastırıyor) — bkz. CameraStream `onFrame`.
+      if (phaseRef.current === 'idle' || phaseRef.current === 'countdown') {
+        const next = checkJumpFraming(frame);
+        const prev = lastFramingRef.current;
+        if (!prev || prev.ready !== next.ready || prev.hint !== next.hint) {
+          lastFramingRef.current = next;
+          setFraming(next);
+        }
       }
-    }
-    if (!frame) return;
-    if (!captureActiveRef.current) return;
-    const sample = frameToBroadJumpSample(frame);
-    if (!sample) return;
-    // Hakem ham iskelete bakıyor; indirgenmiş örnek uçuş fazını taşımıyor.
-    gateCollect(frame);
-    samplesRef.current.push(sample);
-  }, [gateCollect]);
+      const measured = raw ?? frame;
+      if (!measured) return;
+      if (
+        phaseRef.current === 'idle' ||
+        phaseRef.current === 'countdown'
+      ) {
+        calibrationFrameRef.current = measured;
+      }
+      if (!captureActiveRef.current) return;
+      const sample = frameToBroadJumpSample(measured);
+      if (!sample) return;
+      if (!calibrationFrameRef.current) {
+        calibrationFrameRef.current = measured;
+      }
+      // Hakem ham iskelete bakıyor; indirgenmiş örnek uçuş fazını taşımıyor.
+      gateCollect(measured);
+      samplesRef.current.push(sample);
+    },
+    [gateCollect]
+  );
 
   const start = () => {
     gate.reset();
     samplesRef.current = [];
+    calibrationFrameRef.current = null;
     captureActiveRef.current = false;
     setResult(null);
     setScore(null);
@@ -179,11 +198,12 @@ export function BroadJumpTest({
       judgeInjuryWarnings: readonly string[]
     ) {
     try {
-      // Kalibrasyon SADECE worldLandmarks'tan — boy'a hiç bağlı değil (bkz.
-      // `calibrateBroadJump` dokümanı: eksen karışıklığı olmadan tek güven
-      // kaynağı). worldLandmarks o oturumda yeterince izlenmediyse
-      // `jumpDistanceCm` `null` kalır ve ResultCard sayıyı göstermez.
-      const analysis = calibrateBroadJump(analyzeBroadJump(samplesRef.current));
+      // Kalibrasyon: görüntü ΔX × bacak ölçeği. World ΔX translasyonu ölçemez.
+      const analysis = calibrateBroadJump(
+        analyzeBroadJump(samplesRef.current),
+        calibrationFrameRef.current,
+        childHeightCm ?? null
+      );
       setResult(analysis);
       const computedScore =
         analysis.valid && analysis.jumpDistanceCm != null
@@ -220,7 +240,7 @@ export function BroadJumpTest({
     }
     }
     // onComplete kasten dışarıda — inline arrow ile çift kayıt olmasın.
-  }, [phase, childAgeYears, childSex, gateEvaluate]);
+  }, [phase, childAgeYears, childSex, childHeightCm, gateEvaluate]);
 
   useEffect(() => {
     if (phase === 'result' && resultHeadingRef.current) {

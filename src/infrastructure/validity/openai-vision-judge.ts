@@ -27,12 +27,14 @@
 
 import 'server-only';
 
-import type {
-  Compensation,
-  JudgeRequest,
-  ProtocolViolation,
-  TestVerdict,
-  ValidityJudge,
+import {
+  CONTACT_VIOLATIONS,
+  TECHNIQUE_FLOOR_WHEN_DROPPED,
+  type Compensation,
+  type JudgeRequest,
+  type ProtocolViolation,
+  type TestVerdict,
+  type ValidityJudge,
 } from '@/core/ports/validity-judge';
 import { err, ok, type Result } from '@/core/types/result';
 import { getEnv } from '@/shared/config/env';
@@ -77,6 +79,7 @@ export function isVisionJudgeConfigured(): boolean {
 const VIOLATION_VALUES: readonly ProtocolViolation[] = [
   'both_feet_down', 'foot_touched_down', 'hand_on_support',
   'no_flight_phase', 'stepped_not_jumped', 'heel_raise_only', 'non_ballistic',
+  'arm_swing',
   'insufficient_amplitude', 'finger_resting', 'not_tracking', 'partial_rom',
   'out_of_frame', 'multiple_people', 'wrong_exercise', 'camera_moved',
   'insufficient_data',
@@ -153,10 +156,13 @@ const VERDICT_SCHEMA = {
  * uymayan etiketleri eliyor.
  */
 const ALLOWED_VIOLATIONS: Readonly<Record<TestType, readonly ProtocolViolation[]>> = {
-  jump: ['heel_raise_only', 'non_ballistic', 'no_flight_phase'],
-  broadJump: ['no_flight_phase', 'stepped_not_jumped'],
+  // Temas/zamanlama Vision'ın işi değil — prompt'ta da sunulmaz. Model yine
+  // de `heel_raise_only` yazarsa coerce şema hijyeni olarak eledikten sonra
+  // `techniqueScore` tabanlanır; politika kararı `mergeVerdicts`'tedir.
+  jump: [],
+  broadJump: [],
   balance: ['both_feet_down', 'foot_touched_down', 'hand_on_support'],
-  lateralHops: ['insufficient_amplitude', 'no_flight_phase'],
+  lateralHops: [],
   endurance: ['partial_rom'],
   coordination: ['finger_resting', 'not_tracking'],
   reaction: [],
@@ -168,7 +174,8 @@ const UNIVERSAL_ALLOWED: readonly ProtocolViolation[] = [
   'multiple_people',
   'wrong_exercise',
   'camera_moved',
-  'insufficient_data',
+  // `insufficient_data` kasten yok: o bir gözlem değil, gözlem yokluğudur.
+  // Model "göremedim"i düşük judgeConfidence ile ifade eder.
 ];
 
 /**
@@ -181,15 +188,19 @@ const UNIVERSAL_ALLOWED: readonly ProtocolViolation[] = [
  */
 const TEST_PROTOCOLS: Readonly<Record<TestType, string>> = {
   jump: `Counter-movement jump (CMJ). Dogru uygulama: cocuk dik durur, hizla comelir ve iki ayagiyla birlikte dikey olarak patlayici bicimde sicrar; eller bel hizasinda sabit kalir.
+Ayaklarin yerden kesilip kesilmedigine KARAR VERME — onu cihazdaki fizik olcumu yapiyor.
 OZELLIKLE SUNLARA BAK:
-- Kollar yukari savruldu mu? (yuksekligi yapay artirir)
-- Ucus sirasinda dizler karina cekildi mi? Havada kalma suresini uzatir ama kutle merkezini yukseltmez - olcumu sisiren en sinsi hata.
-- Yalnizca topuklar mi kalkti, govde yerinde mi kaldi?
+- Bu hareket gercekten bir CMJ mi, yoksa baska bir egzersiz mi?
+- Kadrajda birden fazla kisi var mi?
+- Kollar yukari savruldu mu? (yuksekligi yapay artirir) — ihlal DEGIL, techniqueScore + compensations.
+- Ucus sirasinda dizler karina cekildi mi? Havada kalma suresini uzatir ama kutle merkezini yukseltmez — ihlal DEGIL, techniqueScore.
 - Iniste dizler ice kapandi mi, govde yana egildi mi, inis sert mi yapildi?`,
   broadJump: `Standing long jump. Dogru uygulama: iki ayak birlikte, one dogru tek bir sicrama; inis iki ayak ustunde ve dengeli.
+Ayaklarin yerden kesilip kesilmedigine veya adim/sicrama ayrimina KARAR VERME — onu cihazdaki fizik olcumu yapiyor.
 OZELLIKLE SUNLARA BAK:
-- Sicrama yerine adim mi atildi, yurudu mu?
-- Indikten sonra dengeyi tutmak icin ek adim atildi mi?
+- Bu hareket gercekten durarak uzun atlama mi?
+- Kadrajda birden fazla kisi var mi?
+- Indikten sonra dengeyi tutmak icin ek adim atildi mi? (teknik not)
 - Iniste dizler ice kapandi mi, inis tek bacaga mi bindi?`,
   balance: `Tek bacak denge durusu. Dogru uygulama: bir ayak yerde, digeri havada; hicbir yere tutunmadan, govde dik.
 OZELLIKLE SUNLARA BAK:
@@ -198,9 +209,11 @@ OZELLIKLE SUNLARA BAK:
 - Duvara, sandalyeye veya kendi bacagina tutundu mu?
 - Govde dengeyi tutmak icin asiri yana egiliyor mu?`,
   lateralHops: `Yanal sicramalar. Dogru uygulama: orta cizginin iki yanina, belirgin genlikte, iki ayak birlikte, ritmik sicrama.
+Ayaklarin yerden kesilip kesilmedigine KARAR VERME — onu cihazdaki fizik olcumu yapiyor.
 OZELLIKLE SUNLARA BAK:
-- Ayaklar gercekten yerden kesiliyor mu, yoksa kaydirarak mi gidiliyor?
-- Yanal mesafe anlamli mi, yoksa yerinde titreme mi?`,
+- Bu hareket gercekten yanal sicrama mi?
+- Kadrajda birden fazla kisi var mi?
+- Yanal mesafe anlamli mi, yoksa yerinde titreme mi? (teknik not, ihlal DEGIL)`,
   endurance: `Jumping jack (30 saniye). Dogru uygulama: kollar bas ustunde birlesir, ayaklar omuz genisliginden fazla acilir; her tekrar tam yapilir.
 OZELLIKLE SUNLARA BAK:
 - Kollar tam yukari cikiyor mu, yoksa omuz hizasinda mi kaliyor?
@@ -232,10 +245,11 @@ function buildPrompt(test: TestType, claim: JudgeRequest['measurementClaim']): s
     allowed.length > 0 ? allowed.join(', ') : '(teste özgü ihlal yok)',
     `Her testte geçerli olanlar: ${UNIVERSAL_ALLOWED.join(', ')}`,
     'İhlal görmediysen boş dizi döndür — zorlama.',
+    'Emin değilsen judgeConfidence değerini düşük ver (0.7 altı).',
+    'Düşük güvenli bir karar veto sayılmaz — uydurma ihlal yazma.',
     claimLine,
     '',
     'Kareler zaman sırasına göre veriliyor ve her birinin fazı etiketli.',
-    'Emin olamadığın durumda judgeConfidence değerini düşük ver.',
   ].join('\n');
 }
 
@@ -250,9 +264,9 @@ interface RawVerdict {
 }
 
 function coerce(raw: RawVerdict, test: TestType): TestVerdict {
-  // İki aşamalı filtre: önce enum'da var mı, sonra BU test için geçerli mi.
-  // İkincisi olmadan model sıçrama testine `both_feet_down` yazabiliyordu ve
-  // `applyVerdict` onu ölümcül sayıp geçerli bir ölçümü çöpe atardı.
+  // Şema hijyeni: enum'da var mı, BU test için anlamlı mı.
+  // Yetki (bu hakem bu etikette veto edebilir mi) `mergeVerdicts`'in işi —
+  // iki filtre bilinçli olarak ayrı.
   const validForTest = new Set<string>([
     ...ALLOWED_VIOLATIONS[test],
     ...UNIVERSAL_ALLOWED,
@@ -264,10 +278,21 @@ function coerce(raw: RawVerdict, test: TestType): TestVerdict {
   const compensations = raw.compensations.filter((c): c is Compensation =>
     (COMPENSATION_VALUES as readonly string[]).includes(c)
   );
+
+  let techniqueScore = Math.max(0, Math.min(100, Math.round(raw.techniqueScore)));
+  // Temas etiketi şema hijyeninde silindiyse gerekçesi de silinmeli —
+  // yoksa 0 puan merge'de σ'yı 2.0 yapar.
+  const strippedContact = raw.protocolViolations.some((v) =>
+    (CONTACT_VIOLATIONS as readonly string[]).includes(v)
+  );
+  if (strippedContact) {
+    techniqueScore = Math.max(techniqueScore, TECHNIQUE_FLOOR_WHEN_DROPPED);
+  }
+
   return {
     performed: raw.performed,
     protocolViolations: violations,
-    techniqueScore: Math.max(0, Math.min(100, Math.round(raw.techniqueScore))),
+    techniqueScore,
     stanceConfirmed: raw.stanceConfirmed,
     compensations,
     judgeConfidence: Math.max(0, Math.min(1, raw.judgeConfidence)),
