@@ -33,6 +33,14 @@ export type ChildSchema = z.infer<typeof childSchema>;
 
 export const jumpSummarySchema = z.object({
   jumpHeightCm: finiteNumber.nullable(),
+  /**
+   * 1σ belirsizliği (cm) — fit artığından türetilir (kinematics.ts). Yalnız
+   * flight-time (parabolik) yöntemde dolu; hip-displacement fallback'inde
+   * belirsizlik modellenmediği için `null`. UI bunu nokta tahmin yerine
+   * "32 cm (±4)" gibi bir aralık göstermek için kullanır — uydurulmuş bir
+   * kesinlik yerine dürüst bir aralık.
+   */
+  jumpHeightSigmaCm: finiteNumber.nullable().optional(),
   jumpUnits: finiteNumber,
   flightTimeMs: finiteNumber,
   score: scoreSchema,

@@ -592,3 +592,76 @@ export function jumpScore(
 ): number {
   return jumpPercentile(jumpHeightCm, ageYears, sex);
 }
+
+/**
+ * Sıçrama yüksekliğini nokta tahmin yerine aralık olarak biçimlendirir.
+ *
+ * NEDEN: `jumpHeightSigmaCm` hesaplanıyor (kinematics.ts, fit artığından
+ * türetilmiş gerçek bir belirsizlik) ama tek ondalıklı bir sayı ("32.4 cm")
+ * gösterildiğinde veli bunu bir cetvel ölçümü kadar kesin sanır. Tek bir
+ * telefon kamerasından, tek bir denemeden gelen bir sayı bu kesinliği hiç
+ * taşımıyor.
+ *
+ * σ yoksa (hip-displacement fallback — belirsizlik modellenmemiş) yuvarlanmış
+ * tek değer döner; uydurulmuş bir ± vermek σ'nın kendisini uydurmaktan
+ * farksız olurdu.
+ *
+ * @param roundToSigma Aralık ± kaç σ ile gösterilsin. 1 = ~%68 kapsama.
+ */
+export function formatJumpHeightCm(
+  jumpHeightCm: number,
+  sigmaCm: number | null,
+  roundToSigma = 1
+): string {
+  if (sigmaCm == null || !Number.isFinite(sigmaCm) || sigmaCm < 0.5) {
+    return `~${Math.round(jumpHeightCm)} cm`;
+  }
+  const margin = Math.max(1, Math.round(sigmaCm * roundToSigma));
+  return `${Math.round(jumpHeightCm)} cm (±${margin})`;
+}
+
+/**
+ * Aynı bilgiyi "28–36 cm" gibi açık bir aralık olarak verir — rapor metni
+ * (LLM) veya daha geniş kartlar için ± gösteriminden daha okunur olabilir.
+ */
+export function jumpHeightRangeCm(
+  jumpHeightCm: number,
+  sigmaCm: number | null,
+  roundToSigma = 1
+): { low: number; high: number } | null {
+  if (sigmaCm == null || !Number.isFinite(sigmaCm) || sigmaCm < 0.5) return null;
+  const margin = Math.max(1, Math.round(sigmaCm * roundToSigma));
+  return {
+    low: Math.round(jumpHeightCm) - margin,
+    high: Math.round(jumpHeightCm) + margin,
+  };
+}
+
+/**
+ * En-iyi-3 protokolü: birden fazla CMJ denemesi arasından en yükseğini
+ * seçer. Spor bilimi standardı — tek deneme yorgunluk/ısınmamış kas/tesadüfi
+ * teknik hatasını ortalamayla süzme şansı bırakmaz.
+ *
+ * Yalnızca geçerlilik kapısından geçmiş (`accepted`) VE analizi valid olan
+ * denemeler aday sayılır; reddedilen bir deneme daha yüksek bir sayı
+ * gösterse bile seçilmez — o sayı gerçek bir sıçramayı ölçmüyor olabilir.
+ *
+ * @returns Hiçbir deneme uygun değilse `null` (JumpTest bunu "3 denemenin
+ *          hiçbiri sayılmadı" ekranı için kullanır).
+ */
+export function pickBestJumpAttempt<
+  T extends {
+    accepted: boolean;
+    analysis: { valid: boolean; jumpHeightCm: number | null };
+  },
+>(attempts: readonly T[]): T | null {
+  const candidates = attempts.filter(
+    (a) => a.accepted && a.analysis.valid && a.analysis.jumpHeightCm != null
+  );
+  if (candidates.length === 0) return null;
+  return candidates.reduce((best, cur) =>
+    (cur.analysis.jumpHeightCm ?? 0) > (best.analysis.jumpHeightCm ?? 0)
+      ? cur
+      : best
+  );
+}

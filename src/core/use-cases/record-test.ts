@@ -74,6 +74,7 @@ export function recordJump(
     ...session,
     jump: {
       jumpHeightCm: analysis.jumpHeightCm,
+      jumpHeightSigmaCm: analysis.jumpHeightSigmaCm,
       jumpUnits: analysis.jumpUnits,
       flightTimeMs: analysis.flightTimeMs,
       score: analysis.score ?? Math.min(100, analysis.jumpUnits * 1000),

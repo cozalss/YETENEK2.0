@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { SessionSummary } from '@/lib/session/store';
+import { formatJumpHeightCm } from '@/lib/tests/jump';
 import { computeBadgesForSession, type Badge } from '@/lib/gamification/badges';
 import { gamificationStore } from '@/lib/gamification/store';
 import { BadgeReveal } from '@/components/gamification/BadgeReveal';
@@ -345,7 +346,10 @@ function ProfileTab({
             label="Dikey Sıçrama"
             value={
               session.jump.jumpHeightCm != null
-                ? `${session.jump.jumpHeightCm.toFixed(1)} cm`
+                ? formatJumpHeightCm(
+                    session.jump.jumpHeightCm,
+                    session.jump.jumpHeightSigmaCm ?? null
+                  )
                 : `${session.jump.score.toFixed(0)}/100`
             }
             sub={

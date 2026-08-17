@@ -12,10 +12,13 @@ import type { PoseFrame } from '@/types';
 import {
   analyzeJump,
   calibrateJumpHeight,
+  formatJumpHeightCm,
   frameToHipSample,
   isJumpFrameUsable,
+  jumpHeightRangeCm,
   jumpPercentile,
   jumpScore,
+  pickBestJumpAttempt,
   type HipSample,
 } from './jump';
 import { POSE_LANDMARKS } from '@/types';
@@ -352,5 +355,65 @@ describe('frameToHipSample + isJumpFrameUsable', () => {
       [POSE_LANDMARKS.LEFT_HIP]: { x: 0.4, y: 0.6, visibility: 0.1 },
     });
     expect(frameToHipSample(frame)).toBeNull();
+  });
+});
+
+describe('formatJumpHeightCm — nokta tahmin yerine aralık', () => {
+  it('σ varsa "cm (±N)" formatında döner', () => {
+    expect(formatJumpHeightCm(32.4, 4.2)).toBe('32 cm (±4)');
+  });
+
+  it('σ null ise (hip-displacement fallback) uydurulmuş bir ± eklenmez', () => {
+    expect(formatJumpHeightCm(32.4, null)).toBe('~32 cm');
+  });
+
+  it('σ 0.5 cm altındaysa (pratikte anlamsız) düz değere düşer', () => {
+    expect(formatJumpHeightCm(32.4, 0.1)).toBe('~32 cm');
+  });
+
+  it('margin en az 1 cm olarak yuvarlanır (0 gösterip yanlış kesinlik iddia etmez)', () => {
+    expect(formatJumpHeightCm(32.4, 0.6)).toBe('32 cm (±1)');
+  });
+});
+
+describe('jumpHeightRangeCm — rapor metni için açık aralık', () => {
+  it('28-36 gibi düşük/yüksek sınır döner', () => {
+    const r = jumpHeightRangeCm(32, 4);
+    expect(r).toEqual({ low: 28, high: 36 });
+  });
+
+  it('σ null ise aralık üretilmez (uydurulmuş belirsizlik yok)', () => {
+    expect(jumpHeightRangeCm(32, null)).toBeNull();
+  });
+});
+
+describe('pickBestJumpAttempt — en-iyi-3 seçimi', () => {
+  function attempt(cm: number | null, accepted = true, valid = true) {
+    return { accepted, analysis: { valid, jumpHeightCm: cm } };
+  }
+
+  it('3 geçerli denemeden en yükseği seçilir', () => {
+    const attempts = [attempt(24), attempt(31), attempt(28)];
+    expect(pickBestJumpAttempt(attempts)).toBe(attempts[1]);
+  });
+
+  it('reddedilen deneme daha yüksek cm gösterse bile seçilmez', () => {
+    const attempts = [attempt(24), attempt(99, false), attempt(28)];
+    expect(pickBestJumpAttempt(attempts)).toBe(attempts[2]);
+  });
+
+  it('valid:false olan deneme (algoritma reddi) seçilmez', () => {
+    const attempts = [attempt(24), attempt(99, true, false), attempt(28)];
+    expect(pickBestJumpAttempt(attempts)).toBe(attempts[2]);
+  });
+
+  it('hiçbir deneme uygun değilse null döner', () => {
+    const attempts = [attempt(null), attempt(10, false), attempt(5, true, false)];
+    expect(pickBestJumpAttempt(attempts)).toBeNull();
+  });
+
+  it('tek geçerli deneme varsa o seçilir', () => {
+    const attempts = [attempt(null, false), attempt(22)];
+    expect(pickBestJumpAttempt(attempts)).toBe(attempts[1]);
   });
 });

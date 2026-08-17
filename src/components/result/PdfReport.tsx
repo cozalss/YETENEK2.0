@@ -16,6 +16,7 @@ import {
 } from '@react-pdf/renderer';
 import type { SessionSummary } from '@/lib/session/store';
 import type { Badge } from '@/lib/gamification/badges';
+import { formatJumpHeightCm } from '@/lib/tests/jump';
 import {
   REFERENCES,
   type ScienceReference,
@@ -242,7 +243,10 @@ export function PdfReportDocument({ session, badges, aiReport }: Props) {
             <Text style={styles.rowLabel}>Dikey Sıçrama (CMJ)</Text>
             <Text style={styles.rowValue}>
               {session.jump.jumpHeightCm != null
-                ? `${session.jump.jumpHeightCm.toFixed(1)} cm`
+                ? formatJumpHeightCm(
+                    session.jump.jumpHeightCm,
+                    session.jump.jumpHeightSigmaCm ?? null
+                  )
                 : `${session.jump.score} skor`}
             </Text>
           </View>

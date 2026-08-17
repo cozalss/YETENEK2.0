@@ -121,7 +121,11 @@ export const SPORT_VOCABULARY: readonly string[] = [
  */
 export function factsFromSession(session: {
   child?: { ageYears?: number; heightCm?: number | null; weightKg?: number | null };
-  jump?: { jumpHeightCm?: number | null; score?: number } | null;
+  jump?: {
+    jumpHeightCm?: number | null;
+    jumpHeightSigmaCm?: number | null;
+    score?: number;
+  } | null;
   broadJump?: { jumpDistanceCm?: number | null; score?: number } | null;
   balance?: { averageScore?: number; asymmetryPercent?: number } | null;
   reaction?: { averageMs?: number; bestMs?: number; ageNormScore?: number } | null;
@@ -142,6 +146,14 @@ export function factsFromSession(session: {
   push(session.child?.weightKg);
   push(session.jump?.jumpHeightCm);
   push(session.jump?.score);
+  // Nokta tahmin yerine aralık: σ varsa alt/üst sınırlar da olgu kümesine
+  // giriyor. Bu sayede metin "28-36 cm" diyebiliyor — tek bir ondalıklı
+  // sayı yerine, gerçekten hesaplanmış bir belirsizliği yansıtarak.
+  if (session.jump?.jumpHeightCm != null && session.jump?.jumpHeightSigmaCm != null) {
+    const margin = Math.max(1, Math.round(session.jump.jumpHeightSigmaCm));
+    push(Math.round(session.jump.jumpHeightCm) - margin);
+    push(Math.round(session.jump.jumpHeightCm) + margin);
+  }
   push(session.broadJump?.jumpDistanceCm);
   push(session.broadJump?.score);
   push(session.balance?.averageScore);

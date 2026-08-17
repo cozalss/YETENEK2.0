@@ -1,12 +1,20 @@
 /**
  * Sıçrama (CMJ) testi UI bileşeni — premium 2-sütunlu layout.
  *
- * Akış:
+ * Akış — EN-İYİ-3 protokolü:
  *   1. IDLE      → editorial talimat sidebar'ı + canlı framing rozeti.
- *   2. COUNTDOWN → 3-2-1-BAŞLA geri sayım overlay'i.
+ *   2. COUNTDOWN → 3-2-1-BAŞLA geri sayım overlay'i (her deneme için).
  *   3. CAPTURE   → KAYIT pill + 5sn boyunca kalça Y serisi toplanıyor.
- *   4. ANALYZE   → analyzeJump() çağırılıyor.
- *   5. RESULT    → sonuç paneli (sidebar'da) + retry CTA.
+ *   4. ANALYZE   → analyzeJump() + geçerlilik kapısı çalışır.
+ *   5. BETWEEN   → deneme sonucu kısa özet (~2sn) → otomatik sıradaki deneme.
+ *   6. RESULT    → 3 denemenin EN İYİSİ (sidebar'da) + döküm + retry CTA.
+ *
+ * NEDEN en-iyi-3: spor bilimi CMJ protokolü standardı budur — tek deneme
+ * yorgunluk/ısınmamış kas/tesadüfi teknik hatasını ortalamayla süzme şansı
+ * bırakmaz. Reddedilen (geçerlilik kapısından geçemeyen) denemeler "en iyi"
+ * seçimine girmez ama akışı durdurmaz — 3'ü de biterse en az bir geçerli
+ * deneme varsa o gösterilir, hiçbiri geçerli değilse üçünün de kısa
+ * gerekçesi listelenir.
  */
 
 'use client';
@@ -30,15 +38,16 @@ import {
   type JumpAnalysis,
   analyzeJump,
   calibrateJumpHeight,
+  formatJumpHeightCm,
   frameToHipSample,
   jumpScore,
+  pickBestJumpAttempt,
 } from '@/lib/tests/jump';
 import type { PoseFrame } from '@/types';
 import { useValidityGate } from '@/hooks/use-validity-gate';
-import { RejectionPanel } from '@/components/tests/shared/RejectionPanel';
 import { VisionBadge } from '@/components/tests/shared/VisionBadge';
 
-type Phase = 'idle' | 'countdown' | 'capture' | 'analyze' | 'result';
+type Phase = 'idle' | 'countdown' | 'capture' | 'analyze' | 'between' | 'result';
 
 interface Props {
   childAgeYears?: number;
@@ -55,14 +64,39 @@ interface Props {
 
 const COUNTDOWN_SECONDS = 3;
 const CAPTURE_SECONDS = 5;
+/** Spor bilimi CMJ protokolü standardı: en-iyi-3 deneme. */
+const TOTAL_ATTEMPTS = 3;
+/** "Deneme 2/3 hazırlanıyor" ekranının otomatik ilerlemeden önce kalma süresi. */
+const BETWEEN_ATTEMPTS_MS = 2200;
 
 const STEPS = [
   'Telefonu / kamerayı yaklaşık 1.5 m yüksekliğe (sandalye, masa) koy. Yere koyma — kalça ve ayakların net görünsün.',
   'Kameradan 2-3 metre uzakta dik dur; tüm vücudun (baştan ayağa) ekrana sığsın.',
   'Sol-alt rozet "Hazır" yazana kadar pozisyonunu ayarla. Hazır olmadan başlatamazsın.',
-  '3-2-1 geri sayımının ardından 5 saniyelik kayıt başlar.',
-  '1 saniye dik dur — sonra HIZLICA çömelip patlayıcı şekilde zıpla.',
+  '3 deneme yapacaksın; her birinde 3-2-1 geri sayımının ardından 5 saniyelik kayıt başlar.',
+  '1 saniye dik dur — sonra HIZLICA çömelip patlayıcı şekilde zıpla. En iyi denemen sonuç olarak kaydedilir.',
 ];
+
+/** Tek bir denemenin sonucu — hem "arada" ekranında hem final dökümde kullanılıyor. */
+interface AttemptOutcome {
+  index: number; // 0-based
+  /** "En iyi" seçimine girebilir mi (geçerlilik kapısından geçti + analiz valid). */
+  accepted: boolean;
+  analysis: JumpAnalysis;
+  score: number | null;
+  techniqueMultiplier: number;
+  judgeInjuryWarnings: readonly string[];
+  visionApplied: boolean;
+  /** Reddedildiyse somut gerekçe (RejectionPanel'in kullandığı ipucu ya da analiz sebebi). */
+  rejectionHint: string | null;
+}
+
+function shortAttemptLabel(a: AttemptOutcome): string {
+  if (a.accepted && a.analysis.jumpHeightCm != null) {
+    return formatJumpHeightCm(a.analysis.jumpHeightCm, a.analysis.jumpHeightSigmaCm);
+  }
+  return 'sayılmadı';
+}
 
 export function JumpTest({
   childAgeYears = 12,
@@ -71,10 +105,12 @@ export function JumpTest({
   onComplete,
 }: Props) {
   const [phase, setPhase] = useState<Phase>('idle');
+  const [attemptNumber, setAttemptNumber] = useState(1); // 1-based, for display
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
   const [captureRemaining, setCaptureRemaining] = useState(CAPTURE_SECONDS);
-  const [result, setResult] = useState<JumpAnalysis | null>(null);
-  const [score, setScore] = useState<number | null>(null);
+  const [attempts, setAttempts] = useState<AttemptOutcome[]>([]);
+  const [best, setBest] = useState<AttemptOutcome | null>(null);
+  const [allFailed, setAllFailed] = useState(false);
   const [framing, setFraming] = useState<FramingStatus>({
     ready: false,
     hint: 'Pose tespit ediliyor…',
@@ -87,6 +123,9 @@ export function JumpTest({
   const phaseRef = useRef<Phase>('idle');
   const lastFramingRef = useRef<FramingStatus | null>(null);
   const resultHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  // Kontrol akışı senkron karar vermek zorunda (state güncellemesi async'tir);
+  // `attempts` state'i yalnız render için, karar burada verilir.
+  const attemptsRef = useRef<AttemptOutcome[]>([]);
 
   // onComplete'i ref'te sabitle. Parent inline arrow olarak verirse her
   // render'da yeni reference olur → analyze effect deps'ini değiştirir →
@@ -129,16 +168,26 @@ export function JumpTest({
     samplesRef.current.push(sample);
   }, [gateCollect]);
 
-  const start = () => {
+  /** Tek bir denemeyi (countdown → capture) başlatır — hem ilk deneme hem sıradaki. */
+  const beginAttempt = useCallback((n: number) => {
     gate.reset();
     samplesRef.current = [];
     calibrationFrameRef.current = null;
     captureActiveRef.current = false;
-    setResult(null);
-    setScore(null);
+    setAttemptNumber(n);
     setCountdown(COUNTDOWN_SECONDS);
     setCaptureRemaining(CAPTURE_SECONDS);
     setPhase('countdown');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Baştan başlat: 3 denemelik yeni bir set. "Başla" ve "Tekrar Dene" kullanır. */
+  const start = () => {
+    attemptsRef.current = [];
+    setAttempts([]);
+    setBest(null);
+    setAllFailed(false);
+    beginAttempt(1);
   };
 
   // Countdown -> capture
@@ -174,8 +223,6 @@ export function JumpTest({
       // Geçerlilik kapısı analizden ÖNCE: geçersiz bir yakalama hiç
       // ölçülmemeli. Sonradan atılırsa aradaki her adımda geçerli sonuç gibi
       // görünür ve bir gün bir yerden sızar.
-      // Ölçüm iddiasını hakeme gönder: "ben 28 cm diyorum, gördüğün
-      // hareket buna uyuyor mu?" Hakem bu sayıyı KULLANMAZ, doğrular.
       const claimAnalysis = analyzeJump(samplesRef.current);
       const outcome = await gateEvaluate({
         valid: claimAnalysis.valid,
@@ -183,76 +230,129 @@ export function JumpTest({
         unit: 'cm',
       });
       if (cancelled) return;
-      if (!outcome.allowed) {
-        setPhase('result');
-        return;
-      }
-      runAnalysis(outcome.sigmaMultiplier, outcome.injuryWarnings);
+      finishAttempt(outcome);
     })();
 
     return () => {
       cancelled = true;
     };
 
-    function runAnalysis(
-      techniqueMultiplier: number,
-      judgeInjuryWarnings: readonly string[]
-    ) {
-    try {
-      let analysis = analyzeJump(samplesRef.current);
-      if (
-        analysis.valid &&
-        childHeightCm != null &&
-        calibrationFrameRef.current
-      ) {
-        analysis = calibrateJumpHeight(
-          analysis,
-          calibrationFrameRef.current,
-          childHeightCm
-        );
+    function finishAttempt(outcome: {
+      allowed: boolean;
+      sigmaMultiplier: number;
+      injuryWarnings: readonly string[];
+    }) {
+      let attempt: AttemptOutcome;
+      try {
+        if (!outcome.allowed) {
+          attempt = {
+            index: attemptsRef.current.length,
+            accepted: false,
+            analysis: analyzeJump(samplesRef.current),
+            score: null,
+            techniqueMultiplier: 1,
+            judgeInjuryWarnings: [],
+            visionApplied: gate.visionApplied,
+            rejectionHint: gate.rejection?.retryHint ?? 'Bu deneme sayılmadı.',
+          };
+        } else {
+          let analysis = analyzeJump(samplesRef.current);
+          if (
+            analysis.valid &&
+            childHeightCm != null &&
+            calibrationFrameRef.current
+          ) {
+            analysis = calibrateJumpHeight(
+              analysis,
+              calibrationFrameRef.current,
+              childHeightCm
+            );
+          }
+          const computedScore =
+            analysis.valid && analysis.jumpHeightCm != null
+              ? jumpScore(analysis.jumpHeightCm, childAgeYears, childSex)
+              : null;
+          attempt = {
+            index: attemptsRef.current.length,
+            accepted: analysis.valid && analysis.jumpHeightCm != null,
+            analysis,
+            score: computedScore,
+            techniqueMultiplier: outcome.sigmaMultiplier,
+            judgeInjuryWarnings: outcome.injuryWarnings,
+            visionApplied: gate.visionApplied,
+            rejectionHint: analysis.valid ? null : (analysis.reason ?? null),
+          };
+        }
+      } catch (err) {
+        log.error('analiz hatası', {
+          cause: err instanceof Error ? err.message : String(err),
+        });
+        attempt = {
+          index: attemptsRef.current.length,
+          accepted: false,
+          analysis: {
+            jumpUnits: 0,
+            jumpHeightCm: null,
+            jumpHeightCmHip: null,
+            jumpHeightCmFlight: null,
+            method: 'consensus',
+            consistent: true,
+            takeoffY: 0,
+            apexY: 0,
+            flightTimeMs: 0,
+            jumpHeightSigmaCm: null,
+            flightMethod: null,
+            cmPerUnitFromGravity: null,
+            ballisticFit: null,
+            valid: false,
+            reason: 'Analiz sırasında beklenmedik bir hata oluştu.',
+          },
+          score: null,
+          techniqueMultiplier: 1,
+          judgeInjuryWarnings: [],
+          visionApplied: false,
+          rejectionHint: 'Analiz sırasında beklenmedik bir hata oluştu.',
+        };
       }
-      setResult(analysis);
-      const computedScore =
-        analysis.valid && analysis.jumpHeightCm != null
-          ? jumpScore(analysis.jumpHeightCm, childAgeYears, childSex)
-          : null;
-      setScore(computedScore);
+
+      attemptsRef.current = [...attemptsRef.current, attempt];
+      setAttempts(attemptsRef.current);
+
+      if (attemptsRef.current.length < TOTAL_ATTEMPTS) {
+        setPhase('between');
+        return;
+      }
+
+      // Üçüncü (son) deneme bitti — 3'ün en iyisini seç.
+      const winner = pickBestJumpAttempt(attemptsRef.current);
+      if (winner) {
+        setBest(winner);
+        setAllFailed(false);
+        onCompleteRef.current?.({
+          ...winner.analysis,
+          score: winner.score,
+          techniqueMultiplier: winner.techniqueMultiplier,
+          judgeInjuryWarnings: winner.judgeInjuryWarnings,
+        });
+      } else {
+        setBest(null);
+        setAllFailed(true);
+      }
       setPhase('result');
-      onCompleteRef.current?.({
-        ...analysis,
-        score: computedScore,
-        techniqueMultiplier,
-        judgeInjuryWarnings,
-      });
-    } catch (err) {
-      log.error('analiz hatası', {
-        cause: err instanceof Error ? err.message : String(err),
-      });
-      setResult({
-        jumpUnits: 0,
-        jumpHeightCm: null,
-        jumpHeightCmHip: null,
-        jumpHeightCmFlight: null,
-        method: 'consensus',
-        consistent: true,
-        takeoffY: 0,
-        apexY: 0,
-        flightTimeMs: 0,
-        jumpHeightSigmaCm: null,
-        flightMethod: null,
-        cmPerUnitFromGravity: null,
-        ballisticFit: null,
-        valid: false,
-        reason: 'Analiz sırasında beklenmedik bir hata oluştu. Tekrar dene.',
-      });
-      setScore(null);
-      setPhase('result');
-    }
     }
     // onComplete kasten dışarıda: inline arrow olarak gelirse her parent
     // render'ında deps değişir, analyze etkisi yeniden ateşler ve test
     // sonucu store'a iki kez yazılır. Ref ile sabitledik.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, childAgeYears, childSex, childHeightCm, gateEvaluate]);
+
+  // Between -> sıradaki deneme (otomatik).
+  useEffect(() => {
+    if (phase !== 'between') return;
+    const nextAttempt = attemptsRef.current.length + 1;
+    const t = setTimeout(() => beginAttempt(nextAttempt), BETWEEN_ATTEMPTS_MS);
+    return () => clearTimeout(t);
+  }, [phase, beginAttempt]);
 
   useEffect(() => {
     if (phase === 'result' && resultHeadingRef.current) {
@@ -267,17 +367,29 @@ export function JumpTest({
           <CameraStream onFrame={handleFrame} width={640} height={480} />
 
           {phase === 'countdown' && (
-            <CountdownOverlay value={countdown} reducedMotion={reducedMotion} />
+            <CountdownOverlay
+              value={countdown}
+              reducedMotion={reducedMotion}
+              attemptNumber={attemptNumber}
+            />
           )}
 
           {phase === 'capture' && (
             <CapturePill
               remaining={captureRemaining}
               reducedMotion={reducedMotion}
+              attemptNumber={attemptNumber}
             />
           )}
 
           {phase === 'analyze' && <AnalyzeOverlay />}
+
+          {phase === 'between' && (
+            <BetweenAttemptsOverlay
+              lastAttempt={attempts[attempts.length - 1] ?? null}
+              nextAttemptNumber={attemptNumber + 1}
+            />
+          )}
 
           {(phase === 'idle' || phase === 'countdown') && (
             <FramingBadge status={framing} />
@@ -292,24 +404,24 @@ export function JumpTest({
         />
       }
       sidebar={
-        phase === 'result' && gate.rejection ? (
-          <RejectionPanel rejection={gate.rejection} onRetry={start} />
-        ) : phase === 'result' && result ? (
+        phase === 'result' && allFailed ? (
+          <AllAttemptsFailedPanel attempts={attempts} onRetry={start} />
+        ) : phase === 'result' && best ? (
           <div>
-          <ResultCard
-            result={result}
-            score={score}
-            onRetry={start}
-            hasCalibration={childHeightCm != null}
-            headingRef={resultHeadingRef}
-          />
-            <VisionBadge applied={gate.visionApplied} />
+            <ResultCard
+              best={best}
+              attempts={attempts}
+              onRetry={start}
+              hasCalibration={childHeightCm != null}
+              headingRef={resultHeadingRef}
+            />
+            <VisionBadge applied={best.visionApplied} />
           </div>
         ) : phase === 'idle' ? (
           <InstructionsPanel
             eyebrow="Test 01 · Patlayıcı Güç"
             title="Sıçrama (CMJ)"
-            meta="~5 sn"
+            meta={`~30 sn · ${TOTAL_ATTEMPTS} deneme`}
             steps={STEPS}
             helper={!framing.ready ? framing.hint : undefined}
             cta={<StartCTA onStart={start} canStart={framing.ready} compact />}
@@ -323,7 +435,7 @@ export function JumpTest({
             }
           />
         ) : (
-          <PhaseStatusCard phase={phase} />
+          <PhaseStatusCard phase={phase} attemptNumber={attemptNumber} />
         )
       }
     />
@@ -333,15 +445,28 @@ export function JumpTest({
 // ─────────────────────────────────────────────────────────────────────────────
 // Camera-overlay parçaları
 
+function AttemptPill({ attemptNumber }: { attemptNumber: number }) {
+  return (
+    <span className="rounded-full bg-black/50 px-2.5 py-1 font-mono text-[10px] font-bold tracking-wider text-white/90 backdrop-blur-sm">
+      DENEME {attemptNumber}/{TOTAL_ATTEMPTS}
+    </span>
+  );
+}
+
 function CountdownOverlay({
   value,
   reducedMotion,
+  attemptNumber,
 }: {
   value: number;
   reducedMotion: boolean;
+  attemptNumber: number;
 }) {
   return (
     <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/45 backdrop-blur-[2px]">
+      <div className="absolute top-4 left-4">
+        <AttemptPill attemptNumber={attemptNumber} />
+      </div>
       <motion.div
         key={value}
         initial={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
@@ -358,17 +483,24 @@ function CountdownOverlay({
 function CapturePill({
   remaining,
   reducedMotion,
+  attemptNumber,
 }: {
   remaining: number;
   reducedMotion: boolean;
+  attemptNumber: number;
 }) {
   return (
-    <div className="absolute top-4 right-4 flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-2xl ring-1 ring-red-400/50">
-      <span
-        className={`h-2 w-2 rounded-full bg-white ${reducedMotion ? '' : 'animate-pulse'}`}
-      />
-      KAYIT · {remaining}s
-    </div>
+    <>
+      <div className="absolute top-4 left-4">
+        <AttemptPill attemptNumber={attemptNumber} />
+      </div>
+      <div className="absolute top-4 right-4 flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-2xl ring-1 ring-red-400/50">
+        <span
+          className={`h-2 w-2 rounded-full bg-white ${reducedMotion ? '' : 'animate-pulse'}`}
+        />
+        KAYIT · {remaining}s
+      </div>
+    </>
   );
 }
 
@@ -383,29 +515,68 @@ function AnalyzeOverlay() {
   );
 }
 
+function BetweenAttemptsOverlay({
+  lastAttempt,
+  nextAttemptNumber,
+}: {
+  lastAttempt: AttemptOutcome | null;
+  nextAttemptNumber: number;
+}) {
+  return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/70 text-center backdrop-blur-sm">
+      <div className="text-sm font-semibold tracking-wide text-white/70 uppercase">
+        Deneme {(lastAttempt?.index ?? 0) + 1} sonucu
+      </div>
+      <div className="font-display text-4xl font-black text-white">
+        {lastAttempt ? shortAttemptLabel(lastAttempt) : '—'}
+      </div>
+      {lastAttempt && !lastAttempt.accepted && (
+        <div className="max-w-xs text-xs leading-relaxed text-white/70">
+          {lastAttempt.rejectionHint}
+        </div>
+      )}
+      <div className="mt-2 flex items-center gap-2 text-xs text-amber-300">
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-300" />
+        {nextAttemptNumber}. deneme hazırlanıyor…
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Sidebar parçaları
 
-function PhaseStatusCard({ phase }: { phase: Phase }) {
+function PhaseStatusCard({
+  phase,
+  attemptNumber,
+}: {
+  phase: Phase;
+  attemptNumber: number;
+}) {
   const messages: Record<
     Phase,
     { eyebrow: string; title: string; body: string }
   > = {
     idle: { eyebrow: '', title: '', body: '' },
     countdown: {
-      eyebrow: 'Sırada',
+      eyebrow: `Deneme ${attemptNumber}/${TOTAL_ATTEMPTS}`,
       title: 'Hazırlanıyorsun',
       body: 'Geri sayım bittiğinde hızlıca patlayıcı bir sıçrama yap. Dik dur, çömel, zıpla.',
     },
     capture: {
-      eyebrow: 'Kayıt aktif',
+      eyebrow: `Deneme ${attemptNumber}/${TOTAL_ATTEMPTS} · Kayıt aktif`,
       title: 'Sıçrayışın ölçülüyor',
       body: 'Kalça hareketin saniyede 30 frame ile kaydediliyor. Zıpladıktan sonra yere indikten sonra dik dur.',
     },
     analyze: {
       eyebrow: 'Hesaplanıyor',
-      title: 'Sonuç hazırlanıyor',
-      body: 'Yaş normu ile karşılaştırılıyor — sıçrama yüksekliği ve patlayıcı güç skoru çıkıyor.',
+      title: 'Deneme değerlendiriliyor',
+      body: 'Sıçrama gerçekten yapılmış mı, ne kadar yükseldi — kontrol ediliyor.',
+    },
+    between: {
+      eyebrow: 'Sırada',
+      title: 'Bir sonraki denemeye geçiliyor',
+      body: `3 denemenin en iyisi kaydedilecek — biraz nefeslen, ${attemptNumber + 1}. deneme birazdan başlıyor.`,
     },
     result: { eyebrow: '', title: '', body: '' },
   };
@@ -447,62 +618,80 @@ function PhaseStatusCard({ phase }: { phase: Phase }) {
   );
 }
 
+/** 3 denemenin hiçbiri geçerli sayılmadığında gösterilen döküm + tekrar CTA'sı. */
+function AllAttemptsFailedPanel({
+  attempts,
+  onRetry,
+}: {
+  attempts: readonly AttemptOutcome[];
+  onRetry: () => void;
+}) {
+  return (
+    <div
+      className="rounded-3xl border-2 p-7"
+      style={{
+        background: 'rgba(244, 182, 194, 0.22)',
+        borderColor: 'var(--mindar-pink)',
+      }}
+    >
+      <h3
+        className="text-xl font-black"
+        style={{ color: 'var(--form-navy)', fontFamily: 'var(--font-display)' }}
+      >
+        3 denemenin hiçbiri sayılmadı
+      </h3>
+      <p
+        className="mt-3 text-sm leading-relaxed"
+        style={{ color: 'var(--color-ink-2)' }}
+      >
+        Merak etme — yanlış yapılan bir denemeyi kaydetmek yerine tekrar
+        etmek sonucun doğru olmasını sağlıyor.
+      </p>
+      <ul className="mt-4 space-y-2">
+        {attempts.map((a) => (
+          <li
+            key={a.index}
+            className="rounded-xl border bg-white/60 p-3 text-xs leading-relaxed"
+            style={{ borderColor: 'rgba(44, 62, 107, 0.12)', color: 'var(--color-ink-2)' }}
+          >
+            <span className="font-bold" style={{ color: 'var(--form-navy)' }}>
+              Deneme {a.index + 1}:
+            </span>{' '}
+            {a.rejectionHint ?? 'Sayılmadı.'}
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-5 h-11 w-full rounded-full text-sm font-black tracking-wide transition-transform hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+        style={{
+          background: 'var(--track-mustard)',
+          color: 'var(--form-navy)',
+          fontFamily: 'var(--font-display)',
+          boxShadow: '0 4px 0 rgba(44, 62, 107, 0.18)',
+        }}
+      >
+        3 Denemeyi Tekrarla
+      </button>
+    </div>
+  );
+}
+
 function ResultCard({
-  result,
-  score,
+  best,
+  attempts,
   onRetry,
   hasCalibration,
   headingRef,
 }: {
-  result: JumpAnalysis;
-  score: number | null;
+  best: AttemptOutcome;
+  attempts: readonly AttemptOutcome[];
   onRetry: () => void;
   hasCalibration: boolean;
   headingRef?: React.RefObject<HTMLHeadingElement | null>;
 }) {
-  if (!result.valid) {
-    return (
-      <div
-        className="rounded-3xl border-2 p-7"
-        style={{
-          background: 'rgba(244, 182, 194, 0.22)',
-          borderColor: 'var(--mindar-pink)',
-        }}
-      >
-        <h3
-          ref={headingRef}
-          tabIndex={-1}
-          className="text-xl font-black focus-visible:outline-none"
-          style={{
-            color: 'var(--form-navy)',
-            fontFamily: 'var(--font-display)',
-          }}
-        >
-          Geçerli sıçrama algılanamadı
-        </h3>
-        <p
-          className="mt-3 text-sm leading-relaxed"
-          style={{ color: 'var(--color-ink-2)' }}
-        >
-          {result.reason}
-        </p>
-        <button
-          type="button"
-          onClick={onRetry}
-          className="mt-5 h-11 rounded-full px-6 text-sm font-black tracking-wide transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-          style={{
-            background: 'var(--track-mustard)',
-            color: 'var(--form-navy)',
-            fontFamily: 'var(--font-display)',
-            boxShadow: '0 4px 0 rgba(44, 62, 107, 0.18)',
-          }}
-        >
-          Tekrar Dene
-        </button>
-      </div>
-    );
-  }
-
+  const { analysis: result, score } = best;
   return (
     <div
       className="rounded-3xl border-2 p-7"
@@ -519,7 +708,7 @@ function ResultCard({
           fontFamily: 'var(--font-display)',
         }}
       >
-        Tamam · 01
+        Tamam · 01 · 3 denemenin en iyisi
       </p>
       <h3
         ref={headingRef}
@@ -538,7 +727,7 @@ function ResultCard({
           label="Sıçrama yüksekliği"
           value={
             result.jumpHeightCm != null
-              ? `${result.jumpHeightCm.toFixed(1)} cm`
+              ? formatJumpHeightCm(result.jumpHeightCm, result.jumpHeightSigmaCm)
               : `${(result.jumpUnits * 100).toFixed(1)} br`
           }
           accent
@@ -555,6 +744,51 @@ function ResultCard({
           />
         )}
       </dl>
+
+      {result.jumpHeightSigmaCm != null && result.jumpHeightCm != null && (
+        <p
+          className="mt-3 text-xs leading-relaxed"
+          style={{ color: 'var(--color-ink-3)' }}
+        >
+          Gösterilen değer bir aralık: tek telefon kamerasından, tek bir
+          denemeden gelen ölçümün belirsizliğini (±) yansıtıyor — nokta bir
+          gerçek değil, en olası bant.
+        </p>
+      )}
+
+      {attempts.length > 1 && (
+        <div className="mt-5 border-t pt-4" style={{ borderColor: 'rgba(44, 62, 107, 0.18)' }}>
+          <p
+            className="text-[10px] font-bold tracking-[0.2em] uppercase"
+            style={{ color: 'var(--color-ink-3)', fontFamily: 'var(--font-display)' }}
+          >
+            3 Denemenin Dökümü
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {attempts.map((a) => (
+              <li
+                key={a.index}
+                className="flex items-center justify-between text-xs"
+                style={{ color: 'var(--color-ink-2)' }}
+              >
+                <span>Deneme {a.index + 1}</span>
+                <span
+                  className="font-mono font-bold"
+                  style={{
+                    color:
+                      a.index === best.index
+                        ? 'var(--form-navy)'
+                        : 'var(--color-ink-3)',
+                  }}
+                >
+                  {shortAttemptLabel(a)}
+                  {a.index === best.index ? ' · en iyi' : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {!hasCalibration && (
         <p
@@ -578,7 +812,7 @@ function ResultCard({
             '0 6px 0 rgba(44, 62, 107, 0.18), 0 18px 36px -12px rgba(242, 201, 76, 0.45)',
         }}
       >
-        Tekrar Dene
+        3 Denemeyi Tekrarla
       </button>
     </div>
   );
