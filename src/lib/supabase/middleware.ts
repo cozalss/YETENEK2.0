@@ -49,9 +49,23 @@ export async function updateSession(
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // `getUser()` ağ çağrısı yapar ve HİÇ sarmalanmamıştı: Supabase kısa süre
+  // erişilemez olduğunda (DNS, kota, kesinti) bu satır fırlatıyor ve her
+  // korumalı sayfa 500 dönüyordu. Kimliği doğrulayamamak bir sunucu hatası
+  // değil, "kullanıcı doğrulanamadı" durumudur.
+  //
+  // Fail-closed: doğrulayamadıysak korumalı rotaya erişim VERMİYORUZ —
+  // aşağıdaki `!user` dalı sign-up'a yönlendiriyor. Auth sayfalarında ise
+  // user=null zaten doğru davranış (sayfada kal).
+  let user: Awaited<
+    ReturnType<typeof supabase.auth.getUser>
+  >['data']['user'] = null;
+  try {
+    const result = await supabase.auth.getUser();
+    user = result.data.user;
+  } catch {
+    user = null;
+  }
 
   const path = request.nextUrl.pathname;
   const isProtected = PROTECTED_PREFIXES.some((p) => path.startsWith(p));

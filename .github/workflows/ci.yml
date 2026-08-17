@@ -80,8 +80,22 @@ jobs:
       - name: Install browsers
         run: pnpm exec playwright install --with-deps chromium
 
+      # E2E auth testleri Supabase YAPILANDIRILMIŞ olmasını gerektiriyor:
+      # `middleware.ts` env yoksa auth guard'ı tamamen atlıyor, bu yüzden
+      # /profile yönlendirme yerine 200 dönüyor ve 7 test düşüyordu.
+      #
+      # Değerler bilinçli olarak SAHTE ve erişilemez: test edilen şey
+      # KİMLİK DOĞRULANAMAYAN kullanıcının yönlendirilmesi, yani gerçek bir
+      # backend gerekmiyor. `getUser()` başarısız olur → user null → sign-up
+      # yönlendirmesi — testlerin beklediği yol tam olarak bu.
+      #
+      # Gerçek bir anahtar CI'a KOYULMAMALI: bu testler oturum açmış kullanıcı
+      # senaryosunu kapsamıyor, dolayısıyla gerçek erişime ihtiyaç yok.
       - name: Run E2E
         run: pnpm test:e2e --project=chromium
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key-not-a-real-secret
 
       - name: Upload report
         if: ${{ !cancelled() }}
