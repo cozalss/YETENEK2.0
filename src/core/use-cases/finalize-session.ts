@@ -30,6 +30,7 @@ import {
   type Session,
   hasAnyTest,
   withCompletedAt,
+  withMatchScope,
   withRecommendations,
 } from '@/core/domain/session';
 import { decide } from './decide';
@@ -85,10 +86,12 @@ export function finalizeSession(session: Session): Session {
     };
   });
 
-  return withCompletedAt(
-    withRecommendations(session, recommendations),
-    new Date().toISOString()
-  );
+  const withRecs = withRecommendations(session, recommendations);
+  const withScope = withMatchScope(withRecs, {
+    excludedDimensions: [...decision.excludedByNorm],
+    missingDimensions: [...decision.missingMeasurement],
+  });
+  return withCompletedAt(withScope, new Date().toISOString());
 }
 
 function computeAnthroContext(session: Session): AnthroContext | null {

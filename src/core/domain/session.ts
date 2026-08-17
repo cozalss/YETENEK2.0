@@ -66,6 +66,27 @@ export function withRecommendations(
   return { ...session, recommendations };
 }
 
+/**
+ * `decide.ts`'in ürettiği `excludedByNorm`/`missingMeasurement`'ı oturuma
+ * yazar. Bu veri eskiden hesaplanıp atılıyordu — `finalizeSession` `decide()`
+ * çağırıyor ama sonucun bu iki alanını hiç session'a taşımıyordu, yani
+ * "denge ve koordinasyon karara girmiyor" gerçeği koddaydı ama UI'ya hiç
+ * ulaşmıyordu (bkz. `MatchScopeNote` bileşeni, bunu tüketen taraf).
+ */
+export function withMatchScope(
+  session: Session,
+  scope: {
+    excludedDimensions: Session['matchExcludedDimensions'];
+    missingDimensions: Session['matchMissingDimensions'];
+  }
+): Session {
+  return {
+    ...session,
+    matchExcludedDimensions: scope.excludedDimensions,
+    matchMissingDimensions: scope.missingDimensions,
+  };
+}
+
 /* ───────── Queries ───────── */
 
 export function isCompleted(session: Session): boolean {

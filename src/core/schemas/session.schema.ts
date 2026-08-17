@@ -181,6 +181,20 @@ export const testKeySchema = z.enum([
 ]);
 export type TestKeySchema = z.infer<typeof testKeySchema>;
 
+/** `sportProfiles.ts`'in `DimensionKey`'i ile aynı 7 değer — bkz. o dosyanın
+ *  dokümanı. Burada tekrar tanımlı (import yerine): `core/` pure kalsın diye
+ *  `lib/`'e bağımlılık kurmuyoruz (bkz. `testKeySchema` için aynı tercih). */
+export const dimensionKeySchema = z.enum([
+  'explosivePower',
+  'horizontalPower',
+  'balance',
+  'reaction',
+  'agility',
+  'coordination',
+  'endurance',
+]);
+export type DimensionKeySchema = z.infer<typeof dimensionKeySchema>;
+
 /**
  * Test başına teknik kalitesi çarpanı (σ genişletme).
  *
@@ -213,6 +227,15 @@ export const sessionSummarySchema = z.object({
   endurance: enduranceSummarySchema.optional(),
   character: characterSummarySchema.optional(),
   recommendations: z.array(sportMatchSchema).max(20).optional(),
+  /**
+   * Spor eşleştirme kararına norm tablosu olmadığı için HİÇ katılamayan
+   * boyutlar (bkz. `zspace.ts` EXCLUDED_DIMENSIONS — şu an sabit denge +
+   * koordinasyon). Sabit kodlamak yerine oturuma yazılıyor ki norm pilotu
+   * yapıldığında UI otomatik güncel kalsın. Eski kayıtlarda yok.
+   */
+  matchExcludedDimensions: z.array(dimensionKeySchema).max(10).optional(),
+  /** Bu oturumda test yapılmadığı için karara katılamayan boyutlar. */
+  matchMissingDimensions: z.array(dimensionKeySchema).max(10).optional(),
   injuryWarnings: z.array(z.string().max(300)).max(10),
   // .default([]) sayesinde tip required Array<TestKey> olur — UI'da
   // optional-chaining tekrar tekrar yazmaya gerek kalmaz.
