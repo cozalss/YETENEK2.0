@@ -37,16 +37,57 @@ import { POSE_LANDMARKS, type PoseFrame, type TestType } from '@/types';
 const MIN_FRAMES = 30;
 
 /**
- * Ayak bileğinin "yerden kesildi" sayılması için baseline'dan yükselmesi
- * gereken normalize mesafe. Kadraj doluluğu ~%70-80 varsayımıyla ~2-3 cm.
+ * ## Eşikler neden VÜCUT ölçeğine göre
+ *
+ * Bu sabitler eskiden kadraj-normalize mutlak değerlerdi (0.02 / 0.03 /
+ * 0.04) ve yorumları "kadraj doluluğu ~%70-80 varsayımıyla" diyordu. O
+ * varsayım telefonla ~2 m'de doğru; laptop kamerasıyla ~3 m'de doluluk
+ * ~%45'e düşüyor ve aynı sayı gerçek dünyada neredeyse iki kat büyük bir
+ * mesafeye karşılık geliyor. Sonuç: doğru yapılan hareket algılanmıyordu.
+ *
+ * Artık hepsi **bacak uzunluğunun** (kalça→yere basan ayak bileği) oranı.
+ * Bu ölçü kameradan uzaklıkla birlikte ölçeklendiği için eşikler mesafeden
+ * bağımsız hale geliyor — çocuğun kadrajdaki büyüklüğü değişse de "4 cm
+ * ayak kalktı" aynı şeyi ifade ediyor.
  */
-const AIRBORNE_LIFT = 0.02;
+
+/** Ayağın "yerden kesildi" sayılması için gereken yükselme, bacak oranı. */
+const AIRBORNE_LIFT_FRAC = 0.05;
 
 /**
- * Tek bacak duruşunda destek ayağı ile havadaki ayak arasındaki asgari
- * dikey fark. İki ayak da yerdeyse bu fark ~0 olur.
+ * Tek bacak duruşunda iki ayak bileği arasındaki asgari dikey fark, bacak
+ * oranı. ~150 cm bir çocukta ≈ 4 cm.
+ *
+ * Eski mutlak 0.04 değeri, kodun kendi varsaydığı %75 doluluğunda bile
+ * ~8 cm'e denk geliyordu; çocuklar tek ayak üstünde dururken ayağı genelde
+ * o kadar kaldırmıyor (protokol "dizine kadar kaldır" demiyor). Bu yüzden
+ * doğru duruşlar `both_feet_down` ile reddediliyordu.
  */
-const SINGLE_LEG_MIN_ANKLE_GAP = 0.04;
+const SINGLE_LEG_MIN_ANKLE_GAP_FRAC = 0.05;
+
+/**
+ * Ayak bileği gürültüsünün ölçek tahmini bozduğu patolojik kareler için
+ * emniyet payı. Bacak uzunluğu bunun dışına düşerse ölçüm güvenilmez
+ * sayılır ve eski varsayıma (≈%75 doluluk) geri dönülür — eşiklerin sıfıra
+ * inip HER ŞEYİ geçirmesi, fazla sıkı olmaktan daha tehlikeli.
+ */
+const MIN_PLAUSIBLE_LEG = 0.05;
+const MAX_PLAUSIBLE_LEG = 0.9;
+const FALLBACK_LEG = 0.39; // 0.52 × 0.75 — eski kod bu duruma ayarlıydı
+
+/**
+ * `foot_touched_down` için asgari KESİNTİSİZ temas süresi.
+ *
+ * Bu kural eskiden `touchdowns / n > 0.1` idi; `touchdowns/n` cebirsel
+ * olarak `1 - ratio` olduğu için `ratio < 0.9` demekti ve
+ * `SINGLE_LEG_MIN_RATIO = 0.7`'nin belgelenmiş "anlık denge kaybı testi
+ * geçersiz kılmamalı" toleransını ölü koda çeviriyordu — aynı sinyalden
+ * iki kez, üstelik çelişkili eşiklerle ceza kesiliyordu.
+ *
+ * Artık gerçekten AYRI bir şey ölçüyor: dağınık tek kareler denge
+ * salınımıdır, yarım saniyeyi aşan kesintisiz temas ise protokol ihlali.
+ */
+const MIN_TOUCHDOWN_EPISODE_MS = 400;
 
 /**
  * Duruşun "tek bacak" sayılması için karelerin en az bu oranında ayak
@@ -55,8 +96,14 @@ const SINGLE_LEG_MIN_ANKLE_GAP = 0.04;
  */
 const SINGLE_LEG_MIN_RATIO = 0.7;
 
-/** Yanal sıçramada gerçek bir hop sayılması için asgari yanal genlik. */
-const MIN_LATERAL_AMPLITUDE = 0.03;
+/**
+ * Gerçek bir sıçramada kalçanın yükselmesi gereken asgari mesafe, bacak
+ * oranı. Bunun altı "gövde yerinde kaldı" demektir.
+ */
+const MIN_JUMP_HIP_RISE_FRAC = 0.04;
+
+/** Yanal hop için asgari genlik (X standart sapması), bacak oranı. */
+const MIN_LATERAL_AMPLITUDE_FRAC = 0.08;
 
 /** Koordinasyon: parmağın "takip ediyor" sayılması için asgari hareket. */
 const MIN_TOUCH_SPREAD_PX = 20;
@@ -152,6 +199,65 @@ function median(values: number[]): number {
   return s[Math.floor(s.length / 2)];
 }
 
+/**
+ * Kadraj-bağımsız ölçek birimi: kalça merkezinden yere basan ayak bileğine
+ * dikey mesafe (bacak uzunluğu), karelerin medyanı.
+ *
+ * Neden bu ölçü: eşiklerin tamamı ayak bileği hareketiyle ilgili ve bacak
+ * uzunluğu hem çocukla hem kamera mesafesiyle birlikte ölçekleniyor. Boyun
+ * tamamını kullanmak baş/omuz kadraj dışına çıktığında kırılgan olurdu;
+ * kalça ve ayak bileği zaten her testin ZORUNLU landmark'ları.
+ */
+function bodyScale(frames: readonly PoseFrame[]): number {
+  const lengths: number[] = [];
+  for (const f of frames) {
+    const hipYs = [POSE_LANDMARKS.LEFT_HIP, POSE_LANDMARKS.RIGHT_HIP]
+      .filter((i) => visible(f, i))
+      .map((i) => lm(f, i).y);
+    const ankleYs = [POSE_LANDMARKS.LEFT_ANKLE, POSE_LANDMARKS.RIGHT_ANKLE]
+      .filter((i) => visible(f, i))
+      .map((i) => lm(f, i).y);
+    if (hipYs.length === 0 || ankleYs.length === 0) continue;
+
+    const hipY = hipYs.reduce((s, v) => s + v, 0) / hipYs.length;
+    // Yere basan ayak = görüntüde daha AŞAĞIDA = daha büyük Y.
+    const len = Math.max(...ankleYs) - hipY;
+    if (len > 0) lengths.push(len);
+  }
+
+  const m = median(lengths);
+  // Ölçek çöktüğünde eşikler de sıfıra iner ve hakem HER ŞEYİ geçirir.
+  // Fazla gevşek olmak, fazla sıkı olmaktan daha tehlikeli: geçersiz bir
+  // ölçüm rapora girer ve kimse fark etmez.
+  if (m < MIN_PLAUSIBLE_LEG || m > MAX_PLAUSIBLE_LEG) return FALLBACK_LEG;
+  return m;
+}
+
+/** Kareler arası tipik süre (ms) — sabit fps varsaymamak için ölçülüyor. */
+function frameIntervalMs(frames: readonly PoseFrame[]): number {
+  const deltas: number[] = [];
+  for (let i = 1; i < frames.length; i++) {
+    const dt = frames[i].timestamp - frames[i - 1].timestamp;
+    if (dt > 0 && dt < 500) deltas.push(dt);
+  }
+  const m = median(deltas);
+  return m > 0 ? m : 1000 / 30;
+}
+
+/**
+ * Bir boolean serisindeki en uzun kesintisiz `true` dizisinin uzunluğu.
+ * Dağınık gürültüyü sürekli bir olaydan ayırmanın en basit yolu.
+ */
+function longestRun(flags: readonly boolean[]): number {
+  let best = 0;
+  let cur = 0;
+  for (const f of flags) {
+    cur = f ? cur + 1 : 0;
+    if (cur > best) best = cur;
+  }
+  return best;
+}
+
 function standardDeviation(values: number[]): number {
   if (values.length < 2) return 0;
   const mean = values.reduce((s, v) => s + v, 0) / values.length;
@@ -204,11 +310,15 @@ function extractAnkles(frames: readonly PoseFrame[]): AnkleSeries {
  * Serinin herhangi bir noktasında gerçek bir uçuş fazı var mı?
  *
  * Baseline = **alt** ayak bileği Y'sinin medyanı (yere basma yüksekliği).
- * Uçuş = her iki ayağın da baseline'dan AIRBORNE_LIFT kadar yükselmesi.
+ * Uçuş = her iki ayağın da baseline'dan AIRBORNE_LIFT_FRAC × bacak boyu
+ * kadar yükselmesi.
  * Tek ayağın kalkması yürüyüştür, sıçrama değil — bu ayrım broad jump'ta
  * yana yürümeyi eleyen şeydir.
  */
-function detectAirborneFrames(frames: readonly PoseFrame[]): number {
+function detectAirborneFrames(
+  frames: readonly PoseFrame[],
+  scale: number
+): number {
   const lowerAnkleY: number[] = [];
   for (const f of frames) {
     const okL = visible(f, POSE_LANDMARKS.LEFT_ANKLE);
@@ -226,7 +336,7 @@ function detectAirborneFrames(frames: readonly PoseFrame[]): number {
   const baseline = median(lowerAnkleY.slice(0, Math.min(25, lowerAnkleY.length)));
   let airborne = 0;
   for (const y of lowerAnkleY) {
-    if (baseline - y > AIRBORNE_LIFT) airborne++;
+    if (baseline - y > AIRBORNE_LIFT_FRAC * scale) airborne++;
   }
   return airborne;
 }
@@ -256,10 +366,16 @@ function judgeBalance(frames: readonly PoseFrame[]): TestVerdict {
     });
   }
 
+  const scale = bodyScale(frames);
+  const minGap = SINGLE_LEG_MIN_ANKLE_GAP_FRAC * scale;
+
   const n = Math.min(leftY.length, rightY.length);
+  const bothDown: boolean[] = [];
   let singleLegFrames = 0;
   for (let i = 0; i < n; i++) {
-    if (Math.abs(leftY[i] - rightY[i]) > SINGLE_LEG_MIN_ANKLE_GAP) singleLegFrames++;
+    const up = Math.abs(leftY[i] - rightY[i]) > minGap;
+    bothDown.push(!up);
+    if (up) singleLegFrames++;
   }
   const ratio = singleLegFrames / n;
 
@@ -274,10 +390,17 @@ function judgeBalance(frames: readonly PoseFrame[]): TestVerdict {
     });
   }
 
-  // Duruş doğrulandı ama arada ayak yere değdi mi?
-  const touchdowns = n - singleLegFrames;
+  // Duruş doğrulandı. Arada ayak yere değdi mi?
+  //
+  // Dikkat: toplam temas ORANINA bakmak yanlış olurdu — o sayı yukarıdaki
+  // `ratio`nun aynısıdır (1 - ratio) ve aynı sinyalden ikinci kez, daha sıkı
+  // bir eşikle ceza keserdi. Ayrı olan şey temasın SÜREKLİLİĞİ: dağınık tek
+  // kareler denge salınımı, yarım saniyeyi aşan kesintisiz temas ihlaldir.
   const violations: ProtocolViolation[] = [];
-  if (touchdowns / n > 0.1) violations.push('foot_touched_down');
+  const episodeMs = longestRun(bothDown) * frameIntervalMs(frames);
+  if (episodeMs > MIN_TOUCHDOWN_EPISODE_MS) {
+    violations.push('foot_touched_down');
+  }
 
   return verdict({
     protocolViolations: violations,
@@ -296,7 +419,8 @@ function judgeJump(frames: readonly PoseFrame[]): TestVerdict {
     });
   }
 
-  const airborne = detectAirborneFrames(frames);
+  const scale = bodyScale(frames);
+  const airborne = detectAirborneFrames(frames, scale);
   if (airborne === 0) {
     return verdict({
       performed: false,
@@ -307,8 +431,7 @@ function judgeJump(frames: readonly PoseFrame[]): TestVerdict {
     });
   }
 
-  // Kalça yükselmesi ayak yükselmesiyle orantılı mı? Topuk kaldırmada ayak
-  // kalkar ama gövde neredeyse yerinde kalır.
+  // Gövde gerçekten yükseldi mi? Hilede ayak kalkar, kalça yerinde kalır.
   const hipY: number[] = [];
   const ankleY: number[] = [];
   for (const f of frames) {
@@ -325,9 +448,18 @@ function judgeJump(frames: readonly PoseFrame[]): TestVerdict {
   const hipRise = hipBase - Math.min(...hipY);
   const ankleRise = ankleBase - Math.min(...ankleY);
 
-  // Gerçek sıçramada gövde ve ayak birlikte yükselir (rijit cisim, serbest
-  // düşüş). Topuk kaldırmada ayak kalkar, kalça yerinde kalır.
-  if (ankleRise > 0 && hipRise / ankleRise < 0.5) {
+  // Kural eskiden ORANA bakıyordu (`hipRise / ankleRise < 0.5`) ve bu yanlıştı:
+  // gerçek bir sıçramada çocuk havada dizlerini toplarsa ayak bileği gövdeden
+  // çok daha fazla yükselir, oran düşer ve DOĞRU bir sıçrama "topuk kaldırma"
+  // diye reddedilirdi. Çocuklar bunu sürekli yapıyor.
+  //
+  // Ayırt edici olan oran değil, kalçanın MUTLAK yükselişi: gövdesi
+  // desteklenirken ayaklarını çeken biri kalçasını hiç kaldırmaz, gerçekten
+  // sıçrayan ise kalçasını en az sıçrama yüksekliği kadar kaldırır. Eşik
+  // bacak boyuna göre — ~150 cm bir çocukta ≈ 3 cm, gürültünün belirgin
+  // üstünde ama en mütevazı sıçramanın bile altında.
+  const hipBarelyMoved = hipRise < MIN_JUMP_HIP_RISE_FRAC * scale;
+  if (ankleRise > AIRBORNE_LIFT_FRAC * scale && hipBarelyMoved) {
     return verdict({
       performed: false,
       protocolViolations: ['heel_raise_only'],
@@ -349,7 +481,7 @@ function judgeBroadJump(frames: readonly PoseFrame[]): TestVerdict {
     });
   }
 
-  const airborne = detectAirborneFrames(frames);
+  const airborne = detectAirborneFrames(frames, bodyScale(frames));
   if (airborne === 0) {
     return verdict({
       performed: false,
@@ -375,13 +507,14 @@ function judgeLateralHops(frames: readonly PoseFrame[]): TestVerdict {
 
   // Yanal genlik: X serisinin standart sapması. Titremede ~0.003, gerçek
   // hop'ta ~0.05.
+  const scale = bodyScale(frames);
   const amplitude = standardDeviation(centerX);
   const violations: ProtocolViolation[] = [];
-  if (amplitude < MIN_LATERAL_AMPLITUDE) {
+  if (amplitude < MIN_LATERAL_AMPLITUDE_FRAC * scale) {
     violations.push('insufficient_amplitude');
   }
 
-  const airborne = detectAirborneFrames(frames);
+  const airborne = detectAirborneFrames(frames, scale);
   if (airborne === 0) {
     violations.push('no_flight_phase');
   }
