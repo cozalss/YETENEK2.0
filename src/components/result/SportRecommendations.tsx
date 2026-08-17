@@ -7,7 +7,6 @@
  */
 
 import type { SportMatch } from '@/lib/matching/recommend';
-import { describeMatchConfidence } from '@/lib/matching/matchLabel';
 import { getCurriculumBySlug } from '@/lib/lessons/curriculum';
 import { SportSelectButton } from './SportSelectButton';
 import { StabilityNote } from './StabilityNote';
@@ -85,7 +84,6 @@ function SportCard({
   const isTop = rank === 1;
   const slug = SPORT_NAME_TO_SLUG[match.sport];
   const hasLessons = slug != null && getCurriculumBySlug(slug) != null;
-  const confidence = describeMatchConfidence(match);
 
   return (
     <div
@@ -125,90 +123,16 @@ function SportCard({
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline justify-between gap-3">
-            <h4
-              className="font-black"
-              style={{
-                color: 'var(--form-navy)',
-                fontSize: isTop ? '1.5rem' : '1.25rem',
-                fontFamily: 'var(--font-display)',
-              }}
-            >
-              {match.sport}
-            </h4>
-            <span
-              className="shrink-0 rounded-full px-2.5 py-0.5 font-mono text-xs font-bold"
-              style={
-                isTop
-                  ? {
-                      background: 'var(--form-navy)',
-                      color: 'var(--whistle-cream)',
-                    }
-                  : {
-                      background: 'var(--color-canvas)',
-                      color: 'var(--form-navy)',
-                      border: '1px solid var(--color-line-strong)',
-                    }
-              }
-              title={
-                match.pTopK != null
-                  ? 'Ölçüm belirsizliği hesaba katıldığında bu sporun ilk 3 öneri arasında çıkma olasılığı'
-                  : 'Profil yakınlığı. Olasılık hesaplamak için en az 3 kalibre boyutun ölçülmesi gerekiyor.'
-              }
-            >
-              {confidence.percent != null ? `%${confidence.percent}` : '—'}
-            </span>
-          </div>
-          {/*
-            Etiket sayının GERÇEK anlamını söylüyor — `describeMatchConfidence`
-            tek kaynak (bkz. `matchLabel.ts`): sonuç ekranı, PDF, paylaşım
-            kartı, geçmiş ve LLM prompt'ları AYNI ayrımı kullanıyor.
-
-            `pTopK` doluysa sayı Monte Carlo'dan gelen bir olasılıktır.
-            Doluysa değil de undefined ise, kanıt tabanı olasılık iddiası
-            için fazla ince demektir (yeterli boyut ölçülmemiş) ve gösterilen
-            sayı yalnız bir profil yakınlığıdır — "olasılık" demek yanlış
-            olurdu. Hiçbir durumda "eşleşme"/"uyum" denmiyor: pTopK doluyken
-            bile bu "bu spora uygun" değil, "gürültü altında ilk 3'te kalır
-            mı" sorusunun cevabı.
-
-            Wilson aralığı bilinçli olarak GÖSTERİLMİYOR: o aralık Monte
-            Carlo'nun örnekleme hatasını ölçer, çocuk hakkındaki belirsizliği
-            değil. Örneklem sayısını artırınca daralır ve hiçbir yeni bilgi
-            taşımaz; kullanıcıya "güven aralığı" diye sunmak yanıltıcıydı.
-          */}
-          <p className="mt-1 text-xs" style={{ color: 'var(--color-ink-3)' }}>
-            {confidence.caption}
-          </p>
-
-          {/*
-            Ölçüm kapsamı gerekçesi. Bu kutu bir hata mesajı değil, bir
-            dürüstlük beyanı: sporu listeden silmek yerine "profiline yakın
-            görünüyor ama bunu değerlendirecek ölçümümüz yok" diyoruz.
-
-            Ölçülen sorun buydu: en çok önerilen spor (Cimnastik, sentetik
-            çocukların %26.1'inde birinci) hakkında en az ölçümümüz olan
-            spordu — ağırlığının yalnız %61.4'ü karara giriyordu.
-          */}
-          {match.probabilityWithheldReason && (
-            <p
-              className="mt-2 rounded-lg px-3 py-2 text-xs leading-relaxed"
-              style={{
-                background: 'rgba(242, 201, 76, 0.16)',
-                color: 'var(--form-navy)',
-              }}
-            >
-              {match.probabilityWithheldReason}
-              {match.weightCoverage != null && (
-                <>
-                  {' '}
-                  <strong>
-                    Ölçüm kapsamı: %{Math.round(match.weightCoverage * 100)}
-                  </strong>
-                </>
-              )}
-            </p>
-          )}
+          <h4
+            className="font-black"
+            style={{
+              color: 'var(--form-navy)',
+              fontSize: isTop ? '1.5rem' : '1.25rem',
+              fontFamily: 'var(--font-display)',
+            }}
+          >
+            {match.sport}
+          </h4>
           <p
             className="mt-1 text-sm leading-relaxed"
             style={{ color: 'var(--color-ink-2)' }}

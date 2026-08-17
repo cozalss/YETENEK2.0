@@ -21,7 +21,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { SessionSummary } from '@/lib/session/store';
 import { formatJumpHeightCm } from '@/lib/tests/jump';
-import { describeMatchConfidence } from '@/lib/matching/matchLabel';
 import { computeBadgesForSession, type Badge } from '@/lib/gamification/badges';
 import { gamificationStore } from '@/lib/gamification/store';
 import { BadgeReveal } from '@/components/gamification/BadgeReveal';
@@ -44,7 +43,6 @@ const BioMotorRadar = dynamic(
   }
 );
 import { InjuryWarning } from './InjuryWarning';
-import { MatchScopeNote } from './MatchScopeNote';
 import {
   filterReferences,
   type ScienceReference,
@@ -105,9 +103,6 @@ export function ResultScreen({
   );
 
   const topSport = session.recommendations?.[0];
-  // "% eşleşme/uyum" demiyoruz — pTopK doluyken bile bu "bu spora uygun"
-  // değil, "gürültü altında ilk 3'te kalır mı" (bkz. `matchLabel.ts`).
-  const topSportConfidence = topSport ? describeMatchConfidence(topSport) : null;
 
   // Gamification: bu oturumda kazanılan rozetleri hesapla, store'a kaydet,
   // sadece YENİ olanlar reveal animasyonunda gösterilir.
@@ -154,7 +149,7 @@ export function ResultScreen({
             {session.child.ageYears} yaş
           </span>
         </h1>
-        {topSport && topSportConfidence && (
+        {topSport && (
           <p
             className="mt-4 max-w-2xl text-lg leading-relaxed md:text-xl"
             style={{ color: 'var(--color-ink-2)' }}
@@ -162,13 +157,6 @@ export function ResultScreen({
             İlk sırada{' '}
             <span className="font-black" style={{ color: 'var(--form-navy)' }}>
               {topSport.sport}
-            </span>{' '}
-            <span style={{ color: 'var(--color-ink-3)' }}>
-              (
-              {topSportConfidence.percent != null
-                ? `%${topSportConfidence.percent} · `
-                : ''}
-              {topSportConfidence.caption})
             </span>
             . {topSport.reason}
           </p>
@@ -340,18 +328,10 @@ function ProfileTab({
 
         <div className="space-y-3">
           {session.recommendations && (
-            <>
-              {/*
-                Kapsam beyanı sıralamadan ÖNCE: hangi boyutların karara hiç
-                giremediğini görmeden bir sıralama görmek yanıltıcı olurdu
-                (bkz. `MatchScopeNote` dokümanı).
-              */}
-              <MatchScopeNote session={session} />
-              <SportRecommendations
-                recommendations={session.recommendations}
-                childId={childId}
-              />
-            </>
+            <SportRecommendations
+              recommendations={session.recommendations}
+              childId={childId}
+            />
           )}
         </div>
       </section>

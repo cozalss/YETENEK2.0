@@ -34,6 +34,24 @@ export function needsOutlierRetry(
   return heights.some((h) => Math.abs(h - median) > threshold);
 }
 
+/**
+ * En-iyi-3 protokolü geçerli deneme ister. "Sayılmadı" olanı 3'e katma;
+ * tavan dolmadan bir deneme daha aç.
+ */
+export function needsReplacementAttempt(
+  attempts: ReadonlyArray<{
+    accepted: boolean;
+    analysis: { jumpHeightCm: number | null };
+  }>,
+  baseAttempts: number,
+  maxAttempts: number
+): boolean {
+  const accepted = attempts.filter(
+    (a) => a.accepted && a.analysis.jumpHeightCm != null
+  ).length;
+  return accepted < baseAttempts && attempts.length < maxAttempts;
+}
+
 /** Aynı çocuğun önceki oturumlarındaki CMJ yükseklikleri (yeniden eskiye). */
 export function previousJumpHeightsCm(): number[] {
   return historyStore

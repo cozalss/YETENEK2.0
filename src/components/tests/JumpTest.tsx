@@ -50,6 +50,7 @@ import {
 import {
   historyConsistencyHint,
   needsOutlierRetry,
+  needsReplacementAttempt,
 } from '@/lib/tests/jumpStats';
 import type { PoseFrame } from '@/types';
 import { useValidityGate, type GateOutcome } from '@/hooks/use-validity-gate';
@@ -72,10 +73,10 @@ interface Props {
 
 const COUNTDOWN_SECONDS = 3;
 const CAPTURE_SECONDS = 5;
-/** Spor bilimi CMJ protokolü standardı: en-iyi-3 deneme. */
+/** Spor bilimi CMJ protokolü standardı: en-iyi-3 geçerli deneme. */
 const BASE_ATTEMPTS = 3;
-/** Aykırı denemede koşullu ekstra — sabit 5'ten ucuz. */
-const MAX_ATTEMPTS = 4;
+/** Reddedilen deneme yerine + aykırı için tavan. */
+const MAX_ATTEMPTS = 5;
 /** "Deneme 2/3 hazırlanıyor" ekranının otomatik ilerlemeden önce kalma süresi. */
 const BETWEEN_ATTEMPTS_MS = 2200;
 const ORIENTATION_KEY = 'yetenek:cmj-orientation';
@@ -380,19 +381,30 @@ export function JumpTest({
       setAttempts(attemptsRef.current);
 
       const done = attemptsRef.current.length;
+      const acceptedCount = attemptsRef.current.filter(
+        (a) => a.accepted && a.analysis.jumpHeightCm != null
+      ).length;
       const planned = plannedAttemptsRef.current;
-      if (
-        done === BASE_ATTEMPTS &&
-        planned < MAX_ATTEMPTS &&
-        needsOutlierRetry(attemptsRef.current)
-      ) {
-        plannedAttemptsRef.current = MAX_ATTEMPTS;
-        setPlannedAttempts(MAX_ATTEMPTS);
+
+      if (done < planned) {
         setPhase('between');
         return;
       }
 
-      if (done < plannedAttemptsRef.current) {
+      const replace = needsReplacementAttempt(
+        attemptsRef.current,
+        BASE_ATTEMPTS,
+        MAX_ATTEMPTS
+      );
+      const outlier =
+        acceptedCount >= BASE_ATTEMPTS &&
+        planned < MAX_ATTEMPTS &&
+        needsOutlierRetry(attemptsRef.current);
+
+      if (replace || outlier) {
+        const nextPlanned = done + 1;
+        plannedAttemptsRef.current = nextPlanned;
+        setPlannedAttempts(nextPlanned);
         setPhase('between');
         return;
       }
