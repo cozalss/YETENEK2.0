@@ -12,6 +12,7 @@ import { SiteHeader } from '@/components/layout/SiteHeader';
 import { SiteFooter } from '@/components/layout/SiteFooter';
 import { historyStore, type HistoryEntry } from '@/lib/history/store';
 import { useHistory } from '@/hooks/useHistory';
+import { describeMatchConfidence } from '@/lib/matching/matchLabel';
 
 export default function HistoryPage() {
   // useSyncExternalStore: hydrated double-render kalktı. Server snapshot
@@ -97,6 +98,7 @@ function HistoryCard({
 }) {
   const session = entry.session;
   const top = session.recommendations?.[0];
+  const topConfidence = top ? describeMatchConfidence(top) : null;
   const date = new Date(entry.archivedAt);
   const dateLabel = date.toLocaleString('tr-TR', {
     day: 'numeric',
@@ -118,9 +120,10 @@ function HistoryCard({
           <h3 className="text-lg font-bold text-[var(--color-ink-1)]">
             {session.child.name} · {session.child.ageYears} yaş
           </h3>
-          {top && (
+          {top && topConfidence && (
             <span className="font-mono rounded-full bg-[var(--color-signal)]/10 px-2.5 py-0.5 text-xs font-semibold text-[var(--color-signal)]">
-              {top.sport} · %{top.confidencePercent}
+              {top.sport}
+              {topConfidence.percent != null ? ` · %${topConfidence.percent}` : ''}
             </span>
           )}
         </div>

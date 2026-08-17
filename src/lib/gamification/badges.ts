@@ -96,7 +96,7 @@ export const BADGES: Record<string, Badge> = {
     emoji: '🏐',
     name: 'Voleybol Yıldızı',
     description: 'Profilin voleybol için ideal eşleşiyor.',
-    earnedFor: 'Voleybol önerisi 80%+ eşleşme',
+    earnedFor: 'Voleybol önerisinde ilk 3’te %80+ ihtimal',
   },
   tennisHeart: {
     id: 'tennisHeart',
@@ -104,7 +104,7 @@ export const BADGES: Record<string, Badge> = {
     emoji: '🎾',
     name: 'Tenis Tutkunu',
     description: 'Reaksiyon ve dengen tenis için ideal.',
-    earnedFor: 'Tenis önerisi 80%+ eşleşme',
+    earnedFor: 'Tenis önerisinde ilk 3’te %80+ ihtimal',
   },
   footballPotential: {
     id: 'footballPotential',
@@ -112,7 +112,7 @@ export const BADGES: Record<string, Badge> = {
     emoji: '⚽',
     name: 'Futbol Yeteneği',
     description: 'Dengeli profilin futbol için uygun.',
-    earnedFor: 'Futbol önerisi 80%+ eşleşme',
+    earnedFor: 'Futbol önerisinde ilk 3’te %80+ ihtimal',
   },
   basketballPotential: {
     id: 'basketballPotential',
@@ -120,7 +120,7 @@ export const BADGES: Record<string, Badge> = {
     emoji: '🏀',
     name: 'Basketbol Yeteneği',
     description: 'Sıçrama ve koordinasyonun basketbol için ideal.',
-    earnedFor: 'Basketbol önerisi 80%+ eşleşme',
+    earnedFor: 'Basketbol önerisinde ilk 3’te %80+ ihtimal',
   },
   swimmer: {
     id: 'swimmer',
@@ -128,7 +128,7 @@ export const BADGES: Record<string, Badge> = {
     emoji: '🏊',
     name: 'Yüzücü',
     description: 'Profilin yüzme için uygun.',
-    earnedFor: 'Yüzme önerisi 80%+ eşleşme',
+    earnedFor: 'Yüzme önerisinde ilk 3’te %80+ ihtimal',
   },
   sprinter: {
     id: 'sprinter',
@@ -136,7 +136,7 @@ export const BADGES: Record<string, Badge> = {
     emoji: '🏃',
     name: 'Atletizm Yeteneği',
     description: 'Yatay patlayıcı gücün ve reaksiyonun atletizm sprint için ideal.',
-    earnedFor: 'Atletizm önerisi 80%+ eşleşme',
+    earnedFor: 'Atletizm önerisinde ilk 3’te %80+ ihtimal',
   },
   gymnast: {
     id: 'gymnast',
@@ -144,7 +144,7 @@ export const BADGES: Record<string, Badge> = {
     emoji: '🤾',
     name: 'Cimnastikçi',
     description: 'Denge ve koordinasyon profilin cimnastik için harika.',
-    earnedFor: 'Cimnastik önerisi 80%+ eşleşme',
+    earnedFor: 'Cimnastik önerisinde ilk 3’te %80+ ihtimal',
   },
   judoka: {
     id: 'judoka',
@@ -152,7 +152,7 @@ export const BADGES: Record<string, Badge> = {
     emoji: '🥋',
     name: 'Judo Yeteneği',
     description: 'Denge ve patlayıcı gücün judo için uygun.',
-    earnedFor: 'Judo önerisi 80%+ eşleşme',
+    earnedFor: 'Judo önerisinde ilk 3’te %80+ ihtimal',
   },
   taekwon: {
     id: 'taekwon',
@@ -160,7 +160,7 @@ export const BADGES: Record<string, Badge> = {
     emoji: '🦵',
     name: 'Taekwondo Yeteneği',
     description: 'Reaksiyon ve çevikliğin taekwondo için ideal.',
-    earnedFor: 'Taekwondo önerisi 80%+ eşleşme',
+    earnedFor: 'Taekwondo önerisinde ilk 3’te %80+ ihtimal',
   },
   boxer: {
     id: 'boxer',
@@ -168,7 +168,7 @@ export const BADGES: Record<string, Badge> = {
     emoji: '🥊',
     name: 'Boksör',
     description: 'Reaksiyon ve dayanıklılık profilin bokstur.',
-    earnedFor: 'Boks önerisi 80%+ eşleşme',
+    earnedFor: 'Boks önerisinde ilk 3’te %80+ ihtimal',
   },
   paddler: {
     id: 'paddler',
@@ -176,7 +176,7 @@ export const BADGES: Record<string, Badge> = {
     emoji: '🏓',
     name: 'Masa Tenisçi',
     description: 'Reaksiyon ve koordinasyonun masa tenisi için harika.',
-    earnedFor: 'Masa Tenisi önerisi 80%+ eşleşme',
+    earnedFor: 'Masa Tenisi önerisinde ilk 3’te %80+ ihtimal',
   },
   shuttler: {
     id: 'shuttler',
@@ -184,7 +184,7 @@ export const BADGES: Record<string, Badge> = {
     emoji: '🏸',
     name: 'Badmintoncu',
     description: 'Reaksiyon, çeviklik, koordinasyon — badminton için ideal.',
-    earnedFor: 'Badminton önerisi 80%+ eşleşme',
+    earnedFor: 'Badminton önerisinde ilk 3’te %80+ ihtimal',
   },
 
   // Genel rozetleri

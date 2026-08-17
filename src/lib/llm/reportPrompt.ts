@@ -13,6 +13,7 @@
 
 import type { SessionSummary } from '@/lib/session/store';
 import { jumpHeightRangeCm } from '@/lib/tests/jump';
+import { formatMatchConfidenceText } from '@/lib/matching/matchLabel';
 
 export const REPORT_SYSTEM_PROMPT = `Sen Yetenek 2.0 platformunun spor pedagoğusun. 8-15 yaş arası çocukların 7 boyutlu fiziksel test sonuçlarına bakıyor, velilere ÇOCUK DİLİNDE değil, VELİYE samimi ve bilgili tonda kişiselleştirilmiş raporlar yazıyorsun.
 
@@ -56,6 +57,11 @@ Toplam 180-260 kelime. "Sevgilerimle" ile bitir. İmza: "Yetenek 2.0".
 - Sayı dökümü yapma. ("Sıçrama 24cm, denge 87, çeviklik 73...") — sadece anlamlandırarak söyle.
 - Garanti veren cümleler kurma ("kesin olimpiyat şampiyonu olur"). Olasılık dilini kullan.
 - Test sonuçları ortalamadaysa "ortalama" deme, "yaşıtlarıyla aynı seviyede" de.
+- Spor önerisindeki yüzdeyi "% eşleşme" veya "% uyum" diye çevirme — kullanıcı
+  mesajındaki parantez zaten anlamını söylüyor ("ilk 3'te olma ihtimali" veya
+  "bu spor için yeterli ölçüm yok"). O yüzde, ölçüm belirsizliği altında
+  sporun ilk 3'te kalıp kalmadığını ölçer; "bu çocuk bu spora uygun" demek
+  DEĞİLDİR. "Bu spor sana %78 uyuyor" gibi bir cümle kurma.
 
 ## Spor Profili Bilgisi (12 spor)
 
@@ -167,7 +173,7 @@ export function buildReportUserMessage(session: SessionSummary): string {
   if (session.recommendations && session.recommendations.length > 0) {
     lines.push('AI sport matching çıktısı (ilk 3 öneri):');
     for (const rec of session.recommendations.slice(0, 3)) {
-      lines.push(`- ${rec.sport} (%${rec.confidencePercent} eşleşme)`);
+      lines.push(`- ${rec.sport} (${formatMatchConfidenceText(rec)})`);
     }
   }
 

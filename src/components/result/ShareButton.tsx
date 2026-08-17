@@ -39,7 +39,6 @@ export function ShareButton({ session, shareUrl, ogImageUrl }: Props) {
     params.set('age', String(session.child.ageYears));
     if (top) {
       params.set('sport', top.sport);
-      params.set('score', String(top.confidencePercent));
     }
     return `${window.location.origin}/api/og?${params.toString()}`;
   })();
@@ -49,8 +48,12 @@ export function ShareButton({ session, shareUrl, ogImageUrl }: Props) {
     ? `${session.child.name}'nın Yetenek Profili`
     : `Yetenek Profili (${session.child.ageYears} yaş)`;
 
+  // "% eşleşme/uyum" demiyoruz — bu paylaşılabilir bir metin, bağlamdan
+  // koparılıp tek başına okunacak (bkz. `matchLabel.ts`). Sayı yerine
+  // sadece sıralamayı taşıyoruz; nüans gerektiren "olasılık" iddiasını bu
+  // yüzeye taşımıyoruz.
   const body = top
-    ? `${subject}: %${top.confidencePercent} ${top.sport} uyumu — Yetenek 2.0 testi.`
+    ? `${subject}: ilk sırada ${top.sport} — Yetenek 2.0 testi.`
     : `${subject} — Yetenek 2.0 testi.`;
 
   const shareText = `${body} ${url}`;

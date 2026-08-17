@@ -25,6 +25,7 @@ import { getBadgesMetadata } from '@/infrastructure/storage/supabase-content-rep
 import { supabaseLessonRepository } from '@/infrastructure/storage/supabase-lesson-repository';
 import { makeChildId } from '@/core/types/branded';
 import { EnrolledSportCard } from '@/components/profile/EnrolledSportCard';
+import { describeMatchConfidence } from '@/lib/matching/matchLabel';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -388,6 +389,11 @@ interface SessionItem {
     readonly recommendations?: ReadonlyArray<{
       sport: string;
       confidencePercent: number;
+      // JSONB `summary` alanı zaten tam `SportMatch`'i taşıyor (bkz.
+      // `sportMatchSchema`) — bu iki alan olasılık/ham-yakınlık ayrımını
+      // dürüst göstermek için burada da lazım (bkz. `matchLabel.ts`).
+      pTopK?: number | null;
+      probabilityWithheldReason?: string | null;
     }>;
   };
 }
@@ -430,6 +436,7 @@ function SessionHistory({
         <ul className="space-y-2">
           {sessions.map((s) => {
             const top = s.summary.recommendations?.[0];
+            const topConfidence = top ? describeMatchConfidence(top) : null;
             return (
               <li
                 key={s.id}
@@ -462,12 +469,15 @@ function SessionHistory({
                           })
                         : 'Tamamlanmadı'}
                     </div>
-                    {top && (
+                    {top && topConfidence && (
                       <div
                         className="text-xs"
                         style={{ color: 'var(--form-navy)', opacity: 0.7 }}
                       >
-                        En iyi eşleşme: {top.sport} (%{top.confidencePercent})
+                        İlk sırada: {top.sport}
+                        {topConfidence.percent != null
+                          ? ` (%${topConfidence.percent})`
+                          : ''}
                       </div>
                     )}
                   </div>

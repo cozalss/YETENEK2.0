@@ -17,6 +17,7 @@ import {
 import type { SessionSummary } from '@/lib/session/store';
 import type { Badge } from '@/lib/gamification/badges';
 import { formatJumpHeightCm } from '@/lib/tests/jump';
+import { describeMatchConfidence } from '@/lib/matching/matchLabel';
 import {
   REFERENCES,
   type ScienceReference,
@@ -197,6 +198,7 @@ interface Props {
 
 export function PdfReportDocument({ session, badges, aiReport }: Props) {
   const top3 = session.recommendations?.slice(0, 3) ?? [];
+  const topConfidence = top3[0] ? describeMatchConfidence(top3[0]) : null;
   const completedDate = session.completedAt
     ? new Date(session.completedAt).toLocaleDateString('tr-TR')
     : new Date().toLocaleDateString('tr-TR');
@@ -215,11 +217,12 @@ export function PdfReportDocument({ session, badges, aiReport }: Props) {
           </Text>
         </View>
 
-        {/* En Güçlü Uyum */}
+        {/* İlk Sırada */}
         {top3[0] && (
           <View style={styles.highlightBox}>
             <Text style={styles.highlightTitle}>
-              En Güçlü Uyum: {top3[0].sport} (%{top3[0].confidencePercent})
+              İlk Sırada: {top3[0].sport}
+              {topConfidence?.percent != null ? ` (%${topConfidence.percent})` : ''}
             </Text>
             <Text style={styles.highlightText}>{top3[0].reason}</Text>
           </View>
@@ -227,14 +230,24 @@ export function PdfReportDocument({ session, badges, aiReport }: Props) {
 
         {/* Spor Önerileri */}
         <Text style={styles.sectionTitle}>Spor Önerileri</Text>
-        {top3.map((rec, i) => (
-          <View key={i} style={styles.row}>
-            <Text style={styles.rowLabel}>
-              {i + 1}. {rec.sport}
-            </Text>
-            <Text style={styles.rowValue}>%{rec.confidencePercent}</Text>
-          </View>
-        ))}
+        {top3.map((rec, i) => {
+          const confidence = describeMatchConfidence(rec);
+          return (
+            <View key={i} style={styles.row}>
+              <Text style={styles.rowLabel}>
+                {i + 1}. {rec.sport}
+              </Text>
+              <Text style={styles.rowValue}>
+                {confidence.percent != null ? `%${confidence.percent}` : '—'}
+              </Text>
+            </View>
+          );
+        })}
+        <Text style={styles.disclaimer}>
+          Yüzdeler &quot;bu spor ilk 3&apos;te kalır mı&quot; olasılığıdır (ölçüm
+          belirsizliği altında simülasyon) — kesin uygunluk iddiası değildir.
+          &quot;—&quot; o spor için yeterli ölçüm olmadığını gösterir.
+        </Text>
 
         {/* Test Sonuçları */}
         <Text style={styles.sectionTitle}>Fiziksel Test Sonuçları</Text>

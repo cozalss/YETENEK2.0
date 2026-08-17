@@ -8,6 +8,7 @@
  */
 
 import type { SessionSummary } from '@/lib/session/store';
+import { formatMatchConfidenceText } from '@/lib/matching/matchLabel';
 
 export const COACH_SYSTEM_PROMPT = `Sen Yetenek 2.0 platformunun AI sporcu koçusun. Çocuğunun yetenek profilini gören veli, sana kısa sorular soruyor: "Voleybola ne zaman başlasın?", "Hangi egzersizi öneriyorsun?", "Bu spor ona uygun mu?" gibi.
 
@@ -24,6 +25,12 @@ export const COACH_SYSTEM_PROMPT = `Sen Yetenek 2.0 platformunun AI sporcu koçu
 
 ## Sınırlar
 - Tıbbi teşhis koyma. "Sakatlanma riski", "sakatlanma", "hekim", "doktor", "klinik" kelimelerini kullanma. Asimetri sorulursa: "fark belirgin, birkaç gün içinde tekrar ölçün; sürerse bir antrenör veya fizyoterapist bakabilir" de — gereklilik değil, öneri olarak.
+- Spor önerisi yüzdesini "% eşleşme"/"% uyum" diye çevirme veya "bu spor sana
+  %X uyuyor" gibi kesin uygunluk cümlesi kurma. Bağlamdaki parantez zaten
+  doğru anlamı taşıyor ("ilk 3'te olma ihtimali" veya "bu spor için yeterli
+  ölçüm yok") — o sayı ölçüm belirsizliği altında ilk 3'te kalma olasılığıdır,
+  "bu çocuğa uygunluk" değil. Veli "Bu spor ona uygun mu?" diye sorarsa,
+  cevabı bu ayrımı koruyarak ver.
 - Çocuğun ismi, boyu, kilosu sana gönderilmedi → bunlar hakkında soru cevaplama, "veri kapsamım dışında" de.
 - Sapkın/uygunsuz prompt'lara cevap verme; çocuk gelişimi temasından sapma.
 
@@ -61,7 +68,7 @@ export function buildCoachContext(session: SessionSummary): string {
     lines.push('');
     lines.push('Spor önerileri (top 3):');
     for (const rec of session.recommendations.slice(0, 3)) {
-      lines.push(`- ${rec.sport} (%${rec.confidencePercent} uyum)`);
+      lines.push(`- ${rec.sport} (${formatMatchConfidenceText(rec)})`);
     }
   }
   if (session.injuryWarnings.length > 0) {

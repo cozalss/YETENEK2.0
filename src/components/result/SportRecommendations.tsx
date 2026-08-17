@@ -7,6 +7,7 @@
  */
 
 import type { SportMatch } from '@/lib/matching/recommend';
+import { describeMatchConfidence } from '@/lib/matching/matchLabel';
 import { getCurriculumBySlug } from '@/lib/lessons/curriculum';
 import { SportSelectButton } from './SportSelectButton';
 import { StabilityNote } from './StabilityNote';
@@ -84,6 +85,7 @@ function SportCard({
   const isTop = rank === 1;
   const slug = SPORT_NAME_TO_SLUG[match.sport];
   const hasLessons = slug != null && getCurriculumBySlug(slug) != null;
+  const confidence = describeMatchConfidence(match);
 
   return (
     <div
@@ -154,17 +156,21 @@ function SportCard({
                   : 'Profil yakınlığı. Olasılık hesaplamak için en az 3 kalibre boyutun ölçülmesi gerekiyor.'
               }
             >
-              {match.probabilityWithheldReason ? '—' : `%${match.confidencePercent}`}
+              {confidence.percent != null ? `%${confidence.percent}` : '—'}
             </span>
           </div>
           {/*
-            Etiket sayının GERÇEK anlamını söylüyor.
+            Etiket sayının GERÇEK anlamını söylüyor — `describeMatchConfidence`
+            tek kaynak (bkz. `matchLabel.ts`): sonuç ekranı, PDF, paylaşım
+            kartı, geçmiş ve LLM prompt'ları AYNI ayrımı kullanıyor.
 
             `pTopK` doluysa sayı Monte Carlo'dan gelen bir olasılıktır.
             Doluysa değil de undefined ise, kanıt tabanı olasılık iddiası
             için fazla ince demektir (yeterli boyut ölçülmemiş) ve gösterilen
             sayı yalnız bir profil yakınlığıdır — "olasılık" demek yanlış
-            olurdu.
+            olurdu. Hiçbir durumda "eşleşme"/"uyum" denmiyor: pTopK doluyken
+            bile bu "bu spora uygun" değil, "gürültü altında ilk 3'te kalır
+            mı" sorusunun cevabı.
 
             Wilson aralığı bilinçli olarak GÖSTERİLMİYOR: o aralık Monte
             Carlo'nun örnekleme hatasını ölçer, çocuk hakkındaki belirsizliği
@@ -172,9 +178,7 @@ function SportCard({
             taşımaz; kullanıcıya "güven aralığı" diye sunmak yanıltıcıydı.
           */}
           <p className="mt-1 text-xs" style={{ color: 'var(--color-ink-3)' }}>
-            {match.pTopK != null
-              ? "ilk 3'te olma ihtimali"
-              : 'bu spor için yeterli ölçüm yok'}
+            {confidence.caption}
           </p>
 
           {/*

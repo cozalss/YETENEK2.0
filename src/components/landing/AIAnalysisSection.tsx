@@ -198,7 +198,7 @@ function MatchScorePanel() {
       <div className="algorithm-match-header">
         <div>
           <span>Optimum Branş</span>
-          <small>eşleşme güveni</small>
+          <small>örnek algoritma çıktısı</small>
         </div>
         <strong>%92</strong>
       </div>

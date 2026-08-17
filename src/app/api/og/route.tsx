@@ -10,7 +10,14 @@
  *
  * Cache 1 saat — query parametresi varsa farklı imaj.
  *
- * Query: ?name=Zeynep&age=11&sport=Voleybol&score=92
+ * Query: ?name=Zeynep&age=11&sport=Voleybol
+ *
+ * NOT: eskiden bir `score` parametresi de alınıp "%X uyum" olarak
+ * basılıyordu. Bu kart URL parametresinden geliyor — arkasında `pTopK`
+ * (olasılık) mı yoksa ham profil yakınlığı mı olduğunu bu route bilemez, ve
+ * sosyal medyada hızlı kaydırılan bir görsel nüansı taşıyamaz ("%78
+ * Voleybol" viral olduğunda "ilk 3'te kalma ihtimali" değil "buna uygun"
+ * okunur). `score` artık kabul edilmiyor/basılmıyor — yalnız spor adı.
  */
 
 import { ImageResponse } from 'next/og';
@@ -23,15 +30,9 @@ export async function GET(request: Request) {
   const ageParam = searchParams.get('age');
   const age = ageParam ? Number(ageParam) : null;
   const sport = (searchParams.get('sport') ?? 'Yetenek Profili').slice(0, 30);
-  const scoreParam = searchParams.get('score');
-  const score =
-    scoreParam != null && scoreParam !== ''
-      ? Math.max(0, Math.min(100, Number(scoreParam)))
-      : null;
 
   const headline = name ? `${name}'in Yetenek Profili` : 'Yetenek Profili';
   const ageLabel = age != null && Number.isFinite(age) ? `${age} YAŞ` : '';
-  const scoreLabel = score != null ? `%${score} uyum` : '';
 
   return new ImageResponse(
     (
@@ -90,7 +91,7 @@ export async function GET(request: Request) {
               textTransform: 'uppercase',
             }}
           >
-            En güçlü uyum
+            İlk sırada
           </div>
           <div
             style={{
@@ -103,18 +104,6 @@ export async function GET(request: Request) {
           >
             {sport}
           </div>
-          {scoreLabel && (
-            <div
-              style={{
-                fontSize: 56,
-                fontWeight: 700,
-                color: '#fafafa',
-                marginTop: 32,
-              }}
-            >
-              {scoreLabel}
-            </div>
-          )}
         </div>
 
         {/* Footer */}

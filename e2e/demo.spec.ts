@@ -56,8 +56,8 @@ test.describe('Örnek Sonuç Akışı — Zeynep Persona', () => {
     await expect(page.getByRole('heading', { name: /Zeynep/ })).toBeVisible();
     await expect(page.getByText('· 9 yaş')).toBeVisible();
 
-    // En güçlü uyum (spesifik spor adı matching engine'e bağlı)
-    await expect(page.locator('text=En güçlü uyumun').first()).toBeVisible();
+    // İlk sıradaki spor (spesifik spor adı matching engine'e bağlı)
+    await expect(page.locator('text=İlk sırada').first()).toBeVisible();
 
     // Radar grafiği placeholder veya canvas
     await expect(page.locator('text=Bio-Motor Profili').first()).toBeVisible();
