@@ -1,7 +1,7 @@
 /**
  * Tam test akışı v2: profil → 7 test → sonuç.
  *
- * Akış orkestrasyonu (Full mode):
+ * Akış orkestrasyonu:
  *   1. profile        → ProfileForm
  *   2. cmj            → JumpTest (dikey patlayıcı)
  *   3. broadJump      → BroadJumpTest (yatay patlayıcı)
@@ -12,8 +12,9 @@
  *   8. endurance      → EnduranceJacksTest (anaerobik)
  *   9. result         → ResultScreen
  *
- * Quick mode (?mode=quick): 3 çekirdek test (cmj + balance + reaction).
- * Eksik boyutlar finalize'da popülasyon medyanı (50) ile doldurulur.
+ * Tek akış var: yedi testin tamamı. Kısaltılmış varyant bilinçli olarak yok —
+ * eksik boyutu medyanla doldurmak, ölçülmemiş bir şeyi ölçülmüş gibi
+ * raporlamak demekti.
  */
 
 'use client';
@@ -30,11 +31,7 @@ import { CoordinationTest } from '@/components/tests/CoordinationTest';
 import { EnduranceJacksTest } from '@/components/tests/EnduranceJacksTest';
 import { CharacterTest } from '@/components/tests/CharacterTest';
 import { ProfileForm } from '@/components/flow/ProfileForm';
-import {
-  PhaseHeader,
-  FULL_FLOW_STEP_LABELS,
-  QUICK_FLOW_STEP_LABELS,
-} from '@/components/flow/PhaseHeader';
+import { PhaseHeader, FULL_FLOW_STEP_LABELS } from '@/components/flow/PhaseHeader';
 import { ResultScreen } from '@/components/result/ResultScreen';
 import {
   sessionStore,
@@ -66,9 +63,7 @@ type Phase =
   | 'character'
   | 'result';
 
-type Mode = 'full' | 'quick';
-
-const FULL_PHASE_ORDER: Phase[] = [
+const PHASE_ORDER: Phase[] = [
   'cmj',
   'broadJump',
   'balance',
@@ -78,8 +73,6 @@ const FULL_PHASE_ORDER: Phase[] = [
   'endurance',
   'character',
 ];
-
-const QUICK_PHASE_ORDER: Phase[] = ['cmj', 'balance', 'reaction', 'character'];
 
 interface DoneFlags {
   cmj: boolean;
@@ -127,7 +120,6 @@ export default function FullFlowPage() {
 
 function FullFlowInner() {
   const searchParams = useSearchParams();
-  const mode: Mode = searchParams.get('mode') === 'quick' ? 'quick' : 'full';
   const childIdParam = searchParams.get('childId');
 
   const [phase, setPhase] = useState<Phase>('profile');
@@ -135,10 +127,6 @@ function FullFlowInner() {
   const [done, setDone] = useState<DoneFlags>(EMPTY_DONE);
   const [finalSession, setFinalSession] = useState<SessionSummary | null>(null);
   const [childLoadError, setChildLoadError] = useState<string | null>(null);
-
-  const phaseOrder = mode === 'quick' ? QUICK_PHASE_ORDER : FULL_PHASE_ORDER;
-  const stepLabels =
-    mode === 'quick' ? QUICK_FLOW_STEP_LABELS : FULL_FLOW_STEP_LABELS;
 
   // childId query param varsa: profile form'unu atla, child'ı API'den getir,
   // sessionStore'u başlat. Hata olursa form'a düşer ve mesaj gösterilir.
@@ -180,7 +168,7 @@ function FullFlowInner() {
         };
         sessionStore.start(identity);
         setChild(identity);
-        setPhase(phaseOrder[0]);
+        setPhase(PHASE_ORDER[0]);
       } catch {
         if (!cancelled) {
           setChildLoadError('Bağlantı hatası, tekrar dene.');
@@ -190,15 +178,15 @@ function FullFlowInner() {
     return () => {
       cancelled = true;
     };
-    // phaseOrder mode'a göre değişebilir; child set olduktan sonra yeniden
-    // tetiklenmemeli — child guard zaten engelliyor.
+    // child set olduktan sonra yeniden tetiklenmemeli — child guard
+    // zaten engelliyor.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childIdParam]);
 
   const currentStepIndex = useMemo(() => {
     if (phase === 'profile' || phase === 'result') return -1;
-    return phaseOrder.indexOf(phase);
-  }, [phase, phaseOrder]);
+    return PHASE_ORDER.indexOf(phase);
+  }, [phase]);
 
   // Result fazı: finalize + persist.
   //
@@ -252,20 +240,20 @@ function FullFlowInner() {
   const handleProfileSubmit = (c: ChildIdentity) => {
     sessionStore.start(c);
     setChild(c);
-    setPhase(phaseOrder[0]);
+    setPhase(PHASE_ORDER[0]);
   };
 
   const advanceFrom = (key: keyof DoneFlags) => {
     setDone((d) => ({ ...d, [key]: false }));
-    const idx = phaseOrder.indexOf(key as Phase);
-    const next = phaseOrder[idx + 1];
+    const idx = PHASE_ORDER.indexOf(key as Phase);
+    const next = PHASE_ORDER[idx + 1];
     setPhase(next ?? 'result');
   };
 
   const skipCurrent = () => {
     if (phase === 'profile' || phase === 'result') return;
-    const idx = phaseOrder.indexOf(phase);
-    const next = phaseOrder[idx + 1];
+    const idx = PHASE_ORDER.indexOf(phase);
+    const next = PHASE_ORDER[idx + 1];
     setPhase(next ?? 'result');
   };
 
@@ -288,7 +276,7 @@ function FullFlowInner() {
       }}
     >
       <div className="mx-auto max-w-5xl space-y-6">
-        <BrandHeader mode={mode} />
+        <BrandHeader />
 
         {phase === 'profile' && (
           <>
@@ -342,10 +330,10 @@ function FullFlowInner() {
             done={done.cmj}
             onAdvance={() => advanceFrom('cmj')}
             stepNumber={stepNumber}
-            stepLabels={stepLabels}
+            stepLabels={FULL_FLOW_STEP_LABELS}
             onSkip={skipCurrent}
             advanceLabel={
-              phaseOrder.length === stepNumber
+              PHASE_ORDER.length === stepNumber
                 ? 'Sonuçları Gör'
                 : 'Sonraki Teste Geç'
             }
@@ -357,7 +345,9 @@ function FullFlowInner() {
               onComplete={(analysis) => {
                 if (!analysis.valid) return;
                 sessionStore.recordJump(
-                  analysis as JumpAnalysis & { score: number | null }
+                  analysis as JumpAnalysis & { score: number | null },
+                  analysis.techniqueMultiplier,
+                  analysis.judgeInjuryWarnings
                 );
                 setDone((d) => ({ ...d, cmj: true }));
               }}
@@ -371,7 +361,7 @@ function FullFlowInner() {
             done={done.broadJump}
             onAdvance={() => advanceFrom('broadJump')}
             stepNumber={stepNumber}
-            stepLabels={stepLabels}
+            stepLabels={FULL_FLOW_STEP_LABELS}
             onSkip={skipCurrent}
           >
             <BroadJumpTest
@@ -381,7 +371,9 @@ function FullFlowInner() {
               onComplete={(analysis) => {
                 if (!analysis.valid) return;
                 sessionStore.recordBroadJump(
-                  analysis as BroadJumpAnalysis & { score: number }
+                  analysis as BroadJumpAnalysis & { score: number },
+                  analysis.techniqueMultiplier,
+                  analysis.judgeInjuryWarnings
                 );
                 setDone((d) => ({ ...d, broadJump: true }));
               }}
@@ -395,13 +387,17 @@ function FullFlowInner() {
             done={done.balance}
             onAdvance={() => advanceFrom('balance')}
             stepNumber={stepNumber}
-            stepLabels={stepLabels}
+            stepLabels={FULL_FLOW_STEP_LABELS}
             onSkip={skipCurrent}
           >
             <BalanceTest
               childAgeYears={child.ageYears}
               onComplete={(analysis) => {
-                sessionStore.recordBalance(analysis as BalanceAnalysis);
+                sessionStore.recordBalance(
+                  analysis as BalanceAnalysis,
+                  analysis.techniqueMultiplier,
+                  analysis.judgeInjuryWarnings
+                );
                 if (
                   analysis.right.hasEnoughData &&
                   analysis.left.hasEnoughData
@@ -419,7 +415,7 @@ function FullFlowInner() {
             done={done.lateralHops}
             onAdvance={() => advanceFrom('lateralHops')}
             stepNumber={stepNumber}
-            stepLabels={stepLabels}
+            stepLabels={FULL_FLOW_STEP_LABELS}
             onSkip={skipCurrent}
           >
             <LateralHopsTest
@@ -428,7 +424,9 @@ function FullFlowInner() {
               onComplete={(analysis) => {
                 if (!analysis.valid) return;
                 sessionStore.recordLateralHops(
-                  analysis as LateralHopsAnalysis & { score: number }
+                  analysis as LateralHopsAnalysis & { score: number },
+                  analysis.techniqueMultiplier,
+                  analysis.judgeInjuryWarnings
                 );
                 setDone((d) => ({ ...d, lateralHops: true }));
               }}
@@ -442,7 +440,7 @@ function FullFlowInner() {
             done={done.reaction}
             onAdvance={() => advanceFrom('reaction')}
             stepNumber={stepNumber}
-            stepLabels={stepLabels}
+            stepLabels={FULL_FLOW_STEP_LABELS}
             onSkip={skipCurrent}
           >
             <ReactionTest
@@ -461,14 +459,16 @@ function FullFlowInner() {
             done={done.coordination}
             onAdvance={() => advanceFrom('coordination')}
             stepNumber={stepNumber}
-            stepLabels={stepLabels}
+            stepLabels={FULL_FLOW_STEP_LABELS}
             onSkip={skipCurrent}
           >
             <CoordinationTest
               onComplete={(analysis) => {
                 if (!analysis.valid) return;
                 sessionStore.recordCoordination(
-                  analysis as CoordinationAnalysis
+                  analysis as CoordinationAnalysis,
+                  analysis.techniqueMultiplier,
+                  analysis.judgeInjuryWarnings
                 );
                 setDone((d) => ({ ...d, coordination: true }));
               }}
@@ -483,7 +483,7 @@ function FullFlowInner() {
             done={done.endurance}
             onAdvance={() => advanceFrom('endurance')}
             stepNumber={stepNumber}
-            stepLabels={stepLabels}
+            stepLabels={FULL_FLOW_STEP_LABELS}
             onSkip={skipCurrent}
           >
             <EnduranceJacksTest
@@ -492,7 +492,9 @@ function FullFlowInner() {
               onComplete={(analysis) => {
                 if (!analysis.valid) return;
                 sessionStore.recordEndurance(
-                  analysis as EnduranceJacksAnalysis & { score: number }
+                  analysis as EnduranceJacksAnalysis & { score: number },
+                  analysis.techniqueMultiplier,
+                  analysis.judgeInjuryWarnings
                 );
                 setDone((d) => ({ ...d, endurance: true }));
               }}
@@ -506,7 +508,7 @@ function FullFlowInner() {
             done={done.character}
             onAdvance={() => advanceFrom('character')}
             stepNumber={stepNumber}
-            stepLabels={stepLabels}
+            stepLabels={FULL_FLOW_STEP_LABELS}
             onSkip={skipCurrent}
             advanceLabel="Sonuçları Gör"
           >
@@ -534,7 +536,7 @@ function FullFlowInner() {
   );
 }
 
-function BrandHeader({ mode }: { mode: Mode }) {
+function BrandHeader() {
   return (
     <header
       className="flex items-center justify-between gap-4 border-b pb-5"
@@ -551,22 +553,11 @@ function BrandHeader({ mode }: { mode: Mode }) {
         YETENEK
       </Link>
       <div className="flex items-center gap-3 text-[11px]">
-        <Link
-          href={mode === 'quick' ? '/test/full' : '/test/full?mode=quick'}
-          className="hidden rounded-full border px-3 py-1 font-bold tracking-[0.18em] uppercase transition-opacity hover:opacity-70 sm:inline-flex"
-          style={{
-            borderColor: 'rgba(44, 62, 107, 0.25)',
-            color: 'var(--form-navy)',
-            fontFamily: 'var(--font-display)',
-          }}
-        >
-          {mode === 'quick' ? '7 testlik tam akış' : 'Hızlı 3 testlik akış'}
-        </Link>
         <span
           className="font-mono tracking-[0.25em] uppercase"
           style={{ color: 'rgba(44, 62, 107, 0.6)' }}
         >
-          {mode === 'quick' ? 'Hızlı Akış' : 'Tam Akış'}
+          Tam Akış
         </span>
       </div>
     </header>

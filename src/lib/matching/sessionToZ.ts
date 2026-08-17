@@ -39,7 +39,29 @@ export interface ZSourceSession {
     readonly totalReps: number;
     readonly durationMs: number;
   } | null;
+  /**
+   * Hakemin verdiği teknik cezaları — test anahtarından boyuta eşlenir.
+   * Ölçüm değerini değil, belirsizliğini etkiler.
+   */
+  readonly techniqueMultipliers?: {
+    readonly jump?: number;
+    readonly broadJump?: number;
+    readonly lateralHops?: number;
+    readonly coordination?: number;
+    readonly endurance?: number;
+    readonly balance?: number;
+  } | null;
 }
+
+/** Test anahtarı → bio-motor boyut. */
+const TEST_TO_DIMENSION = {
+  jump: 'explosivePower',
+  broadJump: 'horizontalPower',
+  lateralHops: 'agility',
+  endurance: 'endurance',
+  // balance ve coordination kalibresiz olduğu için z-profile hiç girmiyor;
+  // cezalarının da gidecek yeri yok.
+} as const;
 
 /**
  * Oturumun ham ölçümlerinden z-profil kurar.
@@ -101,5 +123,17 @@ export function sessionToZProfile(session: ZSourceSession): ZProfile {
     );
   }
 
-  return buildZProfile(measured);
+  // Test anahtarındaki cezaları boyut anahtarına çevir.
+  const penalties: Partial<Record<DimensionKey, number>> = {};
+  const raw = session.techniqueMultipliers;
+  if (raw) {
+    for (const [testKey, dim] of Object.entries(TEST_TO_DIMENSION)) {
+      const m = raw[testKey as keyof typeof raw];
+      if (typeof m === 'number' && m > 1) {
+        penalties[dim as DimensionKey] = m;
+      }
+    }
+  }
+
+  return buildZProfile(measured, penalties);
 }

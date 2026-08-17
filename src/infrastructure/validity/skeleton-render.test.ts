@@ -1,18 +1,14 @@
 /**
- * İskelet render testleri — gizlilik garantisi dahil.
+ * Anahtar kare seçimi testleri.
  *
- * Bu modülün çıktısı, veli ham klip için rıza vermediğinde OpenAI'a giden tek
- * şey. Dolayısıyla "yalnız landmark geometrisi içerir" iddiası bir yorum
- * değil, test edilmesi gereken bir sözleşmedir.
+ * SVG render testleri kaldırıldı — o render artık yok (OpenAI SVG kabul
+ * etmiyor). Gizlilik sözleşmesi testleri `skeleton-png.test.ts` içinde,
+ * yani gerçekten gönderilen biçimin üzerinde.
  */
 
 import { describe, expect, it } from 'vitest';
 import { POSE_LANDMARKS, type Keypoint, type PoseFrame } from '@/types';
-import {
-  renderSkeletonSvg,
-  selectKeyframes,
-  skeletonDataUri,
-} from './skeleton-render';
+import { selectKeyframes } from './skeleton-render';
 
 function frame(overrides: Record<number, Partial<Keypoint>> = {}): PoseFrame {
   const landmarks: Keypoint[] = Array.from({ length: 33 }, (_, i) => ({
@@ -26,68 +22,6 @@ function frame(overrides: Record<number, Partial<Keypoint>> = {}): PoseFrame {
   }
   return { timestamp: 0, landmarks };
 }
-
-describe('renderSkeletonSvg — gizlilik sözleşmesi', () => {
-  const svg = renderSkeletonSvg(frame());
-
-  it('yalnızca vektör ilkelleri üretir — gömülü görüntü YOK', () => {
-    expect(svg).not.toContain('<image');
-    expect(svg).not.toContain('data:image/png');
-    expect(svg).not.toContain('data:image/jpeg');
-    expect(svg).not.toContain('base64');
-    expect(svg).not.toContain('xlink:href');
-  });
-
-  it('çalıştırılabilir içerik taşımaz', () => {
-    expect(svg).not.toContain('<script');
-    expect(svg).not.toContain('onload');
-    expect(svg).not.toContain('<foreignObject');
-  });
-
-  it('geçerli, kapalı bir SVG belgesi üretir', () => {
-    expect(svg.startsWith('<svg')).toBe(true);
-    expect(svg.endsWith('</svg>')).toBe(true);
-    // Açılan her line/circle tek etiketli; kapanış sayısı tutmalı.
-    expect(svg.split('<line').length - 1).toBeGreaterThan(0);
-    expect(svg.split('<circle').length - 1).toBeGreaterThan(0);
-  });
-
-  it('etiket metnindeki işaretleme karakterlerini temizler', () => {
-    const s = renderSkeletonSvg(frame(), { label: '<script>alert(1)</script>' });
-    expect(s).not.toContain('<script');
-    expect(s).toContain('scriptalert(1)/script');
-  });
-});
-
-describe('renderSkeletonSvg — görünürlük', () => {
-  it('görünmez landmark çizilmez', () => {
-    const visible = renderSkeletonSvg(frame());
-    const hidden = renderSkeletonSvg(
-      frame({
-        [POSE_LANDMARKS.LEFT_ANKLE]: { visibility: 0.1 },
-        [POSE_LANDMARKS.RIGHT_ANKLE]: { visibility: 0.1 },
-      })
-    );
-    // Gizlenen iki nokta ve onlara bağlı kenarlar kaybolmalı.
-    const circles = (s: string) => s.split('<circle').length - 1;
-    expect(circles(hidden)).toBeLessThan(circles(visible));
-  });
-
-  it('yer çizgisi istenirse çizilir', () => {
-    const s = renderSkeletonSvg(frame(), { groundY: 0.95 });
-    expect(s).toContain('stroke-dasharray');
-    expect(s).toContain('yer');
-  });
-});
-
-describe('skeletonDataUri', () => {
-  it('SVG data URI üretir', () => {
-    const uri = skeletonDataUri(frame());
-    expect(uri.startsWith('data:image/svg+xml;base64,')).toBe(true);
-    const decoded = Buffer.from(uri.split(',')[1], 'base64').toString('utf8');
-    expect(decoded.startsWith('<svg')).toBe(true);
-  });
-});
 
 describe('selectKeyframes', () => {
   const frames = Array.from({ length: 120 }, (_, i) => {

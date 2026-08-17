@@ -43,7 +43,12 @@ type Phase =
   | 'result';
 
 interface Props {
-  onComplete?: (analysis: BalanceAnalysis) => void;
+  onComplete?: (
+    analysis: BalanceAnalysis & {
+      techniqueMultiplier?: number;
+      judgeInjuryWarnings?: readonly string[];
+    }
+  ) => void;
   /** Asimetri uyarı eşiği yaşa göre uyarlanır (Hewett 2005). */
   childAgeYears?: number;
 }
@@ -199,9 +204,9 @@ export function BalanceTest({ onComplete, childAgeYears }: Props) {
       // Geçerlilik kapısı ölçümden ÖNCE. Testi yapmamış bir çocuğun verisi
       // hiç analiz edilmemeli — analiz edilip sonra atılırsa, aradaki her
       // adımda "geçerli sonuç" gibi görünür ve bir yerde sızar.
-      const allowed = await gateEvaluate();
+      const outcome = await gateEvaluate();
       if (cancelled) return;
-      if (!allowed) {
+      if (!outcome.allowed) {
         setPhase('result');
         return;
       }
@@ -215,7 +220,11 @@ export function BalanceTest({ onComplete, childAgeYears }: Props) {
         if (cancelled) return;
         setResult(analysis);
         setPhase('result');
-        onCompleteRef.current?.(analysis);
+        onCompleteRef.current?.({
+          ...analysis,
+          techniqueMultiplier: outcome.sigmaMultiplier,
+          judgeInjuryWarnings: outcome.injuryWarnings,
+        });
       } catch (err) {
         if (cancelled) return;
         handleAnalysisError(err);

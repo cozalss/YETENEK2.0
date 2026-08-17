@@ -84,6 +84,27 @@ const MIN_SIMILARITY_FOR_PROBABILITY = 0.45;
  */
 const MAX_BONUS_SHARE_OF_SPREAD = 0.35;
 
+/**
+ * Bir sporun olasılık iddiası taşıyabilmesi için ölçülmüş olması gereken
+ * ağırlık payı.
+ *
+ * Ölçülen sorun: en çok önerilen spor, hakkında en az ölçümümüz olan spordu.
+ * Cimnastik ağırlığının yalnız %61.4'ü karara giriyor (denge 1.0 +
+ * koordinasyon 0.95 — onu TANIMLAYAN iki eksen normsuz), ama 2500 sentetik
+ * çocukta **%26.1'inin birinci sporu** Cimnastik çıkıyordu (beklenen ~%8.3).
+ * Sebebi: tanımlayıcı eksenleri silinince geriye kalan profil popülasyon
+ * ortalamasına yakın kalıyor ve "herkese uyan" bir çekim merkezine dönüşüyor.
+ *
+ * Eşik 0.70: kalibrasyon durumu değişmeden Cimnastik (%61.4) ve Masa Tenisi
+ * (%65.1) olasılık iddiası taşıyamaz; ikisi de en çok fazla-önerilen sporlar.
+ * Sıralamadan atılmıyorlar — yalnız "bu spor için yeterli ölçümümüz yok"
+ * denerek yüzde iddiası geri çekiliyor. Norm pilotu yapıldığında eşik
+ * kendiliğinden aşılır ve kural sessizce devre dışı kalır.
+ */
+const MIN_COVERAGE_FOR_PROBABILITY = 0.7;
+
+
+
 export interface SportRanking {
   readonly sport: string;
   readonly description: string;
@@ -108,6 +129,11 @@ export interface SportRanking {
   readonly mcPrecision: readonly [number, number];
   /** Birinci olma olasılığı (0-1), veya kanıt yetersizse `null`. */
   readonly pTopOne: number | null;
+  /**
+   * Bu spor için olasılık iddiası geri çekildiyse sebebi. `null` = iddia
+   * geçerli.
+   */
+  readonly probabilityWithheldReason: string | null;
   /**
    * Bu sporun ağırlıklı boyutlarının ne kadarı ölçülebildi (0-1).
    *
@@ -342,29 +368,73 @@ export function decide(
   }
   const reportProbability = withheldReason == null;
 
-  const ranking: SportRanking[] = nominal
-    .map((n) => ({
-      sport: n.profile.sport,
-      description: n.profile.description,
-      distance: n.distance,
-      similarity: n.similarity,
-      pTopK: reportProbability ? topKCount[n.index] / samples : null,
-      mcPrecision: wilsonInterval(topKCount[n.index], samples),
-      pTopOne: reportProbability ? topOneCount[n.index] / samples : null,
-      weightCoverage: weightCoverage(profile, n.profile.weights),
-    }))
-    // Olasılık raporlanıyorsa ona göre, aksi hâlde nominal benzerliğe göre.
-    // Eşitlikte mesafe belirleyici; hâlâ eşitse spor adı — dizi sırası
-    // sıralamayı belirlemesin (aksi hâlde `sportProfiles.ts` içindeki
-    // konum, olasılığa kadar sızıyordu).
-    .sort(
-      (a, b) =>
-        (reportProbability ? (b.pTopK ?? 0) - (a.pTopK ?? 0) : 0) ||
+  const ordered = nominal
+    .map((n) => {
+      const coverage = weightCoverage(profile, n.profile.weights);
+
+      // Spor bazlı kapı: bu sporun ağırlığının çoğu ölçülemiyorsa, onun
+      // hakkında yüzde iddia etmek elimizde olmayan bilgiyi iddia etmektir.
+      // Sıralamadan atmıyoruz — sebebini söyleyip yüzdeyi geri çekiyoruz.
+      const sportReason =
+        coverage < MIN_COVERAGE_FOR_PROBABILITY
+          ? `Bu spor için gereken ölçümlerin yalnız %${Math.round(coverage * 100)}'i yapılabiliyor; kalanı norm tablosu olmayan boyutlardan (${profile.excludedByNorm.join(', ')}).`
+          : null;
+
+      const withheld = withheldReason ?? sportReason;
+      const claimable = withheld == null;
+
+      return {
+        sport: n.profile.sport,
+        description: n.profile.description,
+        distance: n.distance,
+        similarity: n.similarity,
+        pTopK: claimable ? topKCount[n.index] / samples : null,
+        mcPrecision: wilsonInterval(topKCount[n.index], samples),
+        pTopOne: claimable ? topOneCount[n.index] / samples : null,
+        probabilityWithheldReason: withheld,
+        weightCoverage: coverage,
+      };
+    })
+    // İKİ KADEMELİ SIRALAMA — bilinçli ve açık.
+    //
+    // Yüzde iddiası taşıyan sporlar önce gelir; taşımayanlar (ölçüm kapsamı
+    // yetersiz) altta, kendi aralarında benzerliğe göre sıralanır.
+    //
+    // Bu ayrım ÖNCEDEN `(b.pTopK ?? 0)` ifadesinin yan etkisiyle kazara
+    // oluyordu: null sıfır sayılıp en alta düşüyordu. Doğru sonucu veriyordu
+    // ama niyet kodda görünmüyordu — biri `?? 0` yerine `?? 1` yazsa davranış
+    // sessizce tersine dönerdi. Şimdi kademe açık bir anahtar.
+    .sort((a, b) => {
+      const tierA = a.pTopK == null ? 1 : 0;
+      const tierB = b.pTopK == null ? 1 : 0;
+      if (tierA !== tierB) return tierA - tierB;
+      return (
+        (b.pTopK ?? 0) - (a.pTopK ?? 0) ||
         b.similarity - a.similarity ||
         a.distance - b.distance ||
         a.sport.localeCompare(b.sport, 'tr-TR')
-    )
-    .slice(0, topN);
+      );
+    });
+
+  // `topN` kesmesi, ölçemediğimiz sporları listeden tamamen silerdi. Gerçekten
+  // o profile yakın bir çocuk (örneğin cimnastikçi tipi) o sporu HİÇ görmezdi
+  // — ölçemiyor olmamız, göstermemek için sebep değil; sadece yüzde iddia
+  // etmemek için sebep. Bu yüzden kesme sonrası, benzerliği yüksek olan
+  // ölçülemeyen sporlardan en fazla ikisi geri ekleniyor.
+  const claimable = ordered.filter((r) => r.pTopK != null).slice(0, topN);
+
+  // Hangi ölçülemeyen sporlar gösterilsin? Keyfi bir sayı yerine ilkeli
+  // kural: **kapsam sorunu olmasaydı ilk N'e girecek olanlar**. Yani soru
+  // "kaç tane gösterelim" değil, "bu çocuk ölçebilseydik bunu görecek miydi".
+  const bySimilarity = [...ordered].sort((a, b) => b.similarity - a.similarity);
+  const wouldHaveMadeTopN = new Set(
+    bySimilarity.slice(0, topN).map((r) => r.sport)
+  );
+  const withheldTop = ordered.filter(
+    (r) => r.pTopK == null && wouldHaveMadeTopN.has(r.sport)
+  );
+
+  const ranking: SportRanking[] = [...claimable, ...withheldTop];
 
   return {
     ranking,

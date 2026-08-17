@@ -36,6 +36,7 @@ import {
 import type { PoseFrame } from '@/types';
 import { useValidityGate } from '@/hooks/use-validity-gate';
 import { RejectionPanel } from '@/components/tests/shared/RejectionPanel';
+import { VisionBadge } from '@/components/tests/shared/VisionBadge';
 
 type Phase = 'idle' | 'countdown' | 'capture' | 'analyze' | 'result';
 
@@ -43,7 +44,13 @@ interface Props {
   childAgeYears?: number;
   childSex?: 'male' | 'female';
   childHeightCm?: number;
-  onComplete?: (analysis: JumpAnalysis & { score: number | null }) => void;
+  onComplete?: (
+    analysis: JumpAnalysis & {
+      score: number | null;
+      techniqueMultiplier?: number;
+      judgeInjuryWarnings?: readonly string[];
+    }
+  ) => void;
 }
 
 const COUNTDOWN_SECONDS = 3;
@@ -167,20 +174,30 @@ export function JumpTest({
       // Geçerlilik kapısı analizden ÖNCE: geçersiz bir yakalama hiç
       // ölçülmemeli. Sonradan atılırsa aradaki her adımda geçerli sonuç gibi
       // görünür ve bir gün bir yerden sızar.
-      const allowed = await gateEvaluate();
+      // Ölçüm iddiasını hakeme gönder: "ben 28 cm diyorum, gördüğün
+      // hareket buna uyuyor mu?" Hakem bu sayıyı KULLANMAZ, doğrular.
+      const claimAnalysis = analyzeJump(samplesRef.current);
+      const outcome = await gateEvaluate({
+        valid: claimAnalysis.valid,
+        primaryValue: claimAnalysis.jumpHeightCmFlight,
+        unit: 'cm',
+      });
       if (cancelled) return;
-      if (!allowed) {
+      if (!outcome.allowed) {
         setPhase('result');
         return;
       }
-      runAnalysis();
+      runAnalysis(outcome.sigmaMultiplier, outcome.injuryWarnings);
     })();
 
     return () => {
       cancelled = true;
     };
 
-    function runAnalysis() {
+    function runAnalysis(
+      techniqueMultiplier: number,
+      judgeInjuryWarnings: readonly string[]
+    ) {
     try {
       let analysis = analyzeJump(samplesRef.current);
       if (
@@ -201,7 +218,12 @@ export function JumpTest({
           : null;
       setScore(computedScore);
       setPhase('result');
-      onCompleteRef.current?.({ ...analysis, score: computedScore });
+      onCompleteRef.current?.({
+        ...analysis,
+        score: computedScore,
+        techniqueMultiplier,
+        judgeInjuryWarnings,
+      });
     } catch (err) {
       log.error('analiz hatası', {
         cause: err instanceof Error ? err.message : String(err),
@@ -273,6 +295,7 @@ export function JumpTest({
         phase === 'result' && gate.rejection ? (
           <RejectionPanel rejection={gate.rejection} onRetry={start} />
         ) : phase === 'result' && result ? (
+          <div>
           <ResultCard
             result={result}
             score={score}
@@ -280,6 +303,8 @@ export function JumpTest({
             hasCalibration={childHeightCm != null}
             headingRef={resultHeadingRef}
           />
+            <VisionBadge applied={gate.visionApplied} />
+          </div>
         ) : phase === 'idle' ? (
           <InstructionsPanel
             eyebrow="Test 01 · Patlayıcı Güç"

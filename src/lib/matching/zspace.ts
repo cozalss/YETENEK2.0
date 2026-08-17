@@ -164,7 +164,13 @@ export function sigmaForDimension(dim: DimensionKey, z: number): number {
  * @param measured Boyut → z. Ölçülemeyen boyutlar `null`/eksik bırakılır.
  */
 export function buildZProfile(
-  measured: Partial<Record<DimensionKey, number | null>>
+  measured: Partial<Record<DimensionKey, number | null>>,
+  /**
+   * Boyut başına teknik cezası çarpanı. Hakem kusurlu ama geçerli bir
+   * deneme kabul ettiğinde ilgili boyutun σ'sı bu oranda genişler — ölçüm
+   * değeri değişmez, güveni azalır.
+   */
+  techniqueMultipliers: Partial<Record<DimensionKey, number>> = {}
 ): ZProfile {
   const z: Partial<Record<DimensionKey, number>> = {};
   const sigma: Partial<Record<DimensionKey, number>> = {};
@@ -179,7 +185,8 @@ export function buildZProfile(
     // Norm tablolarının çözünürlüğü ±2.58σ; ötesini iddia etmiyoruz.
     const clamped = Math.max(-2.58, Math.min(2.58, value));
     z[dim] = clamped;
-    sigma[dim] = sigmaForDimension(dim, clamped);
+    const penalty = Math.max(1, techniqueMultipliers[dim] ?? 1);
+    sigma[dim] = sigmaForDimension(dim, clamped) * penalty;
   }
 
   return {

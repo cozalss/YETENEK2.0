@@ -23,9 +23,51 @@ import {
   withInjuryWarning,
 } from '@/core/domain/session';
 
+
+/**
+ * Teknik cezasını oturuma yazar.
+ *
+ * Hakem kusurlu ama geçerli bir denemeyi kabul ettiğinde ölçüm değeri
+ * korunur, belirsizliği büyür. Çarpan burada saklanır ve
+ * `sessionToZProfile` onu ilgili boyutun σ'sına uygular.
+ */
+function withTechniqueMultiplier(
+  session: Session,
+  test: keyof NonNullable<Session['techniqueMultipliers']>,
+  multiplier: number | undefined
+): Session {
+  if (multiplier == null || multiplier <= 1) return session;
+  return {
+    ...session,
+    techniqueMultipliers: {
+      ...session.techniqueMultipliers,
+      [test]: Math.min(3, multiplier),
+    },
+  };
+}
+
+/**
+ * Hakemin gördüğü sakatlanma sinyallerini oturuma ekler.
+ *
+ * Aynı uyarı birden çok testte görülebilir (örneğin diz valgusu hem CMJ hem
+ * broad jump inişinde); tekrarlar eleniyor ki veli aynı cümleyi üç kez
+ * okumasın.
+ */
+function withJudgeInjuryWarnings(
+  session: Session,
+  warnings: readonly string[] | undefined
+): Session {
+  if (!warnings || warnings.length === 0) return session;
+  const merged = [...new Set([...session.injuryWarnings, ...warnings])];
+  // Şema en fazla 10 uyarı kabul ediyor.
+  return { ...session, injuryWarnings: merged.slice(0, 10) };
+}
+
 export function recordJump(
   session: Session,
-  analysis: JumpAnalysis & { score: number | null }
+  analysis: JumpAnalysis & { score: number | null },
+  techniqueMultiplier?: number,
+  judgeInjuryWarnings?: readonly string[]
 ): Session {
   if (!analysis.valid) return session;
   const next: Session = {
@@ -39,12 +81,20 @@ export function recordJump(
       consistent: analysis.consistent,
     },
   };
-  return withCompletedTest(next, 'jump');
+  return withCompletedTest(
+    withJudgeInjuryWarnings(
+      withTechniqueMultiplier(next, 'jump', techniqueMultiplier),
+      judgeInjuryWarnings
+    ),
+    'jump'
+  );
 }
 
 export function recordBalance(
   session: Session,
-  analysis: BalanceAnalysis
+  analysis: BalanceAnalysis,
+  techniqueMultiplier?: number,
+  judgeInjuryWarnings?: readonly string[]
 ): Session {
   // Diğer beş testte olan geçerlilik kapısı burada eksikti: yeterli kare
   // toplanamadığında `analyzeLeg` skor 0 döner, o sıfırlar oturuma yazılır ve
@@ -67,7 +117,13 @@ export function recordBalance(
   if (analysis.asymmetryWarning) {
     next = withInjuryWarning(next, analysis.summary);
   }
-  return withCompletedTest(next, 'balance');
+  return withCompletedTest(
+    withJudgeInjuryWarnings(
+      withTechniqueMultiplier(next, 'balance', techniqueMultiplier),
+      judgeInjuryWarnings
+    ),
+    'balance'
+  );
 }
 
 export function recordReaction(
@@ -93,7 +149,9 @@ export function recordReaction(
 
 export function recordBroadJump(
   session: Session,
-  analysis: BroadJumpAnalysis & { score: number }
+  analysis: BroadJumpAnalysis & { score: number },
+  techniqueMultiplier?: number,
+  judgeInjuryWarnings?: readonly string[]
 ): Session {
   if (!analysis.valid) return session;
   const next: Session = {
@@ -104,12 +162,20 @@ export function recordBroadJump(
       score: analysis.score,
     },
   };
-  return withCompletedTest(next, 'broadJump');
+  return withCompletedTest(
+    withJudgeInjuryWarnings(
+      withTechniqueMultiplier(next, 'broadJump', techniqueMultiplier),
+      judgeInjuryWarnings
+    ),
+    'broadJump'
+  );
 }
 
 export function recordLateralHops(
   session: Session,
-  analysis: LateralHopsAnalysis & { score: number }
+  analysis: LateralHopsAnalysis & { score: number },
+  techniqueMultiplier?: number,
+  judgeInjuryWarnings?: readonly string[]
 ): Session {
   if (!analysis.valid) return session;
   const next: Session = {
@@ -121,12 +187,20 @@ export function recordLateralHops(
       dataQuality: analysis.dataQuality,
     },
   };
-  return withCompletedTest(next, 'lateralHops');
+  return withCompletedTest(
+    withJudgeInjuryWarnings(
+      withTechniqueMultiplier(next, 'lateralHops', techniqueMultiplier),
+      judgeInjuryWarnings
+    ),
+    'lateralHops'
+  );
 }
 
 export function recordCoordination(
   session: Session,
-  analysis: CoordinationAnalysis
+  analysis: CoordinationAnalysis,
+  techniqueMultiplier?: number,
+  judgeInjuryWarnings?: readonly string[]
 ): Session {
   if (!analysis.valid) return session;
   const next: Session = {
@@ -139,12 +213,20 @@ export function recordCoordination(
       score: analysis.coordScore,
     },
   };
-  return withCompletedTest(next, 'coordination');
+  return withCompletedTest(
+    withJudgeInjuryWarnings(
+      withTechniqueMultiplier(next, 'coordination', techniqueMultiplier),
+      judgeInjuryWarnings
+    ),
+    'coordination'
+  );
 }
 
 export function recordEndurance(
   session: Session,
-  analysis: EnduranceJacksAnalysis & { score: number }
+  analysis: EnduranceJacksAnalysis & { score: number },
+  techniqueMultiplier?: number,
+  judgeInjuryWarnings?: readonly string[]
 ): Session {
   if (!analysis.valid) return session;
   const next: Session = {
@@ -156,7 +238,13 @@ export function recordEndurance(
       score: analysis.score,
     },
   };
-  return withCompletedTest(next, 'endurance');
+  return withCompletedTest(
+    withJudgeInjuryWarnings(
+      withTechniqueMultiplier(next, 'endurance', techniqueMultiplier),
+      judgeInjuryWarnings
+    ),
+    'endurance'
+  );
 }
 
 export function recordCharacter(

@@ -15,6 +15,20 @@
  * eklenmiş olsa bile görsel hakem devreye girmiyordu — yazılmış ama
  * bağlanmamış bir katman.
  *
+ * ## Neden burada kural hakemi ÇALIŞMIYOR
+ *
+ * İlk uygulamada bu route `CompositeValidityJudge`'ı çağırıyordu, yani kural
+ * hakemini bir kez daha koşturuyordu. Sonuç sessiz bir felçti: şema veri
+ * minimizasyonu için en fazla 8 kare kabul ediyor, kural hakemi ise karar
+ * verebilmek için ≥30 kare istiyor. Dolayısıyla sunucudaki kural hakemi her
+ * seferinde `insufficient_data` + güven 0.9 dönüyor, composite bunu "kesin
+ * karar" sayıp görsel çağrıyı **atlıyordu**. Görsel hakem üretimde hiç
+ * çalışmayacaktı; gerçek bir çağrıyla yapılan smoke-test'te yakalandı.
+ *
+ * Doğrusu: kural aşaması istemcide, TAM kare seti üzerinde zaten koştu.
+ * Burası yalnız görsel aşama. Birleştirme de istemcide yapılıyor
+ * (`use-validity-gate.ts` → `mergeVerdicts`).
+ *
  * ## Gizlilik
  *
  * İstemci ham kamera görüntüsü göndermiyor; yalnız landmark koordinatları
@@ -25,8 +39,10 @@
 
 import { NextResponse } from 'next/server';
 import { judgeRequestSchema } from '@/core/schemas/validity.schema';
-import { compositeValidityJudge } from '@/infrastructure/validity/composite-judge';
-import { isVisionJudgeConfigured } from '@/infrastructure/validity/openai-vision-judge';
+import {
+  OpenAiVisionValidityJudge,
+  isVisionJudgeConfigured,
+} from '@/infrastructure/validity/openai-vision-judge';
 import { logger } from '@/shared/logger/logger';
 import type { Keypoint, PoseFrame } from '@/types';
 
@@ -36,6 +52,9 @@ export const revalidate = 0;
 export const maxDuration = 30;
 
 const log = logger.child('api:validity');
+
+/** Tek örnek — istekler arasında yeniden kullanılıyor. */
+const visionJudge = new OpenAiVisionValidityJudge();
 
 // Basit IP bazlı rate limit — /api/report ile aynı desen.
 // Görsel çağrı pahalı olduğu için sınır daha dar: tam batarya 7 test.
@@ -110,7 +129,7 @@ export async function POST(request: Request) {
   const { test, frames, measurementClaim } = parsed.data;
 
   try {
-    const result = await compositeValidityJudge.judge({
+    const result = await visionJudge.judge({
       test,
       frames: frames.map(toPoseFrame),
       measurementClaim,

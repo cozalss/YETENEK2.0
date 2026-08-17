@@ -31,7 +31,7 @@ import {
   type ValidityJudge,
 } from '@/core/ports/validity-judge';
 import { ok, type Result } from '@/core/types/result';
-import { POSE_LANDMARKS, type PoseFrame } from '@/types';
+import { POSE_LANDMARKS, type PoseFrame, type TestType } from '@/types';
 
 /** Analiz için gereken asgari kare sayısı. */
 const MIN_FRAMES = 30;
@@ -68,6 +68,82 @@ function lm(frame: PoseFrame, index: number) {
 function visible(frame: PoseFrame, index: number, min = 0.5): boolean {
   const p = lm(frame, index);
   return p != null && (p.visibility ?? 1) >= min;
+}
+
+/**
+ * Landmark hem güvenilir hem de **kadrajın içinde** mi?
+ *
+ * `visible()` tek başına yetmiyor: MediaPipe kadraj dışında kalan eklemleri
+ * silmez, **tahmin eder** ve bu tahminlere düşük olmayan visibility atayabilir.
+ * Sonuç, gerçek bir kullanıcıda görüldü: laptop kamerası yalnız yüzü
+ * gördüğünde sistem uydurulmuş kalça/ayak bileği konumlarından "topuk
+ * kaldırdın" teşhisi üretti. Doğru cevap "bacaklarını göremiyorum"du.
+ *
+ * Kenar payı bilinçli: tam kenardaki bir nokta neredeyse her zaman dışarı
+ * taşmış demektir.
+ */
+function inFrame(frame: PoseFrame, index: number, min = 0.5): boolean {
+  const p = lm(frame, index);
+  if (p == null) return false;
+  if ((p.visibility ?? 1) < min) return false;
+  return p.x > 0.02 && p.x < 0.98 && p.y > 0.02 && p.y < 0.98;
+}
+
+/** Teste göre kadrajda olması ZORUNLU landmark'lar. */
+const REQUIRED_IN_FRAME: Partial<Record<TestType, readonly number[]>> = {
+  jump: [
+    POSE_LANDMARKS.LEFT_HIP, POSE_LANDMARKS.RIGHT_HIP,
+    POSE_LANDMARKS.LEFT_ANKLE, POSE_LANDMARKS.RIGHT_ANKLE,
+  ],
+  broadJump: [
+    POSE_LANDMARKS.LEFT_HIP, POSE_LANDMARKS.RIGHT_HIP,
+    POSE_LANDMARKS.LEFT_ANKLE, POSE_LANDMARKS.RIGHT_ANKLE,
+  ],
+  balance: [
+    POSE_LANDMARKS.LEFT_HIP, POSE_LANDMARKS.RIGHT_HIP,
+    POSE_LANDMARKS.LEFT_KNEE, POSE_LANDMARKS.RIGHT_KNEE,
+    POSE_LANDMARKS.LEFT_ANKLE, POSE_LANDMARKS.RIGHT_ANKLE,
+  ],
+  lateralHops: [POSE_LANDMARKS.LEFT_ANKLE, POSE_LANDMARKS.RIGHT_ANKLE],
+  endurance: [
+    POSE_LANDMARKS.LEFT_WRIST, POSE_LANDMARKS.RIGHT_WRIST,
+    POSE_LANDMARKS.LEFT_ANKLE, POSE_LANDMARKS.RIGHT_ANKLE,
+  ],
+};
+
+/**
+ * Yakalamanın bu oranında zorunlu noktalar kadrajda olmalı.
+ *
+ * %60: anlık bir kaybolma (kol geçişi, hızlı hareket bulanıklığı) testi
+ * geçersiz kılmamalı; ama vücudun yarısı hiç görünmüyorsa ölçüm yapılamaz.
+ */
+const MIN_IN_FRAME_RATIO = 0.6;
+
+/**
+ * Kadraj kapsamını denetler. Yetersizse `out_of_frame` döner ve teste özgü
+ * mantık HİÇ çalışmaz — yoksa var olmayan veriden teşhis üretilir.
+ */
+function checkFrameCoverage(
+  test: TestType,
+  frames: readonly PoseFrame[]
+): TestVerdict | null {
+  const required = REQUIRED_IN_FRAME[test];
+  if (!required || frames.length === 0) return null;
+
+  let covered = 0;
+  for (const f of frames) {
+    if (required.every((i) => inFrame(f, i))) covered++;
+  }
+  const ratio = covered / frames.length;
+  if (ratio >= MIN_IN_FRAME_RATIO) return null;
+
+  return verdict({
+    performed: false,
+    protocolViolations: ['out_of_frame'],
+    techniqueScore: 0,
+    judgeConfidence: 0.95,
+    notes: `Ölçüm için gereken vücut noktaları karelerin yalnızca %${Math.round(ratio * 100)}'inde kadrajda.`,
+  });
 }
 
 function median(values: number[]): number {
@@ -361,6 +437,14 @@ export function judgeCoordinationTouches(
  */
 export class RuleBasedValidityJudge implements ValidityJudge {
   async judge(req: JudgeRequest): Promise<Result<TestVerdict>> {
+    // Kadraj kapsamı EN BAŞTA. Gerekli noktalar görünmüyorsa teste özgü
+    // mantık hiç çalışmamalı: MediaPipe kadraj dışını tahmin ettiği için
+    // uydurulmuş koordinatlardan "topuk kaldırdın" gibi kendinden emin ama
+    // tamamen yanlış teşhisler çıkıyor. Kullanıcıya doğru olan söylenmeli:
+    // "vücudun kadrajda değil".
+    const coverage = checkFrameCoverage(req.test, req.frames);
+    if (coverage) return ok(coverage);
+
     switch (req.test) {
       case 'balance':
         return ok(judgeBalance(req.frames));

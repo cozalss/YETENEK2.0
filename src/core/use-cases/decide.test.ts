@@ -60,9 +60,20 @@ describe('wilsonInterval', () => {
 
 describe('decide — olasılıkların iç tutarlılığı', () => {
   const d = decide(explosiveChild(), { topN: 12, samples: 2000 });
+  /**
+   * Olasılık artık spor bazlı geri çekilebiliyor: ağırlığının çoğu
+   * ölçülemeyen bir spor (Cimnastik %61.4, Masa Tenisi %65.1) yüzde iddiası
+   * taşımıyor. Tutarlılık kontrolleri bu yüzden yalnız iddia taşıyanlar
+   * üzerinde yapılıyor.
+   */
+  const claimed = d.ranking.filter((r) => r.pTopK != null);
+
+  it('en az bir spor olasılık taşıyor', () => {
+    expect(claimed.length).toBeGreaterThan(0);
+  });
 
   it('her olasılık [0,1] aralığında', () => {
-    for (const r of d.ranking) {
+    for (const r of claimed) {
       expect(r.pTopK!).toBeGreaterThanOrEqual(0);
       expect(r.pTopK!).toBeLessThanOrEqual(1);
       expect(r.pTopOne!).toBeGreaterThanOrEqual(0);
@@ -70,33 +81,72 @@ describe('decide — olasılıkların iç tutarlılığı', () => {
     }
   });
 
-  it('ilk-3 olasılıkları toplamı ≈ 3 — her örneklemde tam 3 spor seçiliyor', () => {
-    const total = d.ranking.reduce((s, r) => s + (r.pTopK ?? 0), 0);
-    expect(total).toBeCloseTo(3, 1);
+  it('ilk-3 olasılıkları toplami 3 sinirini asmaz', () => {
+    // Her örneklemde tam 3 spor seçiliyor; geri çekilenler toplamdan
+    // düştüğü için eşitlik değil üst sınır kontrol ediliyor.
+    const total = claimed.reduce((s, r) => s + (r.pTopK ?? 0), 0);
+    expect(total).toBeLessThanOrEqual(3 + 1e-9);
+    expect(total).toBeGreaterThan(0);
   });
 
-  it('birincilik olasılıkları toplamı ≈ 1', () => {
-    const total = d.ranking.reduce((s, r) => s + (r.pTopOne ?? 0), 0);
-    expect(total).toBeCloseTo(1, 1);
+  it('MC sayımları bütün sporlar üzerinden hâlâ tutarlı', () => {
+    // `mcPrecision` geri çekilme durumundan bağımsız, ham sayımdan geliyor —
+    // yani Monte Carlonun kendi tutarlılığını buradan doğrulayabiliyoruz.
+    const mid = (r: (typeof d.ranking)[number]) =>
+      (r.mcPrecision[0] + r.mcPrecision[1]) / 2;
+    const total = d.ranking.reduce((s, r) => s + mid(r), 0);
+    expect(total).toBeCloseTo(3, 0);
   });
 
   it('birincilik olasılığı ilk-3 olasılığını aşamaz', () => {
-    for (const r of d.ranking) {
+    for (const r of claimed) {
       expect(r.pTopOne!).toBeLessThanOrEqual(r.pTopK! + 1e-9);
     }
   });
 
   it('güven aralığı nokta tahminini kapsar', () => {
-    for (const r of d.ranking) {
+    for (const r of claimed) {
       expect(r.pTopK!).toBeGreaterThanOrEqual(r.mcPrecision[0] - 1e-9);
       expect(r.pTopK!).toBeLessThanOrEqual(r.mcPrecision[1] + 1e-9);
     }
   });
 
-  it('olasılığa göre azalan sırada', () => {
-    for (let i = 1; i < d.ranking.length; i++) {
-      expect(d.ranking[i].pTopK!).toBeLessThanOrEqual(d.ranking[i - 1].pTopK!);
+  it('olasılık taşıyanlar kendi aralarında azalan sırada', () => {
+    for (let i = 1; i < claimed.length; i++) {
+      expect(claimed[i].pTopK!).toBeLessThanOrEqual(claimed[i - 1].pTopK!);
     }
+  });
+});
+
+describe('decide — kapsam kapısı (taban oran çarpıklığı düzeltmesi)', () => {
+  const d = decide(explosiveChild(), { topN: 12, samples: 1000 });
+
+  it('ağırlığının çoğu ölçülemeyen spor yüzde İDDİA ETMEZ', () => {
+    // Ölçülen: Cimnastik kapsamı %61.4, Masa Tenisi %65.1 — eşik %70.
+    // Bu ikisi 2500 sentetik çocukta en çok fazla-önerilen sporlardı.
+    for (const sport of ['Cimnastik', 'Masa Tenisi']) {
+      const r = d.ranking.find((x) => x.sport === sport)!;
+      expect(r.weightCoverage, sport).toBeLessThan(0.7);
+      expect(r.pTopK, sport).toBeNull();
+      expect(r.probabilityWithheldReason, sport).toBeTruthy();
+    }
+  });
+
+  it('kapsamı yeterli spor iddiasını korur', () => {
+    const atletizm = d.ranking.find((x) => x.sport === 'Atletizm')!;
+    expect(atletizm.weightCoverage).toBeGreaterThan(0.7);
+    expect(atletizm.pTopK).not.toBeNull();
+    expect(atletizm.probabilityWithheldReason).toBeNull();
+  });
+
+  it('geri çekme sebebi hangi boyutların eksik olduğunu SÖYLER', () => {
+    const cim = d.ranking.find((x) => x.sport === 'Cimnastik')!;
+    expect(cim.probabilityWithheldReason).toContain('balance');
+    expect(cim.probabilityWithheldReason).toContain('coordination');
+  });
+
+  it('spor sıralamadan ATILMIYOR — yalnız iddia geri çekiliyor', () => {
+    expect(d.ranking.map((r) => r.sport)).toContain('Cimnastik');
   });
 });
 

@@ -28,6 +28,8 @@ import {
   frameToJackSample,
 } from '@/lib/tests/enduranceJacks';
 import type { PoseFrame } from '@/types';
+import { useValidityGate } from '@/hooks/use-validity-gate';
+import { RejectionPanel } from '@/components/tests/shared/RejectionPanel';
 import { logger } from '@/shared/logger/logger';
 
 const log = logger.child('endurance-test');
@@ -37,7 +39,13 @@ type Phase = 'idle' | 'countdown' | 'capture' | 'rest' | 'analyze' | 'result';
 interface Props {
   childAgeYears?: number;
   childSex?: 'male' | 'female';
-  onComplete?: (analysis: EnduranceJacksAnalysis & { score: number }) => void;
+  onComplete?: (
+    analysis: EnduranceJacksAnalysis & {
+      score: number;
+      techniqueMultiplier?: number;
+      judgeInjuryWarnings?: readonly string[];
+    }
+  ) => void;
 }
 
 const COUNTDOWN_SECONDS = 3;
@@ -93,6 +101,10 @@ export function EnduranceJacksTest({
     phaseRef.current = phase;
   }, [phase]);
 
+  const gate = useValidityGate({ test: 'endurance' });
+  const gateCollect = gate.collect;
+  const gateEvaluate = gate.evaluate;
+
   const handleFrame = useCallback((frame: PoseFrame | null) => {
     if (phaseRef.current === 'idle' || phaseRef.current === 'countdown') {
       const next = checkBalanceFraming(frame);
@@ -106,6 +118,10 @@ export function EnduranceJacksTest({
     if (!captureActiveRef.current) return;
     const sample = frameToJackSample(frame);
     if (!sample) return;
+    // Kural hakemi dayanıklılığı değerlendirmiyor (fizik/geometri ile
+    // yarım tekrar ayırt edilemiyor); kareler görsel hakemin kısmi hareket
+    // açıklığı denetimi için toplanıyor.
+    gateCollect(frame);
     samplesRef.current.push(sample);
 
     const fullJack = sample.armsUp && sample.legsApart;
@@ -116,9 +132,10 @@ export function EnduranceJacksTest({
       setLiveReps(ls.count);
     }
     ls.inJack = fullJack;
-  }, []);
+  }, [gateCollect]);
 
   const start = () => {
+    gate.reset();
     samplesRef.current = [];
     captureActiveRef.current = false;
     liveStateRef.current = { inJack: false, count: 0, lastJackT: -Infinity };
@@ -167,6 +184,31 @@ export function EnduranceJacksTest({
 
   useEffect(() => {
     if (phase !== 'analyze') return;
+    let cancelled = false;
+
+    void (async () => {
+      const claimAnalysis = analyzeEnduranceJacks(samplesRef.current);
+      const outcome = await gateEvaluate({
+        valid: claimAnalysis.valid,
+        primaryValue: claimAnalysis.totalReps,
+        unit: 'count',
+      });
+      if (cancelled) return;
+      if (!outcome.allowed) {
+        setPhase('result');
+        return;
+      }
+      runAnalysis(outcome.sigmaMultiplier, outcome.injuryWarnings);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+
+    function runAnalysis(
+      techniqueMultiplier: number,
+      judgeInjuryWarnings: readonly string[]
+    ) {
     try {
       const analysis = analyzeEnduranceJacks(samplesRef.current);
       const score = analysis.valid
@@ -181,7 +223,11 @@ export function EnduranceJacksTest({
       setResult(final);
       setPhase('result');
       if (analysis.valid) {
-        onCompleteRef.current?.(final);
+        onCompleteRef.current?.({
+          ...final,
+          techniqueMultiplier,
+          judgeInjuryWarnings,
+        });
       }
     } catch (err) {
       log.error('analiz hatası', {
@@ -199,8 +245,9 @@ export function EnduranceJacksTest({
       });
       setPhase('result');
     }
+    }
     // onComplete kasten dışarıda — inline arrow ile çift kayıt olmasın.
-  }, [phase, childAgeYears, childSex]);
+  }, [phase, childAgeYears, childSex, gateEvaluate]);
 
   return (
     <TestStage
@@ -260,6 +307,8 @@ export function EnduranceJacksTest({
       sidebar={
         phase === 'rest' ? (
           <RestPanel reps={liveReps} onContinue={() => setPhase('analyze')} />
+        ) : phase === 'result' && gate.rejection ? (
+          <RejectionPanel rejection={gate.rejection} onRetry={start} />
         ) : phase === 'result' && result ? (
           <ResultCard
             result={result}

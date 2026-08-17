@@ -38,7 +38,10 @@ import { err, ok, type Result } from '@/core/types/result';
 import { getEnv } from '@/shared/config/env';
 import { logger } from '@/shared/logger/logger';
 import type { TestType } from '@/types';
-import { selectKeyframes, skeletonDataUri } from './skeleton-render';
+import { selectKeyframes } from './skeleton-render';
+// SVG değil PNG: OpenAI Vision yalnız jpeg/png/gif/webp kabul ediyor.
+// Gerçek bir çağrıyla yapılan smoke-test'te yakalandı.
+import { skeletonPngDataUri } from './skeleton-png';
 
 const log = logger.child('validity:openai');
 
@@ -140,17 +143,75 @@ const VERDICT_SCHEMA = {
   },
 } as const;
 
-const TEST_INSTRUCTIONS: Readonly<Record<TestType, string>> = {
-  jump: 'Counter-movement jump (CMJ): çocuk çömelip iki ayağıyla dikey olarak patlayıcı biçimde sıçramalı. Kol savurma, uçuşta diz çekme ve yalnızca topuk kaldırma ihlaldir.',
-  broadJump: 'Standing long jump: çocuk iki ayağıyla birlikte öne doğru sıçramalı. Adım atmak veya yürümek ihlaldir.',
-  balance: 'Tek bacak denge: çocuk tek ayak üstünde durmalı, tutunmamalı. İki ayağın da yerde olması, bir yere tutunmak veya havadaki ayağın yere değmesi ihlaldir.',
-  lateralHops: 'Yanal sıçramalar: çocuk orta çizginin iki yanına belirgin genlikte zıplamalı. Kaydırarak adım atmak veya yerinde titremek ihlaldir.',
-  endurance: 'Jumping jack: kollar tam yukarı, ayaklar tam açık. Yarım hareket açıklığı ihlaldir.',
-  coordination: 'Görsel takip: parmak ekrandaki hareketli noktayı takip etmeli. Parmağı sabit tutmak ihlaldir.',
-  reaction: 'Reaksiyon testi: görsel uyarana dokunma. Poz görüntüsü genellikle bilgi taşımaz.',
+/**
+ * Test başına **izinli** ihlal etiketleri.
+ *
+ * Şema enum'u tüm testlerin ihlallerini içeriyor (strict mod tek bir enum
+ * listesi istiyor). Bu, modelin sıçrama testi için `both_feet_down`
+ * döndürmesini engellemiyordu. Liste iki işi birden yapıyor: prompt'ta
+ * modele hangi seçeneklerin geçerli olduğunu söylüyor, ve dönüşte teste
+ * uymayan etiketleri eliyor.
+ */
+const ALLOWED_VIOLATIONS: Readonly<Record<TestType, readonly ProtocolViolation[]>> = {
+  jump: ['heel_raise_only', 'non_ballistic', 'no_flight_phase'],
+  broadJump: ['no_flight_phase', 'stepped_not_jumped'],
+  balance: ['both_feet_down', 'foot_touched_down', 'hand_on_support'],
+  lateralHops: ['insufficient_amplitude', 'no_flight_phase'],
+  endurance: ['partial_rom'],
+  coordination: ['finger_resting', 'not_tracking'],
+  reaction: [],
+} as const;
+
+/** Teste bağlı olmayan, her zaman geçerli ihlaller. */
+const UNIVERSAL_ALLOWED: readonly ProtocolViolation[] = [
+  'out_of_frame',
+  'multiple_people',
+  'wrong_exercise',
+  'camera_moved',
+  'insufficient_data',
+];
+
+/**
+ * Test protokolü + hakemin **özellikle** araması gerekenler.
+ *
+ * Tek satırlık talimat yerine ayrıntı veriliyor çünkü görsel hakemin işi tam
+ * da kural hakeminin göremediği ince ayrımlar. "Uçuşta diz çekme" gibi bir
+ * ihlali modelin kendiliğinden akıl etmesini beklemek yerine ne arayacağını
+ * söylemek, doğruluğu doğrudan artırıyor.
+ */
+const TEST_PROTOCOLS: Readonly<Record<TestType, string>> = {
+  jump: `Counter-movement jump (CMJ). Dogru uygulama: cocuk dik durur, hizla comelir ve iki ayagiyla birlikte dikey olarak patlayici bicimde sicrar; eller bel hizasinda sabit kalir.
+OZELLIKLE SUNLARA BAK:
+- Kollar yukari savruldu mu? (yuksekligi yapay artirir)
+- Ucus sirasinda dizler karina cekildi mi? Havada kalma suresini uzatir ama kutle merkezini yukseltmez - olcumu sisiren en sinsi hata.
+- Yalnizca topuklar mi kalkti, govde yerinde mi kaldi?
+- Iniste dizler ice kapandi mi, govde yana egildi mi, inis sert mi yapildi?`,
+  broadJump: `Standing long jump. Dogru uygulama: iki ayak birlikte, one dogru tek bir sicrama; inis iki ayak ustunde ve dengeli.
+OZELLIKLE SUNLARA BAK:
+- Sicrama yerine adim mi atildi, yurudu mu?
+- Indikten sonra dengeyi tutmak icin ek adim atildi mi?
+- Iniste dizler ice kapandi mi, inis tek bacaga mi bindi?`,
+  balance: `Tek bacak denge durusu. Dogru uygulama: bir ayak yerde, digeri havada; hicbir yere tutunmadan, govde dik.
+OZELLIKLE SUNLARA BAK:
+- Gercekten tek ayak ustunde mi, yoksa iki ayak da yerde mi?
+- Havadaki ayak arada yere degdi mi?
+- Duvara, sandalyeye veya kendi bacagina tutundu mu?
+- Govde dengeyi tutmak icin asiri yana egiliyor mu?`,
+  lateralHops: `Yanal sicramalar. Dogru uygulama: orta cizginin iki yanina, belirgin genlikte, iki ayak birlikte, ritmik sicrama.
+OZELLIKLE SUNLARA BAK:
+- Ayaklar gercekten yerden kesiliyor mu, yoksa kaydirarak mi gidiliyor?
+- Yanal mesafe anlamli mi, yoksa yerinde titreme mi?`,
+  endurance: `Jumping jack (30 saniye). Dogru uygulama: kollar bas ustunde birlesir, ayaklar omuz genisliginden fazla acilir; her tekrar tam yapilir.
+OZELLIKLE SUNLARA BAK:
+- Kollar tam yukari cikiyor mu, yoksa omuz hizasinda mi kaliyor?
+- Ayaklar tam aciliyor mu?
+- Yorulunca hareket acikligi belirgin daraliyor mu? Bu bir IHLAL degil, techniqueScore'u dusuren bir kalite sinyali.`,
+  coordination: `Ekran uzerinde gorsel takip testi. Poz goruntusu genellikle bilgi tasimaz; kadrajda anormal bir durum yoksa performed=true ve yuksek techniqueScore ver.`,
+  reaction: `Reaksiyon testi - dokunmatik ekran tabanli. Poz goruntusu bilgi tasimaz; kadrajda anormal bir durum yoksa performed=true ver.`,
 };
 
 function buildPrompt(test: TestType, claim: JudgeRequest['measurementClaim']): string {
+  const allowed = ALLOWED_VIOLATIONS[test];
   const claimLine = claim
     ? `\nÖlçüm katmanının iddiası: ${claim.valid ? 'geçerli' : 'geçersiz'}` +
       (claim.primaryValue != null ? `, birincil değer ${claim.primaryValue} ${claim.unit}.` : '.')
@@ -165,7 +226,12 @@ function buildPrompt(test: TestType, claim: JudgeRequest['measurementClaim']): s
     'TAHMİN ETME. Bu sayıları başka bir katman ölçüyor. Sen yalnızca hareketin',
     'geçerli olup olmadığına ve teknik kalitesine bakıyorsun.',
     '',
-    `Test: ${TEST_INSTRUCTIONS[test]}`,
+    `TEST: ${TEST_PROTOCOLS[test]}`,
+    '',
+    'Bu test için kullanabileceğin protocolViolations değerleri (başkasını KULLANMA):',
+    allowed.length > 0 ? allowed.join(', ') : '(teste özgü ihlal yok)',
+    `Her testte geçerli olanlar: ${UNIVERSAL_ALLOWED.join(', ')}`,
+    'İhlal görmediysen boş dizi döndür — zorlama.',
     claimLine,
     '',
     'Kareler zaman sırasına göre veriliyor ve her birinin fazı etiketli.',
@@ -183,9 +249,17 @@ interface RawVerdict {
   notes: string;
 }
 
-function coerce(raw: RawVerdict): TestVerdict {
-  const violations = raw.protocolViolations.filter((v): v is ProtocolViolation =>
-    (VIOLATION_VALUES as readonly string[]).includes(v)
+function coerce(raw: RawVerdict, test: TestType): TestVerdict {
+  // İki aşamalı filtre: önce enum'da var mı, sonra BU test için geçerli mi.
+  // İkincisi olmadan model sıçrama testine `both_feet_down` yazabiliyordu ve
+  // `applyVerdict` onu ölümcül sayıp geçerli bir ölçümü çöpe atardı.
+  const validForTest = new Set<string>([
+    ...ALLOWED_VIOLATIONS[test],
+    ...UNIVERSAL_ALLOWED,
+  ]);
+  const violations = raw.protocolViolations.filter(
+    (v): v is ProtocolViolation =>
+      (VIOLATION_VALUES as readonly string[]).includes(v) && validForTest.has(v)
   );
   const compensations = raw.compensations.filter((c): c is Compensation =>
     (COMPENSATION_VALUES as readonly string[]).includes(c)
@@ -232,7 +306,7 @@ export class OpenAiVisionValidityJudge implements ValidityJudge {
     for (const kf of keyframes) {
       content.push({
         type: 'input_image',
-        image_url: skeletonDataUri(kf.frame, { groundY, label: kf.phase }),
+        image_url: skeletonPngDataUri(kf.frame, { groundY }),
       });
     }
 
@@ -265,11 +339,18 @@ export class OpenAiVisionValidityJudge implements ValidityJudge {
       });
 
       if (!res.ok) {
-        log.warn('vision judge http error', { status: res.status });
+        // Hata gövdesi olmadan 400 teşhis edilemez: model kimliği mi yanlış,
+        // şema mı reddedildi, görüntü mü kabul edilmedi — hepsi 400.
+        // OpenAI mesajı hassas veri içermiyor; kısaltılarak loglanıyor.
+        const detail = await readErrorDetail(res);
+        log.warn('vision judge http error', { status: res.status, detail });
         return err(
           res.status === 429
             ? { code: 'llm.rate-limit' }
-            : { code: 'llm.unavailable', reason: `HTTP ${res.status}` }
+            : {
+                code: 'llm.unavailable',
+                reason: `HTTP ${res.status}${detail ? ` — ${detail}` : ''}`,
+              }
         );
       }
 
@@ -278,7 +359,7 @@ export class OpenAiVisionValidityJudge implements ValidityJudge {
       if (!text) return err({ code: 'llm.empty-response' });
 
       const parsed = JSON.parse(text) as RawVerdict;
-      return ok(coerce(parsed));
+      return ok(coerce(parsed, req.test));
     } catch (cause) {
       if (cause instanceof Error && cause.name === 'AbortError') {
         return err({ code: 'llm.timeout' });
@@ -290,6 +371,28 @@ export class OpenAiVisionValidityJudge implements ValidityJudge {
     } finally {
       clearTimeout(timer);
     }
+  }
+}
+
+/**
+ * Hata yanıtından okunabilir bir açıklama çıkarır.
+ *
+ * OpenAI hataları `{ error: { message, code, param } }` biçiminde geliyor.
+ * Mesaj 300 karaktere kısaltılıyor — log'u şişirmeden teşhise yetecek kadar.
+ */
+async function readErrorDetail(res: {
+  json: () => Promise<unknown>;
+}): Promise<string | null> {
+  try {
+    const body = (await res.json()) as {
+      error?: { message?: string; code?: string; param?: string };
+    };
+    const e = body?.error;
+    if (!e) return null;
+    const parts = [e.message, e.code, e.param].filter(Boolean);
+    return parts.length > 0 ? parts.join(' | ').slice(0, 300) : null;
+  } catch {
+    return null;
   }
 }
 

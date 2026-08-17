@@ -111,8 +111,63 @@ describe('applyVerdict — kabul dalı ve σ genişletme', () => {
     // Sözleşme kontrolü: kabul çıktısında bir "düzeltilmiş değer" alanı yok.
     const r = applyVerdict('jump', verdict({ techniqueScore: 40 }));
     if (!r.ok) throw new Error('unreachable');
+    // Niyet: çıktıda "düzeltilmiş ölçüm değeri" diye bir alan YOK. Hakem
+    // ölçümü kaydırmaz; yalnız belirsizliğini ve gözlemlerini taşır.
     expect(Object.keys(r.value).sort()).toEqual(
-      ['sigmaMultiplier', 'verdict', 'warnings'].sort()
+      ['injuryWarnings', 'sigmaMultiplier', 'verdict', 'warnings'].sort()
     );
+  });
+});
+
+
+describe('Sakatlanma sinyali zinciri (Vision çıktısının en değerli parçası)', () => {
+  it('kompansasyonlar veliye gösterilecek metne çevrilir', () => {
+    const r = applyVerdict(
+      'jump',
+      verdict({ compensations: ['knee_valgus', 'stiff_landing'] })
+    );
+    if (!r.ok) throw new Error('unreachable');
+    expect(r.value.injuryWarnings).toHaveLength(2);
+    expect(r.value.injuryWarnings[0]).toContain('dizler');
+  });
+
+  it('metinler tanı koymuyor, gözlem bildirip eylem öneriyor', () => {
+    const r = applyVerdict('jump', verdict({ compensations: ['knee_valgus'] }));
+    if (!r.ok) throw new Error('unreachable');
+    const text = r.value.injuryWarnings[0];
+    // Tek seanstan klinik iddia çıkarılamaz — "hastalık" dili olmamalı.
+    expect(text).not.toMatch(/teşhis|hastalık|sakatsın/i);
+    expect(text).toMatch(/önerilir|faydalı|çalışılması/i);
+  });
+
+  it('kompansasyon yoksa uyarı da yok', () => {
+    const r = applyVerdict('jump', verdict({ compensations: [] }));
+    if (!r.ok) throw new Error('unreachable');
+    expect(r.value.injuryWarnings).toHaveLength(0);
+  });
+
+  it('bilinmeyen kompansasyon etiketi sessizce elenir', () => {
+    const r = applyVerdict(
+      'jump',
+      verdict({ compensations: ['uydurma_etiket' as never] })
+    );
+    if (!r.ok) throw new Error('unreachable');
+    expect(r.value.injuryWarnings).toHaveLength(0);
+  });
+
+  it('ölçüm reddedilse bile sakatlanma sinyali kaybolmaz (verdict taşınır)', () => {
+    const r = applyVerdict(
+      'balance',
+      verdict({
+        performed: false,
+        protocolViolations: ['both_feet_down'],
+        compensations: ['trunk_lean'],
+      })
+    );
+    expect(r.ok).toBe(false);
+    if (r.ok) throw new Error('unreachable');
+    // Reddedilen denemede uyarı ÜRETİLMEZ (ölçüm geçersiz), ama gözlem
+    // verdict içinde duruyor — ileride loglama/analiz için erişilebilir.
+    expect(r.error.verdict.compensations).toContain('trunk_lean');
   });
 });

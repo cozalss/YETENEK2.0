@@ -40,7 +40,13 @@ type Phase =
 interface Props {
   childAgeYears?: number;
   childSex?: 'male' | 'female';
-  onComplete?: (analysis: LateralHopsAnalysis & { score: number }) => void;
+  onComplete?: (
+    analysis: LateralHopsAnalysis & {
+      score: number;
+      techniqueMultiplier?: number;
+      judgeInjuryWarnings?: readonly string[];
+    }
+  ) => void;
 }
 
 const COUNTDOWN_SECONDS = 3;
@@ -215,20 +221,31 @@ export function LateralHopsTest({
 
     void (async () => {
       // Geçerlilik kapısı analizden ÖNCE: geçersiz yakalama hiç ölçülmemeli.
-      const allowed = await gateEvaluate();
+      const claimAnalysis = analyzeLateralHops(
+        samplesRef.current,
+        calibrationXRef.current
+      );
+      const outcome = await gateEvaluate({
+        valid: claimAnalysis.valid,
+        primaryValue: claimAnalysis.hopCount,
+        unit: 'count',
+      });
       if (cancelled) return;
-      if (!allowed) {
+      if (!outcome.allowed) {
         setPhase('result');
         return;
       }
-      runAnalysis();
+      runAnalysis(outcome.sigmaMultiplier, outcome.injuryWarnings);
     })();
 
     return () => {
       cancelled = true;
     };
 
-    function runAnalysis() {
+    function runAnalysis(
+      techniqueMultiplier: number,
+      judgeInjuryWarnings: readonly string[]
+    ) {
     try {
       const analysis = analyzeLateralHops(
         samplesRef.current,
@@ -246,7 +263,11 @@ export function LateralHopsTest({
       setResult(final);
       setPhase('result');
       if (analysis.valid) {
-        onCompleteRef.current?.(final);
+        onCompleteRef.current?.({
+          ...final,
+          techniqueMultiplier,
+          judgeInjuryWarnings,
+        });
       }
     } catch (err) {
       log.error('analiz hatası', {

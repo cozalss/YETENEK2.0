@@ -9,6 +9,7 @@
 import type { SportMatch } from '@/lib/matching/recommend';
 import { getCurriculumBySlug } from '@/lib/lessons/curriculum';
 import { SportSelectButton } from './SportSelectButton';
+import { StabilityNote } from './StabilityNote';
 
 interface Props {
   recommendations: SportMatch[];
@@ -61,6 +62,12 @@ export function SportRecommendations({ recommendations, childId }: Props) {
           />
         ))}
       </div>
+
+      {/*
+        Liste ALTINDA, üstünde değil: önce sonuç görülsün, sonra o sonucun
+        ne kadar kesin olduğu. Üste konsaydı okunmadan atlanırdı.
+      */}
+      <StabilityNote />
     </div>
   );
 }
@@ -147,7 +154,7 @@ function SportCard({
                   : 'Profil yakınlığı. Olasılık hesaplamak için en az 3 kalibre boyutun ölçülmesi gerekiyor.'
               }
             >
-              %{match.confidencePercent}
+              {match.probabilityWithheldReason ? '—' : `%${match.confidencePercent}`}
             </span>
           </div>
           {/*
@@ -167,8 +174,37 @@ function SportCard({
           <p className="mt-1 text-xs" style={{ color: 'var(--color-ink-3)' }}>
             {match.pTopK != null
               ? "ilk 3'te olma ihtimali"
-              : 'profil yakınlığı — olasılık için yeterli test yapılmadı'}
+              : 'bu spor için yeterli ölçüm yok'}
           </p>
+
+          {/*
+            Ölçüm kapsamı gerekçesi. Bu kutu bir hata mesajı değil, bir
+            dürüstlük beyanı: sporu listeden silmek yerine "profiline yakın
+            görünüyor ama bunu değerlendirecek ölçümümüz yok" diyoruz.
+
+            Ölçülen sorun buydu: en çok önerilen spor (Cimnastik, sentetik
+            çocukların %26.1'inde birinci) hakkında en az ölçümümüz olan
+            spordu — ağırlığının yalnız %61.4'ü karara giriyordu.
+          */}
+          {match.probabilityWithheldReason && (
+            <p
+              className="mt-2 rounded-lg px-3 py-2 text-xs leading-relaxed"
+              style={{
+                background: 'rgba(242, 201, 76, 0.16)',
+                color: 'var(--form-navy)',
+              }}
+            >
+              {match.probabilityWithheldReason}
+              {match.weightCoverage != null && (
+                <>
+                  {' '}
+                  <strong>
+                    Ölçüm kapsamı: %{Math.round(match.weightCoverage * 100)}
+                  </strong>
+                </>
+              )}
+            </p>
+          )}
           <p
             className="mt-1 text-sm leading-relaxed"
             style={{ color: 'var(--color-ink-2)' }}

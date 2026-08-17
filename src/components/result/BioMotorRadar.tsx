@@ -6,9 +6,9 @@
  *   - Yatay Patlayıcı   (broad jump)
  *   - Denge             (tek bacak)
  *   - Reaksiyon         (refleks)
- *   - Çeviklik          (lateral hops)
+ *   - Yanal Sıçrama     (lateral hops — 'çeviklik' DEĞİL, bkz. sportProfiles)
  *   - Koordinasyon      (görsel takip)
- *   - Dayanıklılık      (jumping jacks)
+ *   - Ritim             (jumping jacks — 'dayanıklılık' DEĞİL)
  *
  * Eksiklikleri açık göstermek için: ölçülmemiş boyut için 0 yerine null
  * göndermek istenirse, recharts null değerleri otomatik atlar — fakat
@@ -19,6 +19,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { DIMENSION_SHORT_LABELS_TR as SHORT } from '@/lib/matching/sportProfiles';
 import {
   PolarAngleAxis,
   PolarGrid,
@@ -49,10 +50,10 @@ export function BioMotorRadar({
   const data = [
     { axis: 'Dikey Güç', value: clamp(explosivePower) },
     { axis: 'Yatay Güç', value: clamp(horizontalPower) },
-    { axis: 'Çeviklik', value: clamp(agility) },
+    { axis: SHORT.agility, value: clamp(agility) },
     { axis: 'Reaksiyon', value: clamp(reaction) },
     { axis: 'Koordinasyon', value: clamp(coordination) },
-    { axis: 'Dayanıklılık', value: clamp(endurance) },
+    { axis: SHORT.endurance, value: clamp(endurance) },
     { axis: 'Denge', value: clamp(balance) },
   ];
 

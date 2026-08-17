@@ -40,11 +40,21 @@ export function StartCTA({
   return (
     <motion.button
       type="button"
-      onClick={onStart}
-      aria-disabled={!canStart}
-      onMouseDownCapture={(e) => {
-        if (!canStart) e.preventDefault();
+      // `aria-disabled` yalnızca ekran okuyucuya bilgi verir — tıklamayı
+      // ENGELLEMEZ. Önceki sürümde tek koruma `onMouseDownCapture` içindeki
+      // `preventDefault`'tu, ama o da click olayını durdurmuyor (yalnız odak
+      // ve metin seçimini engeller) ve klavyeyle Enter/Space'te hiç devreye
+      // girmiyor. Sonuç: kadraj hazır değilken test başlayabiliyordu ve
+      // sistem kadrajda olmayan kalça/ayak bileğinden "topuk kaldırdın" gibi
+      // yanlış teşhisler üretiyordu.
+      //
+      // Gerçek `disabled` yerine guard tercih edildi: buton odaklanabilir
+      // kalsın ki ekran okuyucu kullanıcısı neden başlayamadığını duyabilsin
+      // (bkz. dosya başlığı).
+      onClick={() => {
+        if (canStart) onStart();
       }}
+      aria-disabled={!canStart}
       whileHover={canStart ? { scale: 1.015 } : undefined}
       whileTap={canStart ? { scale: 0.985 } : undefined}
       transition={{ type: 'spring', stiffness: 400, damping: 24 }}

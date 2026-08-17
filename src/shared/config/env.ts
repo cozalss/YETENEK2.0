@@ -77,4 +77,17 @@ export function getEnv(): Env {
   return cached;
 }
 
+/**
+ * Memoize'i sıfırlar — **yalnız test için**.
+ *
+ * `getEnv()` boot'ta bir kez parse edip önbelleğe alıyor; üretimde doğru
+ * davranış bu (Next `.env` dosyalarını süreç başında yükler, çalışma
+ * sırasında değişmez). Ama testte `vi.stubEnv` modül import'undan sonra
+ * çalıştığı için önbellek onu görmez. Bu fonksiyon o boşluğu kapatıyor;
+ * üretim kodundan çağrılmamalı.
+ */
+export function resetEnvCacheForTests(): void {
+  cached = null;
+}
+
 export const env = getEnv();

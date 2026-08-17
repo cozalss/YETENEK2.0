@@ -284,7 +284,7 @@ export function PdfReportDocument({ session, badges, aiReport }: Props) {
         )}
         {session.lateralHops && (
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>Çeviklik (15sn)</Text>
+            <Text style={styles.rowLabel}>Yanal Sıçrama (15sn)</Text>
             <Text style={styles.rowValue}>
               {session.lateralHops.hopCount} hop · {session.lateralHops.score} skor
             </Text>
@@ -300,7 +300,7 @@ export function PdfReportDocument({ session, badges, aiReport }: Props) {
         )}
         {session.endurance && (
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>Dayanıklılık (30sn)</Text>
+            <Text style={styles.rowLabel}>Ritim Sürdürme (30sn)</Text>
             <Text style={styles.rowValue}>
               {session.endurance.totalReps} tekrar · {session.endurance.score} skor
             </Text>

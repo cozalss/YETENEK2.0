@@ -40,30 +40,18 @@ import {
 
 const TOP_N_RECOMMENDATIONS = 5;
 
-export interface FinalizeOptions {
-  /**
-   * Geçerlilik hakeminin teknik cezasından gelen σ çarpanı.
-   *
-   * Bu parametre olmadan `decide` varsayılan 1'i kullanıyordu ve
-   * `applyVerdict` → σ genişletme zinciri üretim yolunda tamamen ölüydü:
-   * teknik skoru 0 olan bir çocuk, kusursuz teknikli bir çocukla bayt-bayt
-   * aynı çıktıyı üretiyordu. Adversarial incelemede yakalandı.
-   */
-  readonly sigmaMultiplier?: number;
-}
-
-export function finalizeSession(
-  session: Session,
-  opts: FinalizeOptions = {}
-): Session {
+export function finalizeSession(session: Session): Session {
   if (!hasAnyTest(session)) return session;
 
   const zProfile = sessionToZProfile(session);
   const anthro = computeAnthroContext(session);
 
+  // NOT: `sigmaMultiplier` burada geçilmiyor çünkü teknik cezası artık
+  // **boyut başına** taşınıyor: `sessionToZProfile` her boyutun σ'sını
+  // kendi cezasıyla genişletiyor. Tek global çarpan, sıçraması kusurlu bir
+  // çocuğun denge ölçümünü de aynı oranda belirsizleştirirdi.
   const decision = decide(zProfile, {
     topN: TOP_N_RECOMMENDATIONS,
-    sigmaMultiplier: opts.sigmaMultiplier ?? 1,
     anthroBonus: (p: SportProfile) => computeAnthroBonusFor(p, anthro),
     characterBoost: (p: SportProfile) =>
       computeCharacterBoostFor(
@@ -92,6 +80,8 @@ export function finalizeSession(
       reason: profile?.reasonTemplate ?? r.description,
       pTopK: r.pTopK ?? undefined,
       pTopOne: r.pTopOne ?? undefined,
+      weightCoverage: r.weightCoverage,
+      probabilityWithheldReason: r.probabilityWithheldReason ?? undefined,
     };
   });
 

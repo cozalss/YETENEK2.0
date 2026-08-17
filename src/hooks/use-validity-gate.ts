@@ -29,9 +29,11 @@ import {
   type RejectedMeasurement,
 } from '@/core/use-cases/apply-verdict';
 import type {
+  MeasurementClaim,
   ProtocolViolation,
   TestVerdict,
 } from '@/core/ports/validity-judge';
+import { mergeVerdicts } from '@/core/use-cases/merge-verdicts';
 import { ruleBasedValidityJudge } from '@/infrastructure/validity/rule-based-judge';
 import { selectKeyframes } from '@/infrastructure/validity/skeleton-render';
 import { isVisionConsentGranted } from '@/lib/consent/visionConsent';
@@ -43,8 +45,15 @@ const log = logger.child('validity-gate');
 /** Üst sınır — patolojik uzun yakalamada bellek şişmesin. */
 const MAX_RETAINED_FRAMES = 600;
 
-/** Görsel denetim için ağ zaman aşımı. Aşılırsa kural kararıyla devam. */
-const VISION_TIMEOUT_MS = 12_000;
+/**
+ * Görsel denetim için ağ zaman aşımı. Aşılırsa kural kararıyla devam.
+ *
+ * Ölçülen gerçek gecikme: 8 kare / CMJ için **~10 saniye**. 12 s'lik ilk
+ * değer bu ölçümün hemen üstündeydi — sıradan bir yavaşlama zaman aşımına
+ * düşürürdü. Route'un `maxDuration` sınırı 30 s olduğu için 25 s güvenli üst
+ * sınır: sunucu zaten kesecek, istemci ondan önce pes etmemeli.
+ */
+const VISION_TIMEOUT_MS = 25_000;
 
 /**
  * Kural hakemi bu güvenin üstünde reddettiyse görsel çağrı yapılmaz.
@@ -58,16 +67,37 @@ export interface UseValidityGateOptions {
   readonly sampleEvery?: number;
 }
 
+export interface GateOutcome {
+  /** Ölçüme devam edilebilir mi. */
+  readonly allowed: boolean;
+  /**
+   * Görsel hakemin gördüğü sakatlanma riski uyarıları (Türkçe metin).
+   * Ölçüm sayısından bağımsız bir çıktı — kabul edilen bir denemede bile
+   * dolu olabilir.
+   */
+  readonly injuryWarnings: readonly string[];
+  /**
+   * Teknik cezası çarpanı (≥1). Değeri **dönüş değerinden** okuyun, state
+   * alanından değil: `setState` senkron değil, `await evaluate()` sonrası
+   * `gate.sigmaMultiplier` hâlâ önceki render'ın değerini taşır. State alanı
+   * yalnız render'da göstermek için var.
+   */
+  readonly sigmaMultiplier: number;
+}
+
 export interface ValidityGate {
   readonly collect: (frame: PoseFrame | null) => void;
   /**
-   * Analizden **önce** çağrılır. `true` → ölçüme devam edilebilir.
-   * `false` → deneme reddedildi, `rejection` dolu.
+   * Analizden **önce** çağrılır. `allowed: false` → deneme reddedildi,
+   * `rejection` dolu.
    */
-  readonly evaluate: () => Promise<boolean>;
+  readonly evaluate: (claim?: MeasurementClaim) => Promise<GateOutcome>;
   readonly rejection: RejectedMeasurement | null;
   readonly reset: () => void;
-  /** Kabul edilen ölçümün σ çarpanı (kusurlu teknik belirsizliği büyütür). */
+  /**
+   * Son değerlendirmenin σ çarpanı — **yalnız gösterim için**. Karar akışında
+   * `evaluate()`'in dönüşünü kullanın (bkz. `GateOutcome`).
+   */
   readonly sigmaMultiplier: number;
   /** Görsel denetim bu denemede gerçekten çalıştı mı — izlenebilirlik. */
   readonly visionApplied: boolean;
@@ -130,7 +160,7 @@ export function useValidityGate(opts: UseValidityGateOptions): ValidityGate {
     setRejection(null);
   }, []);
 
-  const evaluate = useCallback(async () => {
+  const evaluate = useCallback(async (claim?: MeasurementClaim) => {
     // --- Aşama 1: kural hakemi, cihazda ---------------------------------
     const judged = await ruleBasedValidityJudge.judge({
       test,
@@ -148,7 +178,11 @@ export function useValidityGate(opts: UseValidityGateOptions): ValidityGate {
 
     // --- Aşama 2: görsel hakem, rıza varsa -------------------------------
     if (!ruleIsDecisive && isVisionConsentGranted()) {
-      const refined = await requestVisionVerdict(test, framesRef.current);
+      const refined = await requestVisionVerdict(
+        test,
+        framesRef.current,
+        claim
+      );
       if (refined) {
         setVisionApplied(true);
         verdict = verdict ? mergeVerdicts(verdict, refined) : refined;
@@ -158,18 +192,23 @@ export function useValidityGate(opts: UseValidityGateOptions): ValidityGate {
     if (verdict == null) {
       setRejection(null);
       setSigmaMultiplier(1);
-      return true;
+      return { allowed: true, sigmaMultiplier: 1, injuryWarnings: [] };
     }
 
     const gated = applyVerdict(test, verdict);
     if (!gated.ok) {
       setRejection(gated.error);
-      return false;
+      return { allowed: false, sigmaMultiplier: 1, injuryWarnings: [] };
     }
 
+    const multiplier = gated.value.sigmaMultiplier;
     setRejection(null);
-    setSigmaMultiplier(gated.value.sigmaMultiplier);
-    return true;
+    setSigmaMultiplier(multiplier);
+    return {
+      allowed: true,
+      sigmaMultiplier: multiplier,
+      injuryWarnings: gated.value.injuryWarnings,
+    };
   }, [test]);
 
   return {
@@ -183,34 +222,18 @@ export function useValidityGate(opts: UseValidityGateOptions): ValidityGate {
 }
 
 /**
- * İki kararı **fail-closed** birleştirir: bir hakem "yapılmadı" diyorsa
- * yapılmamıştır. İkisi de kaçamağı yakalamaya ayarlı, yanlış pozitif
- * üretmeye değil — şüphede tekrar istemek, yapılmamış bir testi ölçmüş gibi
- * raporlamaktan çok daha ucuz.
- */
-function mergeVerdicts(rules: TestVerdict, vision: TestVerdict): TestVerdict {
-  return {
-    performed: rules.performed && vision.performed,
-    protocolViolations: [
-      ...new Set([...rules.protocolViolations, ...vision.protocolViolations]),
-    ],
-    techniqueScore: Math.min(rules.techniqueScore, vision.techniqueScore),
-    // Duruş geometriyle belirleniyor; kural hakemi karar verdiyse önceliği o.
-    stanceConfirmed: rules.stanceConfirmed ?? vision.stanceConfirmed,
-    compensations: vision.compensations,
-    judgeConfidence: Math.max(rules.judgeConfidence, vision.judgeConfidence),
-    source: 'composite',
-    notes: [rules.notes, vision.notes].filter(Boolean).join(' ') || undefined,
-  };
-}
-
-/**
  * Görsel kararı ister. Başarısız olursa `null` döner ve çağıran kural
  * kararıyla devam eder — görsel katman hiçbir koşulda ölçümü bloklamaz.
  */
 async function requestVisionVerdict(
   test: TestType,
-  frames: readonly PoseFrame[]
+  frames: readonly PoseFrame[],
+  /**
+   * Ölçüm katmanının iddiası. Hakem bunu **kullanmaz**, doğrular: "sen 38 cm
+   * diyorsun, gördüğüm hareket buna uyuyor mu?" Birim taşıyan tek yapı budur
+   * ve hakeme GİRER, hakemden çıkmaz.
+   */
+  claim?: MeasurementClaim
 ): Promise<TestVerdict | null> {
   if (frames.length === 0) return null;
 
@@ -232,7 +255,11 @@ async function requestVisionVerdict(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
-      body: JSON.stringify({ test, frames: keyframes }),
+      body: JSON.stringify({
+        test,
+        frames: keyframes,
+        measurementClaim: claim,
+      }),
     });
 
     if (!res.ok) {

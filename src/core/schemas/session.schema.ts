@@ -149,6 +149,14 @@ export const sportMatchSchema = z.object({
   pTopK: finiteNumber.min(0).max(1).optional(),
   /** Birinci olma olasılığı (0-1). Aynı koşulda boş kalır. */
   pTopOne: finiteNumber.min(0).max(1).optional(),
+  /**
+   * Bu sporun ağırlıklı boyutlarının ne kadarı ölçülebildi (0-1).
+   * Kalibresiz eksenler sporları eşit etkilemiyor; düşük kapsamlı bir öneriyi
+   * yüksek kapsamlıyla aynı güvenle sunmak yanıltıcı.
+   */
+  weightCoverage: finiteNumber.min(0).max(1).optional(),
+  /** Yüzde iddiası geri çekildiyse sebebi (kullanıcıya gösterilebilir). */
+  probabilityWithheldReason: z.string().max(400).optional(),
 });
 
 /* ───────── Full session ───────── */
@@ -165,6 +173,27 @@ export const testKeySchema = z.enum([
 ]);
 export type TestKeySchema = z.infer<typeof testKeySchema>;
 
+/**
+ * Test başına teknik kalitesi çarpanı (σ genişletme).
+ *
+ * Geçerlilik hakemi kusurlu ama geçerli bir denemeyi kabul ettiğinde ölçüm
+ * **değerini değiştirmez**, belirsizliğini büyütür (bkz. `apply-verdict.ts`).
+ * Bu çarpan o kararın taşıyıcısı: 1.0 = kusursuz teknik, 2.0 = belirsizlik
+ * iki katına çıktı.
+ *
+ * Boyut başına tutuluyor çünkü her testin kendi tekniği var — sıçraması
+ * kusurlu bir çocuğun denge ölçümü de aynı oranda belirsiz değildir.
+ */
+export const techniqueMultipliersSchema = z.object({
+  jump: finiteNumber.min(1).max(3).optional(),
+  broadJump: finiteNumber.min(1).max(3).optional(),
+  balance: finiteNumber.min(1).max(3).optional(),
+  lateralHops: finiteNumber.min(1).max(3).optional(),
+  coordination: finiteNumber.min(1).max(3).optional(),
+  endurance: finiteNumber.min(1).max(3).optional(),
+});
+export type TechniqueMultipliers = z.infer<typeof techniqueMultipliersSchema>;
+
 export const sessionSummarySchema = z.object({
   child: childSchema,
   jump: jumpSummarySchema.optional(),
@@ -180,6 +209,8 @@ export const sessionSummarySchema = z.object({
   // .default([]) sayesinde tip required Array<TestKey> olur — UI'da
   // optional-chaining tekrar tekrar yazmaya gerek kalmaz.
   completedTests: z.array(testKeySchema).max(20).default([]),
+  /** Hakemin verdiği teknik cezaları — eski kayıtlarda yok. */
+  techniqueMultipliers: techniqueMultipliersSchema.optional(),
   startedAt: z.string().max(40),
   completedAt: z.string().max(40).optional(),
 });

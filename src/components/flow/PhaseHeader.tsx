@@ -126,7 +126,7 @@ export function PhaseHeader({ current, labels, childName }: Props) {
   );
 }
 
-/** Default test phase labels — Full mode (7 fiziksel + 1 karakter). */
+/** Test phase labels — 7 fiziksel + 1 karakter. */
 export const FULL_FLOW_STEP_LABELS = [
   'Sıçrama',
   'Uzun Atlama',
@@ -135,13 +135,5 @@ export const FULL_FLOW_STEP_LABELS = [
   'Reaksiyon',
   'Koordinasyon',
   'Dayanıklılık',
-  'Karakter',
-];
-
-/** Quick mode (3 çekirdek fiziksel + 1 karakter). */
-export const QUICK_FLOW_STEP_LABELS = [
-  'Sıçrama',
-  'Denge',
-  'Reaksiyon',
   'Karakter',
 ];

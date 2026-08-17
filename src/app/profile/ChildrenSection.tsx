@@ -4,8 +4,8 @@
  * Liste server'dan gelir (Supabase). Form action `addChildAction`'a
  * post eder, başarıda revalidate + redirect ile tazelenir.
  *
- * Her çocuk kartında "Tam Akış" ve "Hızlı 3 Test" CTA'ları childId'yi
- * `/test/full?childId=`'a iletir.
+ * Her çocuk kartında "Tam Akış" CTA'sı childId'yi `/test/full?childId=`'a
+ * iletir.
  */
 
 import Image from 'next/image';
@@ -204,17 +204,6 @@ function ChildCard({
           }}
         >
           Tam Akış
-        </Link>
-        <Link
-          href={`/test/full?childId=${encodeURIComponent(item.id)}&mode=quick`}
-          className="inline-flex flex-1 items-center justify-center rounded-full border-2 px-4 py-2 text-xs font-bold tracking-widest uppercase transition-colors hover:bg-neutral-50"
-          style={{
-            borderColor: 'var(--form-navy)',
-            color: 'var(--form-navy)',
-            fontFamily: 'var(--font-display)',
-          }}
-        >
-          Hızlı 3
         </Link>
       </div>
     </div>

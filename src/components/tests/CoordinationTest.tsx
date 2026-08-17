@@ -28,6 +28,12 @@ import {
   computeDotPosition,
   defaultLissajous,
 } from '@/lib/tests/coordination';
+import { judgeCoordinationTouches } from '@/infrastructure/validity/rule-based-judge';
+import {
+  applyVerdict,
+  type RejectedMeasurement,
+} from '@/core/use-cases/apply-verdict';
+import { RejectionPanel } from '@/components/tests/shared/RejectionPanel';
 import { logger } from '@/shared/logger/logger';
 
 const log = logger.child('coordination-test');
@@ -35,7 +41,12 @@ const log = logger.child('coordination-test');
 type Phase = 'idle' | 'countdown' | 'capture' | 'analyze' | 'result';
 
 interface Props {
-  onComplete?: (analysis: CoordinationAnalysis) => void;
+  onComplete?: (
+    analysis: CoordinationAnalysis & {
+      techniqueMultiplier?: number;
+      judgeInjuryWarnings?: readonly string[];
+    }
+  ) => void;
   onSkip?: () => void;
 }
 
@@ -52,6 +63,7 @@ export function CoordinationTest({ onComplete, onSkip }: Props) {
   );
   const [reducedMotion, setReducedMotion] = useState(false);
   const [result, setResult] = useState<CoordinationAnalysis | null>(null);
+  const [rejection, setRejection] = useState<RejectedMeasurement | null>(null);
   // Live counter for the badge (read during render). State, not ref.
   const [liveTouchCount, setLiveTouchCount] = useState(0);
 
@@ -172,6 +184,7 @@ export function CoordinationTest({ onComplete, onSkip }: Props) {
   );
 
   const start = () => {
+    setRejection(null);
     touchesRef.current = [];
     setLiveTouchCount(0);
     setResult(null);
@@ -218,6 +231,24 @@ export function CoordinationTest({ onComplete, onSkip }: Props) {
   // Analyze
   useEffect(() => {
     if (phase !== 'analyze') return;
+
+    // Geçerlilik kapısı analizden ÖNCE. Koordinasyon poz verisi kullanmadığı
+    // için kural hakemi dokunma dağılımına bakıyor: parmağını merkeze koyup
+    // hiç hareket ettirmeyen çocuk, hata büyük olduğu için zaten 0 puan
+    // alıyordu — ama `valid: true` ile kaydediliyor ve "en kötü koordinasyon"
+    // olarak spor eşleştirmesine giriyordu. Eksik veriden daha zararlı,
+    // çünkü YANLIŞ veri.
+    const verdict = judgeCoordinationTouches(touchesRef.current);
+    const gated = applyVerdict('coordination', verdict);
+    if (!gated.ok) {
+      setRejection(gated.error);
+      setPhase('result');
+      return;
+    }
+    setRejection(null);
+    const techniqueMultiplier = gated.value.sigmaMultiplier;
+    const judgeInjuryWarnings = gated.value.injuryWarnings;
+
     try {
       // Canvas boyutları açıkça geçilmeli: `analyzeCoordination` hatayı
       // köşegenin yüzdesine çevirerek cihaz bağımsız hale getiriyor, ama
@@ -232,7 +263,11 @@ export function CoordinationTest({ onComplete, onSkip }: Props) {
       setResult(analysis);
       setPhase('result');
       if (analysis.valid) {
-        onCompleteRef.current?.(analysis);
+        onCompleteRef.current?.({
+          ...analysis,
+          techniqueMultiplier,
+          judgeInjuryWarnings,
+        });
       }
     } catch (err) {
       log.error('analiz hatası', {
@@ -304,7 +339,13 @@ export function CoordinationTest({ onComplete, onSkip }: Props) {
 
       {phase === 'idle' && <Instructions onStart={start} onSkip={onSkip} />}
 
-      {phase === 'result' && result && (
+      {phase === 'result' && rejection && (
+        <div className="mx-auto max-w-md">
+          <RejectionPanel rejection={rejection} onRetry={start} />
+        </div>
+      )}
+
+      {phase === 'result' && !rejection && result && (
         <ResultPanel
           result={result}
           onRetry={start}

@@ -68,10 +68,4 @@ test.describe('Profile form — input validation', () => {
     await disclosure.click();
     await expect(page.locator('input#profile-height')).toBeVisible();
   });
-
-  test('quick mode (?mode=quick) ile sayfa açılır', async ({ page }) => {
-    const response = await page.goto('/test/full?mode=quick');
-    expect(response?.status()).toBe(200);
-    await expect(page.locator('input#profile-name')).toBeVisible();
-  });
 });

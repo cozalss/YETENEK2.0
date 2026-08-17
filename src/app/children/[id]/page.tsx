@@ -3,7 +3,7 @@
  *
  * Görünüm (top → bottom):
  *   1. Header: avatar + ad + yaş + Sil butonu
- *   2. Yeni Test CTA (Tam Akış / Hızlı 3) + son test özeti
+ *   2. Yeni Test CTA (Tam Akış) + son test özeti
  *   3. Cüzdan (bu çocuğun rozetleri) + boşsa hint
  *   4. Test Geçmişi (en son 5 oturum, "tümü" linki)
  *   5. Süreklilik (14 günlük streak rozeti)
@@ -292,17 +292,6 @@ function NewTestCTA({ childId }: { childId: string }) {
         >
           <Plus className="h-4 w-4" />
           Tam Akış (7 test)
-        </Link>
-        <Link
-          href={`/test/full?childId=${encodeURIComponent(childId)}&mode=quick`}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border-2 px-6 py-3 text-sm font-bold tracking-widest uppercase transition-colors hover:bg-neutral-50"
-          style={{
-            borderColor: 'var(--form-navy)',
-            color: 'var(--form-navy)',
-            fontFamily: 'var(--font-display)',
-          }}
-        >
-          Hızlı 3 (3 dk)
         </Link>
       </div>
     </section>

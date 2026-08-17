@@ -70,32 +70,68 @@ class SessionStoreFacade {
     return r.ok ? r.value : null;
   }
 
-  recordJump(analysis: JumpAnalysis & { score: number | null }): void {
-    this.applyTransform((s) => recordUseCase.recordJump(s, analysis));
+  recordJump(
+    analysis: JumpAnalysis & { score: number | null },
+    techniqueMultiplier?: number,
+    judgeInjuryWarnings?: readonly string[]
+  ): void {
+    this.applyTransform((s) =>
+      recordUseCase.recordJump(s, analysis, techniqueMultiplier, judgeInjuryWarnings)
+    );
   }
 
-  recordBalance(analysis: BalanceAnalysis): void {
-    this.applyTransform((s) => recordUseCase.recordBalance(s, analysis));
+  recordBalance(
+    analysis: BalanceAnalysis,
+    techniqueMultiplier?: number,
+    judgeInjuryWarnings?: readonly string[]
+  ): void {
+    this.applyTransform((s) =>
+      recordUseCase.recordBalance(s, analysis, techniqueMultiplier, judgeInjuryWarnings)
+    );
   }
 
   recordReaction(analysis: ReactionAnalysis): void {
     this.applyTransform((s) => recordUseCase.recordReaction(s, analysis));
   }
 
-  recordBroadJump(analysis: BroadJumpAnalysis & { score: number }): void {
-    this.applyTransform((s) => recordUseCase.recordBroadJump(s, analysis));
+  recordBroadJump(
+    analysis: BroadJumpAnalysis & { score: number },
+    techniqueMultiplier?: number,
+    judgeInjuryWarnings?: readonly string[]
+  ): void {
+    this.applyTransform((s) =>
+      recordUseCase.recordBroadJump(s, analysis, techniqueMultiplier, judgeInjuryWarnings)
+    );
   }
 
-  recordLateralHops(analysis: LateralHopsAnalysis & { score: number }): void {
-    this.applyTransform((s) => recordUseCase.recordLateralHops(s, analysis));
+  recordLateralHops(
+    analysis: LateralHopsAnalysis & { score: number },
+    techniqueMultiplier?: number,
+    judgeInjuryWarnings?: readonly string[]
+  ): void {
+    this.applyTransform((s) =>
+      recordUseCase.recordLateralHops(s, analysis, techniqueMultiplier, judgeInjuryWarnings)
+    );
   }
 
-  recordCoordination(analysis: CoordinationAnalysis): void {
-    this.applyTransform((s) => recordUseCase.recordCoordination(s, analysis));
+  recordCoordination(
+    analysis: CoordinationAnalysis,
+    techniqueMultiplier?: number,
+    judgeInjuryWarnings?: readonly string[]
+  ): void {
+    this.applyTransform((s) =>
+      recordUseCase.recordCoordination(s, analysis, techniqueMultiplier, judgeInjuryWarnings)
+    );
   }
 
-  recordEndurance(analysis: EnduranceJacksAnalysis & { score: number }): void {
-    this.applyTransform((s) => recordUseCase.recordEndurance(s, analysis));
+  recordEndurance(
+    analysis: EnduranceJacksAnalysis & { score: number },
+    techniqueMultiplier?: number,
+    judgeInjuryWarnings?: readonly string[]
+  ): void {
+    this.applyTransform((s) =>
+      recordUseCase.recordEndurance(s, analysis, techniqueMultiplier, judgeInjuryWarnings)
+    );
   }
 
   recordCharacter(analysis: CharacterAnalysis): void {

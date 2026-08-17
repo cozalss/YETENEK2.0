@@ -69,14 +69,48 @@ export const DIMENSION_KEYS: DimensionKey[] = [
   'endurance',
 ];
 
+/**
+ * Boyut adları — **ölçtüğümüz şeyi** söylüyorlar, ölçmek istediğimizi değil.
+ *
+ * İki etiket bilinçli olarak düzeltildi (adversarial incelemenin ayakta kalan
+ * tek ortak bulgusu):
+ *
+ * - `agility` "Çeviklik" DEĞİL. Gerçek çeviklik yatay ivmelenme, frenleme ve
+ *   yön değiştirme kararı içerir (T-test, 5-0-5 gibi). Bizim testimiz 15
+ *   saniyede orta çizgi geçişi sayıyor — ölçtüğü şey ritmik yanal sıçrama
+ *   frekansı. "Çeviklik" demek konstrükt aşımı olur.
+ *
+ * - `endurance` "Dayanıklılık" DEĞİL. 30 saniyelik tek blok aerobik
+ *   dayanıklılığı ölçmez; ölçtüğü şey anaerobik güç ve ritim sürdürme.
+ *
+ * Anahtar adları (`agility`, `endurance`) geriye uyumluluk için korundu —
+ * kayıtlı oturumlar ve Supabase sütunları onlara bağlı. Değişen, kullanıcının
+ * gördüğü şey.
+ */
 export const DIMENSION_LABELS_TR: Record<DimensionKey, string> = {
   explosivePower: 'Dikey Patlayıcı Güç',
   horizontalPower: 'Yatay Patlayıcı Güç',
   balance: 'Denge',
   reaction: 'Reaksiyon',
-  agility: 'Çeviklik',
+  agility: 'Yanal Sıçrama Frekansı',
   coordination: 'Koordinasyon',
-  endurance: 'Dayanıklılık',
+  endurance: 'Ritim Sürdürme',
+};
+
+/**
+ * Dar alanlar (radar ekseni, PDF satırı) için kısa etiketler.
+ *
+ * Kısalık uğruna doğruluktan ödün verilmedi: "Çeviklik" yerine "Yanal
+ * Sıçrama", "Dayanıklılık" yerine "Ritim" — ikisi de ölçülen şeyi söylüyor.
+ */
+export const DIMENSION_SHORT_LABELS_TR: Record<DimensionKey, string> = {
+  explosivePower: 'Dikey Güç',
+  horizontalPower: 'Yatay Güç',
+  balance: 'Denge',
+  reaction: 'Reaksiyon',
+  agility: 'Yanal Sıçrama',
+  coordination: 'Koordinasyon',
+  endurance: 'Ritim',
 };
 
 export interface AnthroFavor {

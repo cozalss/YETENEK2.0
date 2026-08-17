@@ -28,6 +28,7 @@ import {
 import type { PoseFrame } from '@/types';
 import { useValidityGate } from '@/hooks/use-validity-gate';
 import { RejectionPanel } from '@/components/tests/shared/RejectionPanel';
+import { VisionBadge } from '@/components/tests/shared/VisionBadge';
 import { logger } from '@/shared/logger/logger';
 
 const log = logger.child('broad-jump-test');
@@ -38,7 +39,13 @@ interface Props {
   childAgeYears?: number;
   childSex?: 'male' | 'female';
   childHeightCm?: number;
-  onComplete?: (analysis: BroadJumpAnalysis & { score: number }) => void;
+  onComplete?: (
+    analysis: BroadJumpAnalysis & {
+      score: number;
+      techniqueMultiplier?: number;
+      judgeInjuryWarnings?: readonly string[];
+    }
+  ) => void;
 }
 
 const COUNTDOWN_SECONDS = 3;
@@ -154,20 +161,28 @@ export function BroadJumpTest({
 
     void (async () => {
       // Geçerlilik kapısı analizden ÖNCE: geçersiz yakalama hiç ölçülmemeli.
-      const allowed = await gateEvaluate();
+      const claimAnalysis = analyzeBroadJump(samplesRef.current);
+      const outcome = await gateEvaluate({
+        valid: claimAnalysis.valid,
+        primaryValue: claimAnalysis.jumpUnits,
+        unit: 'score',
+      });
       if (cancelled) return;
-      if (!allowed) {
+      if (!outcome.allowed) {
         setPhase('result');
         return;
       }
-      runAnalysis();
+      runAnalysis(outcome.sigmaMultiplier, outcome.injuryWarnings);
     })();
 
     return () => {
       cancelled = true;
     };
 
-    function runAnalysis() {
+    function runAnalysis(
+      techniqueMultiplier: number,
+      judgeInjuryWarnings: readonly string[]
+    ) {
     try {
       let analysis = analyzeBroadJump(samplesRef.current);
       if (
@@ -189,7 +204,12 @@ export function BroadJumpTest({
       setScore(computedScore);
       setPhase('result');
       if (analysis.valid && computedScore != null) {
-        onCompleteRef.current?.({ ...analysis, score: computedScore });
+        onCompleteRef.current?.({
+          ...analysis,
+          score: computedScore,
+          techniqueMultiplier,
+          judgeInjuryWarnings,
+        });
       }
     } catch (err) {
       log.error('analiz hatası', {
@@ -267,6 +287,7 @@ export function BroadJumpTest({
         phase === 'result' && gate.rejection ? (
           <RejectionPanel rejection={gate.rejection} onRetry={start} />
         ) : phase === 'result' && result ? (
+          <div>
           <ResultCard
             result={result}
             score={score}
@@ -274,6 +295,8 @@ export function BroadJumpTest({
             hasCalibration={childHeightCm != null}
             headingRef={resultHeadingRef}
           />
+            <VisionBadge applied={gate.visionApplied} />
+          </div>
         ) : phase === 'idle' ? (
           <InstructionsPanel
             eyebrow="Test 02 · Yatay Patlayıcı"

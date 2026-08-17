@@ -74,6 +74,10 @@ export interface SportMatch {
   pTopK?: number;
   /** Birinci olma olasılığı (0-1). */
   pTopOne?: number;
+  /** Bu spor için ölçülebilen ağırlık payı (0-1). */
+  weightCoverage?: number;
+  /** Yüzde iddiası geri çekildiyse sebebi. */
+  probabilityWithheldReason?: string;
 }
 
 export interface AnthroContext {

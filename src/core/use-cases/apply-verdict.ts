@@ -21,6 +21,7 @@
 import {
   INVALIDATING_VIOLATIONS,
   UNIVERSAL_INVALIDATING,
+  type Compensation,
   type ProtocolViolation,
   type TestVerdict,
 } from '@/core/ports/validity-judge';
@@ -43,6 +44,15 @@ export interface AcceptedMeasurement {
   readonly sigmaMultiplier: number;
   /** Ölümcül olmayan, kaydedilmeye değer ihlaller. */
   readonly warnings: readonly ProtocolViolation[];
+  /**
+   * Sakatlanma riski uyarıları — veliye gösterilecek Türkçe metinler.
+   *
+   * Görsel hakem `knee_valgus` gibi kompansasyon işaretleri üretiyordu ama
+   * hiçbir yerde tüketilmiyordu: üretilen değer çöpe gidiyordu. Sakatlanma
+   * uyarısı ürünün çekirdek özelliklerinden biri, ve bu sinyaller ölçüm
+   * sayısından bağımsız gerçek bir klinik girdi.
+   */
+  readonly injuryWarnings: readonly string[];
   readonly verdict: TestVerdict;
 }
 
@@ -78,8 +88,12 @@ const RETRY_HINTS: Readonly<Record<ProtocolViolation, string>> = {
     'Noktayı takip etmedin. Parmağını ekrandaki noktanın üzerinde tutmaya çalış.',
   partial_rom:
     'Hareketleri yarım yaptın. Kollarını tam yukarı kaldır, ayaklarını tam aç.',
+  // Not: "telefonu uzaklaştır" demiyoruz — kullanıcı laptopla da test
+  // yapabiliyor ve o durumda kamerayı değil KENDİSİNİ geri çekmesi gerekiyor.
+  // Gerçek bir kullanıcı laptopla yalnız yüzü görünecek mesafede test
+  // başlattı; mesaj ne yapacağını somut söylemeli.
   out_of_frame:
-    'Vücudun kadrajdan çıktı. Telefonu biraz uzaklaştır ve tamamen görünecek şekilde tekrar dene.',
+    'Vücudunun tamamı kadraja sığmıyor. Kameradan 2-3 metre uzaklaş; ayakların ve kalçan görünmeli, ayaklarının altında biraz zemin kalsın.',
   multiple_people:
     'Kadrajda birden fazla kişi var. Test sırasında yalnız olman gerekiyor.',
   wrong_exercise:
@@ -102,6 +116,33 @@ function rejected(
   r: RejectedMeasurement
 ): Result<AcceptedMeasurement, RejectedMeasurement> {
   return { ok: false, error: r };
+}
+
+/**
+ * Kompansasyon → veliye gösterilecek uyarı.
+ *
+ * Metinler tanı koymuyor, gözlem bildiriyor ve ne yapılacağını söylüyor.
+ * "Çocuğunuzda X var" değil, "şu görüldü, şuna dikkat" — tek bir test
+ * seansından klinik iddia çıkarılamaz.
+ */
+const COMPENSATION_WARNINGS: Readonly<Record<Compensation, string>> = {
+  knee_valgus:
+    'İniş sırasında dizler içe doğru kapandı. Bu, diz sakatlanma riskiyle ilişkilendirilen bir hareket örüntüsü (Hewett 2005). Antrenörle çift ayak iniş tekniği çalışılması önerilir.',
+  trunk_lean:
+    'Hareket sırasında gövde belirgin şekilde yana eğildi. Genellikle gövde-kalça stabilitesi eksikliğine işaret eder; plank ve yan plank çalışmaları faydalı olur.',
+  asymmetric_landing:
+    'İniş iki bacağa eşit dağılmadı. Tek taraflı yüklenme uzun vadede aşırı kullanım sakatlanmalarına yol açabilir; sol-sağ denge çalışması önerilir.',
+  stiff_landing:
+    'İniş dizler kilitli, sert şekilde yapıldı. Yumuşak iniş (diz-kalça bükerek) öğretilmesi eklem yükünü belirgin azaltır.',
+};
+
+/** Kompansasyon işaretlerini veliye gösterilecek metinlere çevirir. */
+export function compensationsToWarnings(
+  compensations: readonly Compensation[]
+): string[] {
+  return compensations
+    .map((c) => COMPENSATION_WARNINGS[c])
+    .filter((t): t is string => typeof t === 'string');
 }
 
 function isInvalidating(test: TestType, v: ProtocolViolation): boolean {
@@ -152,6 +193,7 @@ export function applyVerdict(
   return ok({
     sigmaMultiplier,
     warnings: verdict.protocolViolations,
+    injuryWarnings: compensationsToWarnings(verdict.compensations),
     verdict,
   });
 }
