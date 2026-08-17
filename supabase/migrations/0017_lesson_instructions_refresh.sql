@@ -1,4 +1,17 @@
--- Yetenek 2.0 — Migration 0011: lesson_instructions refresh (5 spor)
+-- Yetenek 2.0 — Migration 0017: lesson_instructions refresh (5 spor)
+--
+-- NEDEN 0017, 0011 DEĞİL
+-- Bu dosya 0011 olarak eklenmişti ve `0011_lesson_child_id.sql` ile aynı
+-- versiyon numarasını taşıyordu. Supabase versiyonu PK olarak kullanıyor
+-- (`supabase_migrations.schema_migrations`), bu yüzden ikinci kayıt
+-- "duplicate key ... Key (version)=(0011)" ile patlıyor ve preview branch
+-- migration'ları HİÇ uygulanamıyordu.
+--
+-- Sona taşımak davranışı değiştirmiyor: araya giren migration'ların hiçbiri
+-- bu dosyanın güncellediği 10 satıra dokunmuyor — 0012 yalnız atletizm-2 /
+-- boks-2 / taekwondo-2'yi güncelliyor, 0013 ve 0014 sadece yeni satır
+-- ekliyor, silme yok. Dosya baştan sona idempotent UPDATE olduğu için
+-- tekrar uygulanması da güvenli.
 --
 -- src/lib/lessons/curriculum.ts'de Yüzme, Futbol, Basketbol, Tenis ve
 -- Cimnastik dersleri biyomekanik olarak yenilendi. DB tarafındaki
