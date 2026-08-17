@@ -117,7 +117,7 @@ test.describe('Result hero — meta bilgiler', () => {
     await expect(
       page.getByRole('heading', { name: 'Sağ-Sol Denge Farkı' }),
     ).toBeVisible();
-    // Tıbbi tanı değil disclaimer
-    await expect(page.getByText(/tıbbi tanı değildir/i)).toBeVisible();
+    // Tıbbi bir değerlendirme olmadığını belirten disclaimer
+    await expect(page.getByText(/tıbbi bir değerlendirme değil/i)).toBeVisible();
   });
 });
