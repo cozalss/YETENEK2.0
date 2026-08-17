@@ -67,7 +67,7 @@ test.describe('Örnek Sonuç Akışı — Zeynep Persona', () => {
 
     // Sakatlanma uyarısı (Zeynep'te asimetri var)
     await expect(
-      page.getByRole('heading', { name: 'Sakatlanma Riski Erken Uyarısı' }),
+      page.getByRole('heading', { name: 'Sağ-Sol Denge Farkı' }),
     ).toBeVisible();
     await expect(page.getByText('%18 asimetrik')).toBeVisible();
 

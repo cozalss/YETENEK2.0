@@ -115,7 +115,7 @@ test.describe('Result hero — meta bilgiler', () => {
   test('asimetri uyarı banner görünür', async ({ page }) => {
     await page.goto('/result/demo');
     await expect(
-      page.getByRole('heading', { name: 'Sakatlanma Riski Erken Uyarısı' }),
+      page.getByRole('heading', { name: 'Sağ-Sol Denge Farkı' }),
     ).toBeVisible();
     // Tıbbi tanı değil disclaimer
     await expect(page.getByText(/tıbbi tanı değildir/i)).toBeVisible();

@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     default: 'Yetenek 2.0 — Çocuğunun Spor Yeteneğini Keşfet',
   },
   description:
-    '5 dakikada AI tabanlı çocuk spor yeteneği keşfi. 7 boyutlu bio-motor profil, 12 spor önerisi, sakatlanma uyarısı, kişiselleştirilmiş Türkçe rapor — telefonun kamerasıyla.',
+    '5 dakikada AI tabanlı çocuk spor yeteneği keşfi. 7 boyutlu bio-motor profil, 12 spor önerisi, denge asimetrisi ölçümü, kişiselleştirilmiş Türkçe rapor — telefonun kamerasıyla.',
   keywords: [
     'çocuk spor yeteneği',
     'spor önerisi',
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     'CMJ sıçrama',
     'denge testi',
     'reaksiyon süresi',
-    'asimetri sakatlanma',
+    'denge asimetrisi ölçümü',
     'pediatrik spor',
     'MediaPipe',
     'Yetenek 2.0',

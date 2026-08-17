@@ -102,7 +102,7 @@ const MOCK_SESSION: SessionSummary = (() => {
       3
     ),
     injuryWarnings: [
-      'Sol bacak dengesinde belirgin asimetri var (%18). Uzun vadede sakatlanma riskini artırabilir; tek bacak güçlendirme egzersizleri önerilir.',
+      'Sol bacak dengesinde belirgin fark var (%18). Bu bir tanı değil — birkaç gün içinde tekrar ölçmenizi, fark sürerse bir antrenör ya da fizyoterapistin gözden geçirmesini öneririz. Tek bacak güçlendirme egzersizleri bu arada faydalı olur.',
     ],
     completedTests: [
       'jump',

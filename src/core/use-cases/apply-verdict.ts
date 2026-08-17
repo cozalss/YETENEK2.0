@@ -45,12 +45,13 @@ export interface AcceptedMeasurement {
   /** Ölümcül olmayan, kaydedilmeye değer ihlaller. */
   readonly warnings: readonly ProtocolViolation[];
   /**
-   * Sakatlanma riski uyarıları — veliye gösterilecek Türkçe metinler.
+   * Teknik gözlem uyarıları — veliye gösterilecek Türkçe metinler.
    *
    * Görsel hakem `knee_valgus` gibi kompansasyon işaretleri üretiyordu ama
-   * hiçbir yerde tüketilmiyordu: üretilen değer çöpe gidiyordu. Sakatlanma
-   * uyarısı ürünün çekirdek özelliklerinden biri, ve bu sinyaller ölçüm
-   * sayısından bağımsız gerçek bir klinik girdi.
+   * hiçbir yerde tüketilmiyordu: üretilen değer çöpe gidiyordu. Bu sinyaller
+   * ölçüm sayısından bağımsız gerçek bir gözlem, ama tek bir test seansından
+   * çıkarılmış bir gözlem — tanı değil. Metinler bunu yansıtmalı (bkz.
+   * `COMPENSATION_WARNINGS`).
    */
   readonly injuryWarnings: readonly string[];
   readonly verdict: TestVerdict;
@@ -123,15 +124,16 @@ function rejected(
  *
  * Metinler tanı koymuyor, gözlem bildiriyor ve ne yapılacağını söylüyor.
  * "Çocuğunuzda X var" değil, "şu görüldü, şuna dikkat" — tek bir test
- * seansından klinik iddia çıkarılamaz.
+ * seansından tıbbi iddia çıkarılamaz. "Sakatlanma", "risk", "hekim" gibi
+ * kelimeler kasıtlı olarak kullanılmıyor (bkz. InjuryWarning.tsx dil kuralı).
  */
 const COMPENSATION_WARNINGS: Readonly<Record<Compensation, string>> = {
   knee_valgus:
-    'İniş sırasında dizler içe doğru kapandı. Bu, diz sakatlanma riskiyle ilişkilendirilen bir hareket örüntüsü (Hewett 2005). Antrenörle çift ayak iniş tekniği çalışılması önerilir.',
+    'İniş sırasında dizler içe doğru kapandı. Antrenörle çift ayak iniş tekniği çalışılması bu örüntüyü azaltmaya yardımcı olur.',
   trunk_lean:
     'Hareket sırasında gövde belirgin şekilde yana eğildi. Genellikle gövde-kalça stabilitesi eksikliğine işaret eder; plank ve yan plank çalışmaları faydalı olur.',
   asymmetric_landing:
-    'İniş iki bacağa eşit dağılmadı. Tek taraflı yüklenme uzun vadede aşırı kullanım sakatlanmalarına yol açabilir; sol-sağ denge çalışması önerilir.',
+    'İniş iki bacağa eşit dağılmadı. Sol-sağ denge çalışması bu farkı zamanla kapatmaya yardımcı olur.',
   stiff_landing:
     'İniş dizler kilitli, sert şekilde yapıldı. Yumuşak iniş (diz-kalça bükerek) öğretilmesi eklem yükünü belirgin azaltır.',
 };

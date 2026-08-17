@@ -7,10 +7,14 @@
  * Daha düşük varyans = daha stabil duruş = daha yüksek skor.
  *
  * Asimetri:
- *   |sağ - sol| / max(sağ, sol)  > 0.15  →  sakatlanma riski uyarısı.
- *   Bu eşik klinik biyomekanik literatürünün "fonksiyonel asimetri" sınırı
- *   (Croisier 2008, Hewett 2005). Final ürünün mevzu eşiği gerçek veri
- *   üzerinde kalibre edilmeli; demo için %15 makul başlangıç.
+ *   |sağ - sol| / max(sağ, sol)  > 0.15  →  denge farkı bulgusu.
+ *   Bu eşik biyomekanik literatürdeki "fonksiyonel asimetri" sınırından
+ *   (Croisier 2008, Hewett 2005) esinlenir — ama bu bir tıbbi tarama değil:
+ *   2 boyutlu telefon kamerası salınımı ACL/sakatlanma riski teşhis edemez.
+ *   Kullanıcıya giden dil bunu bir "sakatlanma uyarısı" değil, "fark
+ *   belirgin, tekrar ölç, gerekirse antrenör/fizyo baksın" gözlemi olarak
+ *   sunmalı (bkz. `summary`, InjuryWarning.tsx). Final ürünün eşiği gerçek
+ *   veri üzerinde kalibre edilmeli; demo için %15 makul başlangıç.
  */
 
 import type { PoseFrame } from '@/types';
@@ -212,7 +216,11 @@ export function analyzeBalance(
       'Yeterli veri toplanamadı. Vücudun kameraya tam görünmüyor olabilir.';
   } else if (asymmetryWarning) {
     const weakerLabel = weakerSide === 'right' ? 'sağ' : 'sol';
-    summary = `${weakerLabel} bacak dengesinde belirgin asimetri var (%${(asymmetryRatio * 100).toFixed(0)}, eşik %${(threshold * 100).toFixed(0)}). Uzun vadede sakatlanma riskini artırabilir; tek bacak güçlendirme egzersizleri önerilir.`;
+    // Dil kuralı: bu bir teşhis değil, tek bir telefon kamerası ölçümünün
+    // gözlemi. "Sakatlanma riski" / "hekim" gibi klinik dil kullanılmıyor —
+    // bkz. InjuryWarning.tsx başlık yorumu. Aynı çerçeve reportPrompt.ts,
+    // coachPrompt.ts ve demo metninde tutarlı tutuluyor.
+    summary = `${weakerLabel} bacak dengesinde belirgin fark var (%${(asymmetryRatio * 100).toFixed(0)}, eşik %${(threshold * 100).toFixed(0)}). Bu bir tanı değil — birkaç gün içinde tekrar ölçmenizi, fark sürerse bir antrenör ya da fizyoterapistin gözden geçirmesini öneririz. Tek bacak güçlendirme egzersizleri bu arada faydalı olur.`;
   } else {
     summary = `Denge simetrik ve dengeli. Sağ: ${r.toFixed(0)}/100, sol: ${l.toFixed(0)}/100.`;
   }

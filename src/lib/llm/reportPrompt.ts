@@ -12,6 +12,7 @@
  */
 
 import type { SessionSummary } from '@/lib/session/store';
+import { jumpHeightRangeCm } from '@/lib/tests/jump';
 
 export const REPORT_SYSTEM_PROMPT = `Sen Yetenek 2.0 platformunun spor pedagoğusun. 8-15 yaş arası çocukların 7 boyutlu fiziksel test sonuçlarına bakıyor, velilere ÇOCUK DİLİNDE değil, VELİYE samimi ve bilgili tonda kişiselleştirilmiş raporlar yazıyorsun.
 
@@ -24,6 +25,7 @@ export const REPORT_SYSTEM_PROMPT = `Sen Yetenek 2.0 platformunun spor pedagoğu
 - Bilim referansı (Bompa, Tomkinson) **gerek yoksa** anma. Sadece veliyle bağ kurmaya odaklan.
 - Sayıları gözünü korkutacak şekilde sıralama. 1-2 spesifik metrik vurgula.
 - Eğer bazı testler tamamlanmamışsa (eksik boyut) o boyut hakkında YORUM YAPMA — sadece mevcut verilere odaklan.
+- Sıçrama gibi ölçümler sana "yaklaşık 28-36 cm" gibi bir ARALIK olarak geliyorsa aralığı koru veya "yaklaşık 32 cm" de — tek ondalıklı bir sayı ("32.4 cm") uydurma; bu, sistemin sahip olmadığı bir kesinliği iddia eder.
 
 ## 7 Boyutlu Yetenek Profili
 
@@ -43,7 +45,7 @@ Raporda 7 boyutu hep birden sayma. Çocuğun en güçlü 2-3 boyutunu seç ve bu
 
 1. **Açılış selamlama + genel özet** (1-2 cümle, çocuk ismi geçmesin başlıkta)
 2. **Çocuğun güçlü yanları** — en yüksek skorlu 2-3 boyut, bunun spor avantajı
-3. **Dikkat alanı / sakatlanma uyarısı** (varsa) — kibar, korkutmadan, somut öneri
+3. **Dikkat alanı** (varsa, ör. denge asimetrisi) — kibar, somut öneri; bu bir teşhis değil, tek seanslık bir gözlem
 4. **Spor önerisi + kapatma** — neden bu spor uygun, nasıl başlanabilir, motivasyon
 
 Toplam 180-260 kelime. "Sevgilerimle" ile bitir. İmza: "Yetenek 2.0".
@@ -70,12 +72,10 @@ Toplam 180-260 kelime. "Sevgilerimle" ile bitir. İmza: "Yetenek 2.0".
 - **Masa Tenisi**: Reaksiyon + ince motor koordinasyon, fiziksel olarak az talepkar.
 - **Badminton**: Reaksiyon + çeviklik + koordinasyon kombinasyonu.
 
-Asimetri (sol-sağ farkı) tespit edildiyse:
-- "Sakatlanma riski" yerine "kasıt edebileceğiniz bir nokta" gibi yumuşak dil
-- Önerebileceğin egzersizler: yan plank, tek bacak köprü, dengelenmiş yan adımlar
-- "Spor hekimi görüşü almakta fayda var" yumuşak öneri (asla "alın" emri değil)
-
-Klinik referans: limb asimetrisi >%10 (Croisier 2008 AJSM 36:1469) sakatlanma riskini artırır; bu eşiği geçmiş çocukları kibarca uyar, panik yaratma.`;
+Asimetri (sol-sağ farkı) tespit edildiyse — TIBBİ DİL YASAK:
+- Bu bir teşhis DEĞİL, tek bir telefon kamerası ölçümünden gelen bir gözlem. "Sakatlanma riski", "sakatlanma", "ACL", "yaralanma", "klinik", "hekim", "doktor" kelimelerinin HİÇBİRİNİ kullanma. Asla "bu bir sakatlanma işareti" gibi teşhis cümlesi kurma.
+- Söylenecek şey basit: sağ-sol farkı belirgin → birkaç gün içinde tekrar ölçmesini öner (tek seferlik ölçüm ışık/duruş gibi etkenlerden sapabilir) → fark sürerse bir antrenör veya fizyoterapist bakabilir, gerekliliktir demeden.
+- Önerebileceğin egzersizler: yan plank, tek bacak köprü, dengelenmiş yan adımlar.`;
 
 /**
  * Çocuk session özetinden user mesajı (her çağrıda değişir, cache'lenmez).
@@ -98,10 +98,20 @@ export function buildReportUserMessage(session: SessionSummary): string {
   lines.push('');
 
   if (session.jump) {
-    const cm =
-      session.jump.jumpHeightCm != null
-        ? `${session.jump.jumpHeightCm.toFixed(1)} cm`
-        : 'ölçülemedi';
+    // Nokta tahmin yerine aralık: tek ondalıklı bir sayı ("32.4 cm") gerçekte
+    // olmayan bir kesinlik ima eder. σ hesaplanabiliyorsa aralığı ver;
+    // modelin de tek sayı yerine aralık/yaklaşık dile geçmesi bekleniyor
+    // (bkz. REPORT_SYSTEM_PROMPT).
+    let cm = 'ölçülemedi';
+    if (session.jump.jumpHeightCm != null) {
+      const range = jumpHeightRangeCm(
+        session.jump.jumpHeightCm,
+        session.jump.jumpHeightSigmaCm ?? null
+      );
+      cm = range
+        ? `yaklaşık ${range.low}-${range.high} cm`
+        : `yaklaşık ${Math.round(session.jump.jumpHeightCm)} cm`;
+    }
     lines.push(
       `Sıçrama (CMJ — dikey patlayıcı): ${cm}, yaş norm skoru ${session.jump.score.toFixed(0)}/100.`
     );

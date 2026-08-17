@@ -1,8 +1,15 @@
 /**
- * Sakatlanma riski uyarı paneli + asimetri-spesifik drill önerileri.
+ * Denge asimetrisi bulgu paneli + asimetri-spesifik drill önerileri.
  *
  * weakerSide + asymmetryPercent doluysa `getAsymmetryPrescription` ile
  * şiddet bandına uygun drill listesi gösterilir (watch/high/critical).
+ *
+ * DİL KURALI: bu panel bir tıbbi teşhis değil, tek bir telefon kamerasıyla
+ * alınmış 2 boyutlu bir salınım ölçümünün gözlemi. "Sakatlanma riski",
+ * "hekim/doktor yönlendirmesi" gibi klinik iddia taşıyan dil kullanılmıyor —
+ * bunun yerine "fark belirgin, tekrar ölç, gerekirse antrenör/fizyo bakabilir"
+ * çerçevesi kullanılıyor. Aynı dil `reportPrompt.ts`, `coachPrompt.ts`,
+ * `balance.ts`'in `summary`'si ve demo metninde de tutarlı tutulmalı.
  */
 
 import {
@@ -62,7 +69,7 @@ export function InjuryWarning({
               fontFamily: 'var(--font-display)',
             }}
           >
-            Sakatlanma Riski Erken Uyarısı
+            Sağ-Sol Denge Farkı
           </h3>
           {asymmetryPercent != null && weakerSide && (
             <p className="mt-1 text-sm" style={{ color: 'var(--color-ink-2)' }}>
@@ -185,9 +192,10 @@ export function InjuryWarning({
           color: 'var(--color-ink-2)',
         }}
       >
-        Bu uyarı tıbbi tanı değildir.{' '}
+        Bu, tek bir telefon kamerasıyla alınmış bir denge ölçümü — tıbbi bir
+        değerlendirme değil.{' '}
         {prescription?.medicalReferral
-          ? 'Belirgin asimetri tespit edildi — spor hekimi veya fizyoterapist görüşü önerilir.'
+          ? 'Fark belirgin: birkaç gün ara ile tekrar ölçmenizi öneririz (tek seferlik ölçüm ışık ve duruştan etkilenebilir); fark sürerse bir antrenör veya fizyoterapist gözden geçirebilir.'
           : "Önerilen drill'ler ev ortamında güvenle yapılabilir, ağrı varsa durdurun."}
       </div>
     </div>

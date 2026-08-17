@@ -2,13 +2,20 @@
  * Asimetri → drill öneri sistemi.
  *
  * Balance testinde tespit edilen sağ-sol asimetri yüzdesine göre çocuğa
- * spesifik rehabilitasyon / güçlendirme drill'leri önerir.
+ * spesifik güçlendirme/denge drill'leri önerir.
  *
- * Bantlar (Hewett 2005 + Bartolomei 2018 sportsmed literatürü):
- *   0-10%   → "normal"   — asimetri marjı içinde
+ * Bantlar (Hewett 2005 + Bartolomei 2018 sportsmed literatüründen esinli
+ * eşikler — iç geliştirme referansı, kullanıcıya gösterilmez):
+ *   0-10%   → "normal"   — fark marjı içinde
  *   10-15%  → "watch"    — denge + farkındalık drill'leri
  *   15-25%  → "high"     → zayıf tarafa odaklı kuvvet/postür kontrolü
- *   25%+    → "critical" → fizyoterapist yönlendirmesi + güvenli core drill'leri
+ *   25%+    → "critical" → antrenör/fizyoterapist gözden geçirmesi önerisi + güvenli core drill'leri
+ *
+ * DİL KURALI: hiçbir `rationale`/`headline` metni tanı koymaz — "sakatlanma
+ * riski", "ACL", "hekim/doktor" kelimeleri kullanılmaz. Çerçeve hep aynı:
+ * fark var → tekrar ölç → sürerse bir antrenör/fizyoterapist bakabilir.
+ * `medicalReferral` alan adı iç kullanım için kalsa da, tetiklediği metin bir
+ * gereklilik değil öneri olarak yazılır.
  */
 
 export type AsymmetrySeverity = 'normal' | 'watch' | 'high' | 'critical';
@@ -101,9 +108,9 @@ export function getAsymmetryPrescription(
   if (weakerSide == null || asymmetryPercent < 10) {
     return {
       severity: 'normal',
-      headline: 'Asimetri normal aralıkta',
+      headline: 'Fark normal aralıkta',
       rationale:
-        'Sağ-sol farkın sportif olarak kabul edilebilir bantta (%10 altı). Koruyucu olarak haftada 2 kez tek bacak denge çalışman gelişimine katkı verir.',
+        'Sağ-sol farkı sportif olarak sık görülen bantta (%10 altı). Koruyucu olarak haftada 2 kez tek bacak denge çalışması gelişime katkı verir.',
       drills: [SINGLE_LEG_BALANCE],
       medicalReferral: false,
     };
@@ -112,8 +119,8 @@ export function getAsymmetryPrescription(
   if (asymmetryPercent < 15) {
     return {
       severity: 'watch',
-      headline: 'Hafif asimetri — dikkat',
-      rationale: `${weakerSide === 'right' ? 'Sağ' : 'Sol'} bacağın diğerinden ~%${Math.round(asymmetryPercent)} daha zayıf. Bu seviye sakatlanma riski oluşturmaz ama 4-6 hafta düzenli denge çalışmasıyla kapatılır.`,
+      headline: 'Hafif fark — takip edin',
+      rationale: `${weakerSide === 'right' ? 'Sağ' : 'Sol'} bacak diğerinden ~%${Math.round(asymmetryPercent)} daha zayıf ölçüldü. Birkaç gün ara ile tekrar ölçmenizi öneririz; fark sürerse 4-6 hafta düzenli denge çalışmasıyla genelde kapanır.`,
       drills: [SINGLE_LEG_BALANCE, ANKLE_ALPHABET, HIP_BRIDGE],
       medicalReferral: false,
     };
@@ -122,8 +129,8 @@ export function getAsymmetryPrescription(
   if (asymmetryPercent < 25) {
     return {
       severity: 'high',
-      headline: 'Belirgin asimetri — odaklı çalışma şart',
-      rationale: `${weakerSide === 'right' ? 'Sağ' : 'Sol'} bacak %${Math.round(asymmetryPercent)} daha zayıf. Sportif aktivitelerde ACL/menüsküs yaralanma riski artar (Hewett 2005). 6-8 hafta haftada 3 kez tek bacak kuvvet + denge çalışması önerilir.`,
+      headline: 'Belirgin fark — tekrar ölçün',
+      rationale: `${weakerSide === 'right' ? 'Sağ' : 'Sol'} bacak %${Math.round(asymmetryPercent)} daha zayıf ölçüldü. Bu bir teşhis değil; önce birkaç gün ara ile tekrar ölçmenizi öneririz (tek seferlik ölçüm ışık/duruştan etkilenebilir). Fark sürerse 6-8 hafta haftada 3 kez tek bacak kuvvet + denge çalışması, ve bir antrenör veya fizyoterapistin gözden geçirmesi iyi olur.`,
       drills: [
         SINGLE_LEG_BALANCE,
         SINGLE_LEG_EYES_CLOSED,
@@ -136,8 +143,8 @@ export function getAsymmetryPrescription(
 
   return {
     severity: 'critical',
-    headline: 'Yüksek asimetri — uzman görüşü al',
-    rationale: `${weakerSide === 'right' ? 'Sağ' : 'Sol'} bacak %${Math.round(asymmetryPercent)} daha zayıf — bu seviye genelde geçirilmiş yaralanma veya kas-iskelet dengesizlik işaretidir. Yüksek-yoğunluklu spora başlamadan önce spor hekimi/fizyoterapist değerlendirmesi ÖNERİLİR.`,
+    headline: 'Oldukça belirgin fark — tekrar ölçün',
+    rationale: `${weakerSide === 'right' ? 'Sağ' : 'Sol'} bacak %${Math.round(asymmetryPercent)} daha zayıf ölçüldü — bu bir tanı değil, tek bir telefon kamerası ölçümünün bulgusu. Önce birkaç gün ara ile tekrar ölçmenizi öneririz. Fark sürerse, özellikle yüksek-yoğunluklu spora başlamadan önce, bir antrenör veya fizyoterapistin bakması iyi olur.`,
     drills: [SINGLE_LEG_BALANCE, ANKLE_ALPHABET, DEAD_BUG, PLANK_HOLD],
     medicalReferral: true,
   };
