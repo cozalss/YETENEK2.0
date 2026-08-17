@@ -38,7 +38,6 @@ type Phase = 'idle' | 'countdown' | 'capture' | 'analyze' | 'result';
 interface Props {
   childAgeYears?: number;
   childSex?: 'male' | 'female';
-  childHeightCm?: number;
   onComplete?: (
     analysis: BroadJumpAnalysis & {
       // `number | null`: mesafe hesaplanamadıysa skor da yok. Bunu tipte
@@ -63,7 +62,6 @@ const STEPS = [
 export function BroadJumpTest({
   childAgeYears = 12,
   childSex = 'male',
-  childHeightCm,
   onComplete,
 }: Props) {
   const [phase, setPhase] = useState<Phase>('idle');
@@ -78,7 +76,6 @@ export function BroadJumpTest({
   const reducedMotion = useReducedMotion();
 
   const samplesRef = useRef<BroadJumpSample[]>([]);
-  const calibrationFrameRef = useRef<PoseFrame | null>(null);
   const captureActiveRef = useRef(false);
   const phaseRef = useRef<Phase>('idle');
   const lastFramingRef = useRef<FramingStatus | null>(null);
@@ -113,9 +110,6 @@ export function BroadJumpTest({
     if (!captureActiveRef.current) return;
     const sample = frameToBroadJumpSample(frame);
     if (!sample) return;
-    if (!calibrationFrameRef.current) {
-      calibrationFrameRef.current = frame;
-    }
     // Hakem ham iskelete bakıyor; indirgenmiş örnek uçuş fazını taşımıyor.
     gateCollect(frame);
     samplesRef.current.push(sample);
@@ -124,7 +118,6 @@ export function BroadJumpTest({
   const start = () => {
     gate.reset();
     samplesRef.current = [];
-    calibrationFrameRef.current = null;
     captureActiveRef.current = false;
     setResult(null);
     setScore(null);
@@ -186,19 +179,11 @@ export function BroadJumpTest({
       judgeInjuryWarnings: readonly string[]
     ) {
     try {
-      let analysis = analyzeBroadJump(samplesRef.current);
-      // Kalibrasyon boy'a BAĞLANMAMALI. `getCmPerUnit` önce MediaPipe'ın
-      // world landmark'larını (metre cinsinden) deniyor ve boy gerektirmiyor;
-      // profil formu da kullanıcıya bunu vaat ediyor ("Boy verilmezse pose
-      // pipeline gerçek-metre kalibrasyonu yapar"). Koşul `childHeightCm !=
-      // null` iken o yol hiç çalışmıyor, mesafe null kalıyordu.
-      if (analysis.valid && calibrationFrameRef.current) {
-        analysis = calibrateBroadJump(
-          analysis,
-          calibrationFrameRef.current,
-          childHeightCm ?? null
-        );
-      }
+      // Kalibrasyon SADECE worldLandmarks'tan — boy'a hiç bağlı değil (bkz.
+      // `calibrateBroadJump` dokümanı: eksen karışıklığı olmadan tek güven
+      // kaynağı). worldLandmarks o oturumda yeterince izlenmediyse
+      // `jumpDistanceCm` `null` kalır ve ResultCard sayıyı göstermez.
+      const analysis = calibrateBroadJump(analyzeBroadJump(samplesRef.current));
       setResult(analysis);
       const computedScore =
         analysis.valid && analysis.jumpDistanceCm != null
@@ -225,6 +210,8 @@ export function BroadJumpTest({
         jumpDistanceCm: null,
         startX: 0,
         endX: 0,
+        startWorldX: null,
+        endWorldX: null,
         valid: false,
         reason: 'Analiz sırasında beklenmedik bir hata oluştu. Tekrar dene.',
       });
@@ -233,7 +220,7 @@ export function BroadJumpTest({
     }
     }
     // onComplete kasten dışarıda — inline arrow ile çift kayıt olmasın.
-  }, [phase, childAgeYears, childSex, childHeightCm, gateEvaluate]);
+  }, [phase, childAgeYears, childSex, gateEvaluate]);
 
   useEffect(() => {
     if (phase === 'result' && resultHeadingRef.current) {
@@ -297,7 +284,6 @@ export function BroadJumpTest({
             result={result}
             score={score}
             onRetry={start}
-            hasCalibration={childHeightCm != null}
             headingRef={resultHeadingRef}
           />
             <VisionBadge applied={gate.visionApplied} />
@@ -392,13 +378,11 @@ function ResultCard({
   result,
   score,
   onRetry,
-  hasCalibration,
   headingRef,
 }: {
   result: BroadJumpAnalysis;
   score: number | null;
   onRetry: () => void;
-  hasCalibration: boolean;
   headingRef?: React.RefObject<HTMLHeadingElement | null>;
 }) {
   if (!result.valid) {
@@ -473,15 +457,21 @@ function ResultCard({
         Atlama kaydedildi
       </h3>
       <dl className="mt-5 space-y-3">
-        <Stat
-          label="Atlama mesafesi"
-          value={
-            result.jumpDistanceCm != null
-              ? `${result.jumpDistanceCm.toFixed(0)} cm`
-              : `${(result.jumpUnits * 100).toFixed(1)} br`
-          }
-          accent
-        />
+        {result.jumpDistanceCm != null ? (
+          <Stat
+            label="Atlama mesafesi"
+            value={`${result.jumpDistanceCm.toFixed(0)} cm`}
+            accent
+          />
+        ) : (
+          <p
+            className="text-sm leading-relaxed"
+            style={{ color: 'var(--color-ink-2)' }}
+          >
+            Mesafe hesaplanamadı — bu videoda 3D vücut izleme yeterli değildi.
+            Kameraya tam gör, yandan çek ve tekrar dene.
+          </p>
+        )}
         {score != null && (
           <Stat
             label="Yaş norm skoru"
@@ -490,12 +480,13 @@ function ResultCard({
           />
         )}
       </dl>
-      {!hasCalibration && (
+      {result.jumpDistanceCm != null && (
         <p
           className="mt-5 text-xs leading-relaxed"
           style={{ color: 'var(--color-ink-2)' }}
         >
-          Çocuk boyu girilmediği için mesafe yaklaşık.
+          Bu mesafe telefonun 3D poz tahmininden hesaplandı; santimetrik
+          kesinlik iddia etmiyoruz — yaklaşık okuyun.
         </p>
       )}
       <button

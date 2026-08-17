@@ -10,10 +10,28 @@
  *   LAUNCH   → ankle X hızlı yer değişimi (yatay patlayış).
  *   LAND     → ankle X tekrar stabilize, yeni konum.
  *
- * Mesafe ölçümü: |ankleX_end − ankleX_start| × cmPerUnit (calibration frame'den).
+ * ## Mesafe ölçümü — NEDEN worldLandmarks zorunlu
  *
- * Yan görünüm önerilir (kamera profil görür) ama frontal de çalışır — sadece
- * ankle X'in ekrandaki yer değiştirmesi ölçülür.
+ * Eskiden mesafe `|ankleX_end − ankleX_start| (normalize) × cmPerUnit`
+ * idi ve `cmPerUnit` **dikey** hip-ankle mesafesinden (worldLandmarks veya
+ * boy) türetiliyordu. Bir eksende ölçülen bir ölçeği başka bir eksendeki
+ * mesafeye uygulamak — kamera profilden çekilse bile — geometrik olarak
+ * savunulamazdı; boy tabanlı fallback'te ayrıca çocuğun kamerayla arasındaki
+ * mesafeye (derinlik) hiç bakmadan tek bir "boy = X piksel" varsayımı
+ * yapılıyordu. Sonuç: ebeveyne "142 cm" gibi tek ondalıklı bir sayı, aslında
+ * hangi hatayla üretildiği bilinmeyen bir tahmindi.
+ *
+ * Artık mesafe SADECE worldLandmarks'tan (MediaPipe'ın ürettiği, kalça-
+ * merkezli metrik 3D tahmini) hesaplanıyor: başlangıç ve iniş penceresindeki
+ * dünya-X ortalaması arasındaki fark, doğrudan cm'e çevriliyor — eksen
+ * karışıklığı yok, boy girilmesi gerekmiyor. Bu izleme o oturumda yeterince
+ * güvenilir değilse (occlusion, kötü ışık, pencerenin yarısından azında
+ * worldLandmarks var) `jumpDistanceCm` `null` kalır ve UI sayıyı hiç
+ * göstermez — yaklaşık bir cm uydurmak yerine.
+ *
+ * Yan görünüm hâlâ öneriliyor (`BroadJumpTest` STEPS[0]) çünkü worldLandmarks
+ * derinlik tahmini yandan daha stabil, ama zorunlu koşul worldLandmarks'ın
+ * kendisi — kamera açısı pose'tan güvenilir doğrulanamıyor.
  *
  * Yaş normları (kaynak: Tomkinson 2018 BJSM 52:1445, Thomas 2020 EJTM 30(2):9050,
  * Ramírez-Vélez 2017 Nutrients 9:1167; <11 yaş için interp+pediatric pilot
@@ -22,11 +40,7 @@
 
 import type { PoseFrame } from '@/types';
 import { POSE_LANDMARKS } from '@/types';
-import {
-  getCmPerUnit,
-  hasVisibleLandmarks,
-  smoothSeries,
-} from '@/lib/pose/extractKeypoints';
+import { hasVisibleLandmarks, smoothSeries } from '@/lib/pose/extractKeypoints';
 import { zScorePercentile } from '@/lib/stats/normalCdf';
 
 const REQUIRED_LANDMARKS = [
@@ -39,6 +53,13 @@ const REQUIRED_LANDMARKS = [
 export interface BroadJumpSample {
   t: number;
   ankleX: number; // ayak ortalaması X, normalize 0-1
+  /**
+   * Ayak ortalaması X, worldLandmarks'tan (metre, kalça-merkezli) — mevcutsa.
+   * Mesafe hesabı BUNDAN türetilir (bkz. `calibrateBroadJump`). Pose tespiti
+   * o karede zayıfsa (occlusion, kötü ışık) veya çağıran world tracking
+   * sağlamıyorsa `undefined`/`null` — uydurmak yerine eksik bırakılır.
+   */
+  worldAnkleX?: number | null;
 }
 
 export interface BroadJumpAnalysis {
@@ -46,6 +67,15 @@ export interface BroadJumpAnalysis {
   jumpDistanceCm: number | null;
   startX: number;
   endX: number;
+  /**
+   * Başlangıç/iniş penceresindeki dünya-koordinat (worldLandmarks, metre)
+   * ankle X ortalaması. İkisi de doluysa `calibrateBroadJump` mesafeyi
+   * doğrudan bunların farkından hesaplar — normalize `startX`/`endX` yalnız
+   * ZAMANLAMA (ne zaman ayrıldı/indi) için kullanılır, metrik dönüşüm için
+   * değil (bkz. dosya başı doküman).
+   */
+  startWorldX: number | null;
+  endWorldX: number | null;
   valid: boolean;
   reason?: string;
 }
@@ -67,11 +97,63 @@ export function frameToBroadJumpSample(
   const la = frame.landmarks[POSE_LANDMARKS.LEFT_ANKLE];
   const ra = frame.landmarks[POSE_LANDMARKS.RIGHT_ANKLE];
   if (!la || !ra) return null;
-  return { t: frame.timestamp, ankleX: (la.x + ra.x) / 2 };
+  return {
+    t: frame.timestamp,
+    ankleX: (la.x + ra.x) / 2,
+    worldAnkleX: worldAnkleMidX(frame),
+  };
+}
+
+/** worldLandmarks'tan ayak ortalaması X (metre) — yoksa `null`. */
+function worldAnkleMidX(frame: PoseFrame): number | null {
+  const wl = frame.worldLandmarks;
+  if (!wl || wl.length < 33) return null;
+  const la = wl[POSE_LANDMARKS.LEFT_ANKLE];
+  const ra = wl[POSE_LANDMARKS.RIGHT_ANKLE];
+  if (!la || !ra) return null;
+  return (la.x + ra.x) / 2;
+}
+
+function average(values: readonly number[]): number {
+  return values.reduce((a, b) => a + b, 0) / values.length;
 }
 
 /**
- * İniş konumunu bulur.
+ * `null` içerebilen bir pencerenin ortalaması. Pencerenin yarısından azı
+ * gerçek değer taşıyorsa `null` döner — kısmi bir ortalama, occlusion
+ * gürültüsünü büyütür ve uydurmaktan daha iyi değildir.
+ */
+function averageNullable(values: ReadonlyArray<number | null>): number | null {
+  const present = values.filter((v): v is number => v != null);
+  if (present.length < Math.ceil(values.length / 2)) return null;
+  return average(present);
+}
+
+function windowAverage(
+  xs: readonly number[],
+  centerIdx: number,
+  windowSize: number
+): number {
+  const half = Math.floor(windowSize / 2);
+  const lo = Math.max(0, centerIdx - half);
+  const hi = Math.min(xs.length, centerIdx + half + 1);
+  return average(xs.slice(lo, hi));
+}
+
+function windowAverageNullable(
+  xs: ReadonlyArray<number | null>,
+  centerIdx: number,
+  windowSize: number
+): number | null {
+  const half = Math.floor(windowSize / 2);
+  const lo = Math.max(0, centerIdx - half);
+  const hi = Math.min(xs.length, centerIdx + half + 1);
+  return averageNullable(xs.slice(lo, hi));
+}
+
+/**
+ * İniş anının kare indeksini bulur (ZAMANLAMA için — metrik dönüşüm için
+ * değil, bkz. dosya başı doküman).
  *
  * Bu fonksiyon eskiden yoktu: `endX` yakalamanın **son** 15 karesinin
  * ortalamasıydı. Yakalama penceresi 6 saniye, atlama ise ~1 saniye sürüyor;
@@ -84,16 +166,14 @@ export function frameToBroadJumpSample(
  * uygulanan o.
  *
  * Yöntem: çocuk başlangıçtan anlamlı biçimde ayrıldıktan sonra serinin
- * durduğu İLK yeri iniş kabul et ve o civarın ortalamasını al.
+ * durduğu İLK yeri iniş kabul et.
  *
  * "İlk duruş" olması önemli: en uzak noktayı aramak yanlış olurdu, çünkü
  * çocuk indikten sonra bir adım daha atarsa en uzak nokta o adım olur ve
  * mesafe şişer. İlk duruş ise inişin kendisidir; sonrasında ne yaptığı —
  * geri yürümek de dahil — ölçüme karışmaz.
  */
-function findLandingX(xs: number[], startX: number): number {
-  if (xs.length === 0) return startX;
-
+function findLandIndex(xs: readonly number[], startX: number): number {
   // Kare başına hareket bunun altındaysa çocuk durmuş sayılır — 30 fps'te
   // saniyede ~%9 kadraj, yani yürümenin belirgin altında.
   const STILL_PER_FRAME = 0.003;
@@ -110,43 +190,28 @@ function findLandingX(xs: number[], startX: number): number {
     }
   }
   if (departIdx < 0) {
-    // Hiç ayrılmamış: son pencerenin ortalaması yeterli, zaten geçersiz
-    // sayılacak.
-    const tail = xs.slice(-END_WINDOW_FRAMES);
-    return tail.reduce((a, b) => a + b, 0) / tail.length;
+    // Hiç ayrılmamış: son pencerenin merkezine düş, zaten geçersiz sayılacak.
+    return xs.length - 1 - Math.floor(END_WINDOW_FRAMES / 2);
   }
 
   // 2) Ayrılıştan sonra ilk duruş = iniş.
   let still = 0;
-  let landIdx = -1;
   for (let i = departIdx + 1; i < xs.length; i++) {
     still = Math.abs(xs[i] - xs[i - 1]) < STILL_PER_FRAME ? still + 1 : 0;
-    if (still >= STILL_RUN) {
-      landIdx = i;
-      break;
-    }
+    if (still >= STILL_RUN) return i;
   }
 
   // Hiç durmadıysa (sürekli hareket) en uzak noktaya düş.
-  if (landIdx < 0) {
-    let peakIdx = departIdx;
-    let peakDist = -1;
-    for (let i = departIdx; i < xs.length; i++) {
-      const d = Math.abs(xs[i] - startX);
-      if (d > peakDist) {
-        peakDist = d;
-        peakIdx = i;
-      }
+  let peakIdx = departIdx;
+  let peakDist = -1;
+  for (let i = departIdx; i < xs.length; i++) {
+    const d = Math.abs(xs[i] - startX);
+    if (d > peakDist) {
+      peakDist = d;
+      peakIdx = i;
     }
-    landIdx = peakIdx;
   }
-
-  // İniş civarının ortalaması — tek kare gürültüsüne dayanmasın.
-  const half = Math.floor(END_WINDOW_FRAMES / 2);
-  const lo = Math.max(0, landIdx - half);
-  const hi = Math.min(xs.length, landIdx + half + 1);
-  const win = xs.slice(lo, hi);
-  return win.reduce((a, b) => a + b, 0) / win.length;
+  return peakIdx;
 }
 
 export function analyzeBroadJump(
@@ -158,6 +223,8 @@ export function analyzeBroadJump(
       jumpDistanceCm: null,
       startX: 0,
       endX: 0,
+      startWorldX: null,
+      endWorldX: null,
       valid: false,
       reason:
         'Yetersiz frame. Kameraya tam görün, atlamadan önce ve sonra bir saniye sabit dur.',
@@ -168,11 +235,19 @@ export function analyzeBroadJump(
     samples.map((s) => s.ankleX),
     5
   );
+  // worldAnkleX smooth EDİLMİYOR — smoothSeries sayısal ortalama alır ve
+  // `null`'ları NaN'a çevirir. Pencere ortalamaları (averageNullable) zaten
+  // gürültüyü yumuşatıyor.
+  const worldXs = samples.map((s) => s.worldAnkleX ?? null);
 
   const startSlice = xs.slice(0, START_WINDOW_FRAMES);
-  const startX = startSlice.reduce((a, b) => a + b, 0) / startSlice.length;
-  const endX = findLandingX(xs, startX);
+  const startX = average(startSlice);
+  const landIdx = findLandIndex(xs, startX);
+  const endX = windowAverage(xs, landIdx, END_WINDOW_FRAMES);
   const jumpUnits = Math.abs(endX - startX);
+
+  const startWorldX = averageNullable(worldXs.slice(0, START_WINDOW_FRAMES));
+  const endWorldX = windowAverageNullable(worldXs, landIdx, END_WINDOW_FRAMES);
 
   if (jumpUnits < MIN_JUMP_UNITS) {
     return {
@@ -180,6 +255,8 @@ export function analyzeBroadJump(
       jumpDistanceCm: null,
       startX,
       endX,
+      startWorldX,
+      endWorldX,
       valid: false,
       reason:
         'Belirgin yatay hareket algılanmadı. İleri doğru atlaman gerekiyor.',
@@ -191,27 +268,30 @@ export function analyzeBroadJump(
     jumpDistanceCm: null,
     startX,
     endX,
+    startWorldX,
+    endWorldX,
     valid: true,
   };
 }
 
 /**
- * Ölçülen normalize jumpUnits'i cm'e çevirir.
- * Önce calibrationFrame.worldLandmarks ile (gerçek metre, boy gerekmez);
- * yoksa heightCm fallback'i.
+ * Ölçülen mesafeyi cm'e çevirir — SADECE worldLandmarks'tan (bkz. dosya başı
+ * doküman: bir eksende ölçülen ölçeği başka eksene uygulamak savunulamazdı).
+ *
+ * `startWorldX`/`endWorldX`'ten biri `null`sa (yetersiz 3D izleme) mesafe
+ * hesaplanmaz — `jumpDistanceCm` `null` kalır. UI bunu yaklaşık bir sayı
+ * göstermek yerine "mesafe ölçülemedi" olarak ele almalı.
  */
 export function calibrateBroadJump(
-  analysis: BroadJumpAnalysis,
-  calibrationFrame: PoseFrame,
-  heightCm: number | null
+  analysis: BroadJumpAnalysis
 ): BroadJumpAnalysis {
   if (!analysis.valid) return analysis;
-  const cmPerUnit = getCmPerUnit(calibrationFrame, heightCm);
-  if (cmPerUnit == null) return analysis;
-  return {
-    ...analysis,
-    jumpDistanceCm: analysis.jumpUnits * cmPerUnit,
-  };
+  if (analysis.startWorldX == null || analysis.endWorldX == null) {
+    return analysis;
+  }
+  const jumpDistanceCm =
+    Math.abs(analysis.endWorldX - analysis.startWorldX) * 100;
+  return { ...analysis, jumpDistanceCm };
 }
 
 /**

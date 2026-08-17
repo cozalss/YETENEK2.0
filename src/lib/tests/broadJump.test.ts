@@ -7,6 +7,7 @@ import {
   analyzeBroadJump,
   broadJumpPercentile,
   broadJumpScore,
+  calibrateBroadJump,
   type BroadJumpSample,
 } from './broadJump';
 
@@ -51,6 +52,44 @@ describe('analyzeBroadJump', () => {
     expect(r.jumpUnits).toBeGreaterThan(0.2);
     expect(r.startX).toBeCloseTo(0.3, 1);
     expect(r.endX).toBeCloseTo(0.55, 1);
+  });
+});
+
+describe('calibrateBroadJump — mesafe SADECE worldLandmarks üzerinden', () => {
+  function jumpWithWorld(opts: {
+    startX: number;
+    endX: number;
+    worldStartX: number;
+    worldEndX: number;
+  }): BroadJumpSample[] {
+    return jump({ startX: opts.startX, endX: opts.endX }).map((s, i, arr) => ({
+      ...s,
+      // İlk yarı başlangıç penceresinde, ikinci yarı iniş penceresinde —
+      // `jump()` yardımcısı zaten anlık geçişli iki blok üretiyor.
+      worldAnkleX:
+        s.ankleX === arr[0].ankleX ? opts.worldStartX : opts.worldEndX,
+    }));
+  }
+
+  it('worldLandmarks mevcutsa mesafe dünya-X farkından hesaplanır (dikey oran YOK)', () => {
+    const samples = jumpWithWorld({
+      startX: 0.3,
+      endX: 0.55,
+      worldStartX: 0.1,
+      worldEndX: 0.52, // 0.42m fark → 42cm
+    });
+    const analysis = calibrateBroadJump(analyzeBroadJump(samples));
+    expect(analysis.valid).toBe(true);
+    expect(analysis.jumpDistanceCm).not.toBeNull();
+    expect(analysis.jumpDistanceCm).toBeCloseTo(42, 0);
+  });
+
+  it('worldLandmarks yoksa mesafe null kalır — yaklaşık sayı uydurulmaz', () => {
+    // `jump()` düz kullanımı worldAnkleX taşımıyor.
+    const samples = jump({ startX: 0.3, endX: 0.55 });
+    const analysis = calibrateBroadJump(analyzeBroadJump(samples));
+    expect(analysis.valid).toBe(true);
+    expect(analysis.jumpDistanceCm).toBeNull();
   });
 });
 
