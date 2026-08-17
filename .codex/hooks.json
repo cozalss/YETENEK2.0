@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"c:\\Users\\cemmo\\Desktop\\codeC\\yetenek\\.claude\\hooks\\format-edited-file.ps1\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"c:\\Users\\cemmo\\Desktop\\codeC\\yetenek\\.claude\\hooks\\typecheck-on-stop.ps1\"",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}
