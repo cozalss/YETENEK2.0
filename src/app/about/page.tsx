@@ -122,7 +122,7 @@ export default async function AboutPage() {
         {/* Boyutlar tablosu */}
         <section className="mt-24" id="boyutlar">
           <p className="text-xs font-semibold tracking-[0.25em] text-[var(--color-signal)] uppercase">
-            7 Fiziksel + 1 Psikolojik Boyut
+            7 Fiziksel Boyut
           </p>
           <h2 className="mt-3 text-4xl leading-tight font-bold md:text-5xl">
             Her test ne ölçer?
@@ -142,7 +142,7 @@ export default async function AboutPage() {
             <DimensionRow
               title="Denge"
               method="Single-leg postural sway (7s × 2)"
-              norm="Hewett 2005 asimetri >%10"
+              norm="Norm tablosu yok — %15 farkta tekrar ölçüm önerilir"
             />
             <DimensionRow
               title="Reaksiyon"
@@ -163,11 +163,6 @@ export default async function AboutPage() {
               title="Dayanıklılık"
               method="30sn Jumping Jacks · rep + decay"
               norm="Podstawski 2019 + FitnessGram"
-            />
-            <DimensionRow
-              title="Karakter / Takım Uyumu"
-              method="14 soruluk Likert anketi · 4 faktör (iş birliği, teşvik, sebat, fair play) · ters kodlamalı maddeler"
-              norm="Big Five Agreeableness + Eklund 2008 sport personality"
             />
           </div>
         </section>

@@ -15,6 +15,14 @@
  * Tek akış var: yedi testin tamamı. Kısaltılmış varyant bilinçli olarak yok —
  * eksik boyutu medyanla doldurmak, ölçülmemiş bir şeyi ölçülmüş gibi
  * raporlamak demekti.
+ *
+ * Not: bataryada bir 8. adım olarak 14 soruluk bir "Karakter" Likert anketi
+ * (öz-bildirim kişilik profili) vardı; kaldırıldı. Bio-motor testler
+ * gözlemlenen fiziksel performansı ölçüyor, anket ise çocuğun kendi
+ * hakkındaki beyanına dayanıyordu — bu ürünün iddiasıyla (kamerayla ölçülen,
+ * gözlemsel bio-motor profil) aynı kategoride değildi. `character/*` analiz
+ * kodu ve `Session.character` alanı geçmiş kayıtları bozmamak için duruyor;
+ * yalnız akıştan çıkarıldı.
  */
 
 'use client';
@@ -29,7 +37,6 @@ import { LateralHopsTest } from '@/components/tests/LateralHopsTest';
 import { ReactionTest } from '@/components/tests/ReactionTest';
 import { CoordinationTest } from '@/components/tests/CoordinationTest';
 import { EnduranceJacksTest } from '@/components/tests/EnduranceJacksTest';
-import { CharacterTest } from '@/components/tests/CharacterTest';
 import { ProfileForm } from '@/components/flow/ProfileForm';
 import { PhaseHeader, FULL_FLOW_STEP_LABELS } from '@/components/flow/PhaseHeader';
 import { ResultScreen } from '@/components/result/ResultScreen';
@@ -49,7 +56,6 @@ import type { LateralHopsAnalysis } from '@/lib/tests/lateralHops';
 import type { ReactionAnalysis } from '@/lib/tests/reaction';
 import type { CoordinationAnalysis } from '@/lib/tests/coordination';
 import type { EnduranceJacksAnalysis } from '@/lib/tests/enduranceJacks';
-import type { CharacterAnalysis } from '@/lib/character/score';
 
 type Phase =
   | 'profile'
@@ -60,7 +66,6 @@ type Phase =
   | 'reaction'
   | 'coordination'
   | 'endurance'
-  | 'character'
   | 'result';
 
 const PHASE_ORDER: Phase[] = [
@@ -71,7 +76,6 @@ const PHASE_ORDER: Phase[] = [
   'reaction',
   'coordination',
   'endurance',
-  'character',
 ];
 
 interface DoneFlags {
@@ -82,7 +86,6 @@ interface DoneFlags {
   reaction: boolean;
   coordination: boolean;
   endurance: boolean;
-  character: boolean;
 }
 
 const EMPTY_DONE: DoneFlags = {
@@ -93,7 +96,6 @@ const EMPTY_DONE: DoneFlags = {
   reaction: false,
   coordination: false,
   endurance: false,
-  character: false,
 };
 
 export default function FullFlowPage() {
@@ -367,7 +369,6 @@ function FullFlowInner() {
             <BroadJumpTest
               childAgeYears={child.ageYears}
               childSex={child.sex}
-              childHeightCm={child.heightCm}
               onComplete={(analysis) => {
                 // Skor null olabilir (mesafe kalibre edilemedi). Cast'in
                 // yalan olmaması için burada eleniyor — test yine de
@@ -488,6 +489,7 @@ function FullFlowInner() {
             stepNumber={stepNumber}
             stepLabels={FULL_FLOW_STEP_LABELS}
             onSkip={skipCurrent}
+            advanceLabel="Sonuçları Gör"
           >
             <EnduranceJacksTest
               childAgeYears={child.ageYears}
@@ -500,25 +502,6 @@ function FullFlowInner() {
                   analysis.judgeInjuryWarnings
                 );
                 setDone((d) => ({ ...d, endurance: true }));
-              }}
-            />
-          </PhaseShell>
-        )}
-
-        {phase === 'character' && child && (
-          <PhaseShell
-            childName={child.name}
-            done={done.character}
-            onAdvance={() => advanceFrom('character')}
-            stepNumber={stepNumber}
-            stepLabels={FULL_FLOW_STEP_LABELS}
-            onSkip={skipCurrent}
-            advanceLabel="Sonuçları Gör"
-          >
-            <CharacterTest
-              onComplete={(analysis: CharacterAnalysis) => {
-                sessionStore.recordCharacter(analysis);
-                setDone((d) => ({ ...d, character: true }));
               }}
             />
           </PhaseShell>

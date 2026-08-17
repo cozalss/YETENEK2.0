@@ -135,5 +135,4 @@ export const FULL_FLOW_STEP_LABELS = [
   'Reaksiyon',
   'Koordinasyon',
   'Dayanıklılık',
-  'Karakter',
 ];

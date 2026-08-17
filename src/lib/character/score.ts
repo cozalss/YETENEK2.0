@@ -3,6 +3,12 @@
  * encouragement, persistence, fairPlay) + tek `teamAffinity` skoruna
  * dönüştürür ve özet metin üretir.
  *
+ * NOT: bu dosyanın ürettiği anketin kendisi (`CharacterTest` bileşeni) test
+ * bataryasından kaldırıldı — bkz. `src/app/test/full/page.tsx` doküman notu.
+ * `scoreCharacter()` artık hiçbir UI'dan çağrılmıyor; `CharacterAnalysis`/
+ * `CharacterFactors` tipleri yalnız `Session.character` (geçmiş kayıtlar) ve
+ * `recommend.ts`'in opsiyonel karakter-boost'u için duruyor.
+ *
  * Algoritma:
  *   - Forward kodlu maddeler: cevap aynen (1-5)
  *   - Ters kodlu maddeler (11, 13): 6 - cevap (5→1, 1→5)
